@@ -2,8 +2,8 @@
   "name": "seatwise",
   "private": true,
   "scripts": {
-    "format": "RUBYOPT=-r./script/prettier-ruby-json-compat.rb prettier --write \"**/*.rb\" \"**/*.html.erb\"",
-    "format:check": "RUBYOPT=-r./script/prettier-ruby-json-compat.rb prettier --check \"**/*.rb\" \"**/*.html.erb\""
+    "format": "RUBYOPT=-r./script/prettier-ruby-json-compat.rb prettier --write \"**/*.rb\" \"**/*.html.erb\" \"**/*.js\"",
+    "format:check": "RUBYOPT=-r./script/prettier-ruby-json-compat.rb prettier --check \"**/*.rb\" \"**/*.html.erb\" \"**/*.js\""
   },
   "devDependencies": {
     "@prettier/plugin-ruby": "^4.0.4",
