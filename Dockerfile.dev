@@ -1,0 +1,20 @@
+# Development image; the generated Dockerfile remains the production image.
+ARG RUBY_VERSION=4.0.9
+FROM ruby:${RUBY_VERSION}-slim
+
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y build-essential git libpq-dev libyaml-dev libvips && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /rails
+COPY Gemfile Gemfile.lock ./
+RUN bundle install
+
+# Match the WSL developer's UID/GID so bind-mounted files stay user-owned.
+RUN groupadd --gid 1000 rails && \
+    useradd --uid 1000 --gid 1000 --create-home rails && \
+    chown rails:rails /rails
+USER rails
+
+EXPOSE 3000
+CMD ["bin/rails", "server", "-b", "0.0.0.0"]
