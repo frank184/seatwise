@@ -72,7 +72,7 @@ sunday_jazz:
 
 past_encore:
   venue: two
-  name: Autumn Strings: Encore
+  name: "Autumn Strings: Encore"
   start_time: 2026-11-01 18:00:00
   end_time: 2026-11-01 20:00:00
   layout_snapshot:
