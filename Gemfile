@@ -8,6 +8,7 @@ gem "turbo-rails"
 gem "stimulus-rails"
 gem "jbuilder"
 # Build the UI stylesheet with Rails' Tailwind CSS integration.
+gem "tailwindcss-rails"
 # Use postgresql as the database for Active Record
 gem "pg", "~> 1.1"
 # Use the Puma web server [https://github.com/puma/puma]
@@ -53,6 +54,7 @@ group :development, :test do
 end
 
 group :development do
+  gem "foreman"
   gem "web-console"
 end
 

@@ -1,0 +1,49 @@
+name: seatwise
+
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: seatwise
+      POSTGRES_PASSWORD: seatwise_development
+      POSTGRES_DB: seatwise_development
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seatwise -d seatwise_development"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+
+  rails:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    init: true
+    environment:
+      RAILS_ENV: development
+      PGHOST: postgres
+      PGPORT: 5432
+      PIDFILE: /tmp/seatwise.pid
+      BOOTSNAP_CACHE_DIR: /tmp/bootsnap
+    ports:
+      - "127.0.0.1:${RAILS_PORT:-3000}:3000"
+    volumes:
+      - .:/rails
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - rm -f /tmp/seatwise.pid && exec bin/dev
+
+networks:
+  default:
+    name: seatwise
+
+volumes:
+  postgres_data:
