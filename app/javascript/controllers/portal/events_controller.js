@@ -145,11 +145,11 @@ export default class extends Controller {
           const taken = reserved.has(number)
           seat.className = taken
             ? "size-4 cursor-not-allowed rounded-t-full border-2 border-dashed border-base-content/40 bg-base-300"
-            : "size-4 rounded-t-full border border-success bg-success/70 hover:border-primary hover:bg-primary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            : "size-4 cursor-pointer touch-none select-none rounded-t-full border border-success bg-success/70 hover:border-primary hover:bg-primary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           seat.dataset.seat = number
           seat.dataset.row = row.row_id
           seat.dataset.rowLabel = row.label
-          seat.dataset.action = "click->portal--events#toggleSeat"
+          seat.dataset.action = "pointerdown->portal--events#startSeatDrag pointerenter->portal--events#dragAcrossSeat click->portal--events#toggleSeat"
           seat.disabled = taken
           seat.setAttribute("aria-pressed", "false")
           seat.setAttribute("aria-label", `Row ${row.label}, seat ${number}, ${taken ? "held or reserved" : "open"}`)
@@ -159,7 +159,7 @@ export default class extends Controller {
         section.append(label, seats)
         return section
       }))
-      this.element.querySelector("[data-selection-count]").textContent = "Choose up to 6 open seats."
+      this.element.querySelector("[data-selection-count]").textContent = "Click or drag across up to 6 open seats."
       this.element.querySelector("[data-selection-message]").textContent = ""
       this.element.querySelector("[data-selection-review]").disabled = true
       content.hidden = false
@@ -173,28 +173,63 @@ export default class extends Controller {
     }
   }
 
-  toggleSeat({ currentTarget: seat }) {
+  startSeatDrag(event) {
+    if (event.button !== 0) return
+
+    const seat = event.currentTarget
+    const key = `${seat.dataset.row}:${seat.dataset.seat}`
+    this.draggingSeats = true
+    this.dragSelectSeats = !this.selectedSeats.has(key)
+    this.ignoreNextPointerClick = true
+    this.setSeatSelected(seat, this.dragSelectSeats)
+  }
+
+  dragAcrossSeat({ currentTarget: seat }) {
+    if (this.draggingSeats) this.setSeatSelected(seat, this.dragSelectSeats)
+  }
+
+  endSeatDrag() {
+    this.draggingSeats = false
+  }
+
+  toggleSeat(event) {
+    if (event.detail > 0 && this.ignoreNextPointerClick) {
+      this.ignoreNextPointerClick = false
+      return
+    }
+
+    const seat = event.currentTarget
+    const key = `${seat.dataset.row}:${seat.dataset.seat}`
+    this.setSeatSelected(seat, !this.selectedSeats.has(key))
+  }
+
+  setSeatSelected(seat, selected) {
     const key = `${seat.dataset.row}:${seat.dataset.seat}`
     const message = this.element.querySelector("[data-selection-message]")
-    if (this.selectedSeats.has(key)) {
+    if (selected && this.selectedSeats.has(key)) return
+    if (!selected && !this.selectedSeats.has(key)) return
+
+    if (!selected) {
       this.selectedSeats.delete(key)
       seat.setAttribute("aria-pressed", "false")
       seat.setAttribute("aria-label", `Row ${seat.dataset.rowLabel}, seat ${seat.dataset.seat}, open`)
       seat.title = `Seat ${seat.dataset.seat}, open`
-      seat.className = "size-4 rounded-t-full border border-success bg-success/70 hover:border-primary hover:bg-primary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      seat.className = "size-4 cursor-pointer touch-none select-none rounded-t-full border border-success bg-success/70 hover:border-primary hover:bg-primary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
     } else if (this.selectedSeats.size < 6) {
       this.selectedSeats.add(key)
       seat.setAttribute("aria-pressed", "true")
       seat.setAttribute("aria-label", `Row ${seat.dataset.rowLabel}, seat ${seat.dataset.seat}, selected`)
       seat.title = `Seat ${seat.dataset.seat}, selected`
-      seat.className = "size-4 rounded-t-full border border-primary bg-primary text-primary-content ring-2 ring-primary/30"
+      seat.className = "size-4 cursor-pointer touch-none select-none rounded-t-full border border-primary bg-primary text-primary-content ring-2 ring-primary/30"
     } else {
       message.textContent = "Up to 6 seats can be previewed at a time."
       return
     }
 
     message.textContent = ""
-    this.element.querySelector("[data-selection-count]").textContent = `${this.selectedSeats.size || "Choose up to 6"} ${this.selectedSeats.size ? "of 6 seats selected" : "open seats."}`
+    this.element.querySelector("[data-selection-count]").textContent = this.selectedSeats.size
+      ? `${this.selectedSeats.size} of 6 seats selected`
+      : "Click or drag across up to 6 open seats."
     this.element.querySelector("[data-selection-review]").disabled = this.selectedSeats.size === 0
   }
 
