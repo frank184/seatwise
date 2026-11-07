@@ -1,0 +1,19 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  name: Grand Hall
+  layout:
+    rows:
+      - row_id: 1
+        label: A
+        allocation_order: 1
+        seat_count: 10
+
+two:
+  name: Studio Theatre
+  layout:
+    rows:
+      - row_id: 1
+        label: A
+        allocation_order: 1
+        seat_count: 10

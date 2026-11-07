@@ -1,0 +1,25 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  venue: one
+  name: Friday Evening Show
+  start_time: 2026-11-06 20:00:00
+  end_time: 2026-11-06 22:00:00
+  layout_snapshot:
+    rows:
+      - row_id: 1
+        label: A
+        allocation_order: 1
+        seat_count: 10
+
+two:
+  venue: two
+  name: Saturday Matinee
+  start_time: 2026-11-07 14:00:00
+  end_time: 2026-11-07 16:00:00
+  layout_snapshot:
+    rows:
+      - row_id: 1
+        label: A
+        allocation_order: 1
+        seat_count: 10

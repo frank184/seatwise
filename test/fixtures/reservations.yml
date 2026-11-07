@@ -1,0 +1,17 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  event: one
+  customer: one
+  row_id: 1
+  seat_range: "[1,2)"
+  status: held
+  hold_expires_at: 2026-11-06 20:05:00
+
+two:
+  event: two
+  customer: two
+  row_id: 1
+  seat_range: "[1,2)"
+  status: held
+  hold_expires_at: 2026-11-07 14:05:00

@@ -1,0 +1,15 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  email: one@example.test
+  email_verified_at: 2026-11-06 16:26:27
+  sign_in_code_digest: MyString
+  sign_in_code_expires_at: 2026-11-06 16:26:27
+  sign_in_code_attempts: 1
+
+two:
+  email: two@example.test
+  email_verified_at: 2026-11-06 16:26:27
+  sign_in_code_digest: MyString
+  sign_in_code_expires_at: 2026-11-06 16:26:27
+  sign_in_code_attempts: 1

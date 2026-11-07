@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  reservation: one
+  external_id: payment-one
+  status: pending
+  amount: 1
+
+two:
+  reservation: two
+  external_id: payment-two
+  status: pending
+  amount: 1

@@ -1,9 +1,15 @@
-# This file should ensure the existence of records required to run the application in every environment (production,
-# development, test). The code here should be idempotent so that it can be executed at any point in every environment.
-# The data can then be loaded with the bin/rails db:seed command (or created alongside the database with db:setup).
-#
-# Example:
-#
-#   ["Action", "Comedy", "Drama", "Horror"].each do |genre_name|
-#     MovieGenre.find_or_create_by!(name: genre_name)
-#   end
+# Load the shared test dataset into a fresh development database.
+require "active_record/fixtures"
+
+if Rails.env.development?
+  fixture_tables = [ Venue, Customer, Event, Reservation, Payment ]
+
+  if fixture_tables.none?(&:exists?)
+    ActiveRecord::FixtureSet.create_fixtures(
+      Rails.root.join("test/fixtures"),
+      %w[venues customers events reservations payments]
+    )
+  elsif fixture_tables.any?(&:exists?)
+    puts "Skipping development fixtures because one or more seed tables already contain data."
+  end
+end
