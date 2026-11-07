@@ -31,6 +31,9 @@
 # Ignore key files for decrypting credentials and more.
 /config/*.key
 
+# Kamal secrets are local deployment credentials.
+/.kamal/secrets
+
 
 /app/assets/builds/*
 !/app/assets/builds/.keep
