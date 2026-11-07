@@ -11,5 +11,6 @@ Rails.application.routes.draw do
   namespace :portal, path: "" do
     root "design_system#show"
     get "design-system", to: "design_system#show", as: :design_system
+    get "status", to: "status#show", as: :status
   end
 end
