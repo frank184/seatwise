@@ -1,25 +1,87 @@
-# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
-
 one:
   venue: one
   name: Friday Evening Show
-  start_time: 2026-11-06 20:00:00
-  end_time: 2026-11-06 22:00:00
+  start_time: 2026-11-13 20:00:00
+  end_time: 2026-11-13 22:00:00
+  layout_snapshot:
+    rows:
+      - row_id: 1
+        label: A
+        allocation_order: 1
+        seat_count: 12
+      - row_id: 2
+        label: B
+        allocation_order: 2
+        seat_count: 12
+      - row_id: 3
+        label: C
+        allocation_order: 3
+        seat_count: 10
+
+two:
+  venue: two
+  name: Saturday Matinee
+  start_time: 2026-11-14 14:00:00
+  end_time: 2026-11-14 16:00:00
   layout_snapshot:
     rows:
       - row_id: 1
         label: A
         allocation_order: 1
         seat_count: 10
+      - row_id: 2
+        label: B
+        allocation_order: 2
+        seat_count: 10
 
-two:
-  venue: two
-  name: Saturday Matinee
-  start_time: 2026-11-07 14:00:00
-  end_time: 2026-11-07 16:00:00
+indie_folk:
+  venue: three
+  name: Indie Folk Night
+  start_time: 2026-11-20 19:30:00
+  end_time: 2026-11-20 21:30:00
+  layout_snapshot:
+    rows:
+      - row_id: 1
+        label: Front
+        allocation_order: 1
+        seat_count: 8
+      - row_id: 2
+        label: Rear
+        allocation_order: 2
+        seat_count: 12
+
+sunday_jazz:
+  venue: one
+  name: Sunday Jazz Brunch
+  start_time: 2026-11-22 11:00:00
+  end_time: 2026-11-22 13:00:00
   layout_snapshot:
     rows:
       - row_id: 1
         label: A
         allocation_order: 1
+        seat_count: 12
+      - row_id: 2
+        label: B
+        allocation_order: 2
+        seat_count: 12
+      - row_id: 3
+        label: C
+        allocation_order: 3
+        seat_count: 10
+
+past_encore:
+  venue: two
+  name: Autumn Strings: Encore
+  start_time: 2026-11-01 18:00:00
+  end_time: 2026-11-01 20:00:00
+  layout_snapshot:
+    rows:
+      - row_id: 1
+        label: A
+        allocation_order: 1
+        seat_count: 10
+      - row_id: 2
+        label: B
+        allocation_order: 2
         seat_count: 10
