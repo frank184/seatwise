@@ -7,7 +7,7 @@
   </div>
   <div class="navbar-center hidden md:flex">
     <nav aria-label="Main navigation" class="flex items-center gap-6 text-sm font-medium text-base-content/65">
-      <%= link_to "How it works", root_path(anchor: "about"), class: "link link-hover" %>
+      <%= link_to "How it works", events_path(anchor: "about"), class: "link link-hover" %>
       <%= link_to "Events", root_path, class: "link link-hover" %>
       <%= link_to "Status", status_path, class: "link link-hover" %>
     </nav>
@@ -16,7 +16,7 @@
     <details class="dropdown dropdown-end md:hidden">
       <summary class="btn btn-ghost btn-square list-none" aria-label="Open navigation menu"><%= lucide "menu", class: "size-5" %></summary>
       <ul class="menu menu-sm dropdown-content z-30 mt-3 w-52 rounded-box border border-base-300 bg-base-100 p-2 shadow">
-        <li><%= link_to "How it works", root_path(anchor: "about") %></li>
+        <li><%= link_to "How it works", events_path(anchor: "about") %></li>
         <li><%= link_to "Events", root_path %></li>
         <li><%= link_to "Status", status_path %></li>
       </ul>
