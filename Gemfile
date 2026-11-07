@@ -7,6 +7,8 @@ gem "importmap-rails"
 gem "turbo-rails"
 gem "stimulus-rails"
 gem "jbuilder"
+gem "kaminari", "~> 1.2"
+gem "ransack", "~> 4.4"
 # Build the UI stylesheet with Rails' Tailwind CSS integration.
 gem "tailwindcss-rails"
 # Use postgresql as the database for Active Record
@@ -62,6 +64,8 @@ group :test do
   gem "capybara"
   gem "selenium-webdriver"
 end
+
+gem "lucide-rails", "~> 0.7.4"
 
 gem "prettier_print", "~> 1.2", group: :development
 gem "syntax_tree", "~> 6.3", group: :development
