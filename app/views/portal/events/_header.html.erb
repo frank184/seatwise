@@ -1,0 +1,26 @@
+<header class="navbar sticky top-0 z-20 border-b border-base-300 bg-base-100/95 px-4 backdrop-blur sm:px-8">
+  <div class="navbar-start">
+    <%= link_to root_path, class: "flex items-center gap-3 text-base-content no-underline" do %>
+      <span class="grid size-10 shrink-0 place-items-center rounded-2xl bg-primary text-xl font-black leading-none text-primary-content" aria-hidden="true">S</span>
+      <span><span class="block text-base font-bold tracking-tight">seatwise</span><span class="block text-xs text-base-content/55">Find your place</span></span>
+    <% end %>
+  </div>
+  <div class="navbar-center hidden md:flex">
+    <nav aria-label="Main navigation" class="flex items-center gap-6 text-sm font-medium text-base-content/65">
+      <%= link_to "How it works", root_path(anchor: "about"), class: "link link-hover" %>
+      <%= link_to "Events", root_path, class: "link link-hover" %>
+      <%= link_to "Status", status_path, class: "link link-hover" %>
+    </nav>
+  </div>
+  <div class="navbar-end gap-2">
+    <details class="dropdown dropdown-end md:hidden">
+      <summary class="btn btn-ghost btn-square list-none" aria-label="Open navigation menu"><%= lucide "menu", class: "size-5" %></summary>
+      <ul class="menu menu-sm dropdown-content z-30 mt-3 w-52 rounded-box border border-base-300 bg-base-100 p-2 shadow">
+        <li><%= link_to "How it works", root_path(anchor: "about") %></li>
+        <li><%= link_to "Events", root_path %></li>
+        <li><%= link_to "Status", status_path %></li>
+      </ul>
+    </details>
+    <%= button "Browse events", variant: :primary, size: :sm, href: root_path, class: "hidden md:inline-flex" %>
+  </div>
+</header>
