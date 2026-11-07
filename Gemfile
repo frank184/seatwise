@@ -62,3 +62,6 @@ group :test do
   gem "capybara"
   gem "selenium-webdriver"
 end
+
+gem "prettier_print", "~> 1.2", group: :development
+gem "syntax_tree", "~> 6.3", group: :development

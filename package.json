@@ -1,0 +1,13 @@
+{
+  "name": "seatwise",
+  "private": true,
+  "scripts": {
+    "format": "RUBYOPT=-r./script/prettier-ruby-json-compat.rb prettier --write \"**/*.rb\" \"**/*.html.erb\"",
+    "format:check": "RUBYOPT=-r./script/prettier-ruby-json-compat.rb prettier --check \"**/*.rb\" \"**/*.html.erb\""
+  },
+  "devDependencies": {
+    "@prettier/plugin-ruby": "^4.0.4",
+    "prettier": "^3.6.2",
+    "@4az/prettier-plugin-html-erb": "^0.0.7"
+  }
+}

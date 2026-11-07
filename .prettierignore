@@ -1,0 +1,6 @@
+/.git/
+/log/
+/tmp/
+/vendor/
+/storage/
+/node_modules/
