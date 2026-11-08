@@ -69,3 +69,6 @@ gem "lucide-rails", "~> 0.7.4"
 
 gem "prettier_print", "~> 1.2", group: :development
 gem "syntax_tree", "~> 6.3", group: :development
+gem "syntax_tree-haml", group: :development
+
+gem "haml-rails", "~> 3.1"

@@ -1,0 +1,91 @@
+- content_for :title, "Event details · Seatwise"
+.min-h-screen{
+class: "bg-base-200/60",
+"data-action": "pointerup@window->portal--events#endSeatDrag pointercancel@window->portal--events#endSeatDrag",
+"data-controller": "portal--events",
+"data-event-id": "#{@event_id}",
+"data-event-show": ""
+}
+  = render "header"
+  %main.mx-auto.max-w-7xl.space-y-6.px-4.py-5.sm:px-8.sm:py-8
+    = link_to root_path, class: "btn btn-ghost btn-sm" do
+      = lucide "arrow-left", class: "size-4"
+      Back to events
+    .hidden.space-y-6#event-loading{"aria-live": "polite", hidden: ""}
+      = card card_class: "border border-base-300 bg-base-100", body_class: "gap-4" do
+        .skeleton.h-8{class: "w-1/3"}
+        .skeleton.h-5{class: "w-1/2"}
+        .skeleton.h-24.w-full
+      = card card_class: "border border-base-300 bg-base-100", body_class: "gap-4" do
+        .skeleton.h-6{class: "w-1/4"}
+        .skeleton.h-16.w-full
+    #event-error{hidden: ""}
+    #event-content{hidden: ""}
+      = card card_class: "overflow-hidden border border-base-300 bg-base-100", body_class: "gap-0 p-0" do
+        .grid{class: "lg:grid-cols-[1.1fr_0.9fr]"}
+          .relative.grid.min-h-36.place-items-center.overflow-hidden.bg-gradient-to-br.via-base-200.lg:min-h-48{
+class: "from-primary/10 to-secondary/15"
+}
+            %span.grid.size-14.place-items-center.rounded-full.text-primary.shadow-sm{
+"aria-hidden": "true",
+class: "bg-base-100/80"
+}
+              = lucide "music-2", class: "size-6"
+            %span.badge.badge-lg.absolute.bottom-6.left-6{
+class: "border-base-100/70 bg-base-100/90",
+"data-detail-date": ""
+}
+          .flex.flex-col.justify-center.p-6.sm:p-10
+            = badge "Event details", variant: :primary, style: :outline, extra_class: "w-fit"
+            %h1.mt-4.text-4xl.font-black.tracking-tight{"data-detail-name": ""}
+            %p.mt-3.text-lg{class: "text-base-content/65", "data-detail-venue": ""}
+            .divider
+            %dl.grid.grid-cols-2.gap-5.text-sm
+              %div
+                %dt{class: "text-base-content/55"} Doors &amp; show
+                %dd.mt-1.font-semibold{"data-detail-start": ""}
+              %div
+                %dt{class: "text-base-content/55"} Ends around
+                %dd.mt-1.font-semibold{"data-detail-end": ""}
+              %div
+                %dt{class: "text-base-content/55"} Room capacity
+                %dd.mt-1.font-semibold{"data-detail-seats": ""}
+              %div
+                %dt{class: "text-base-content/55"} Currently open
+                %dd.mt-1.font-semibold.text-success{"data-detail-open": ""}
+            .mt-7
+              = status_alert title: "Preview only", description: "Seat selection and checkout are not enabled yet. Availability may change.", variant: :info, icon: "info", soft: true
+        %section.border-t.border-base-300.p-6.sm:p-10{"aria-labelledby": "seating-title"}
+          .mb-5.flex.flex-wrap.items-end.justify-between.gap-3
+            %div
+              %p.text-sm.font-semibold.text-primary The room
+              %h2.mt-1.text-2xl.font-bold#seating-title Seating overview
+            %span.text-sm{class: "text-base-content/55"} Availability preview
+          %div{"data-detail-rows": ""}
+            = data_table headers: %w[Row Seats], rows: [], size: :sm, wrapper_class: "bg-base-100", table_class: "min-w-max w-full [&_thead]:sr-only"
+          .mt-4.flex.flex-wrap.items-center.gap-2.text-sm{class: "text-base-content/75"}
+            %span.size-3.rounded-t-full.border.border-success{class: "bg-success/70"}
+            Open
+            %span.ml-3.size-3.rounded-t-full.border-2.border-dashed.bg-base-300{
+class: "border-base-content/50"
+}
+            Held or reserved
+            %span.sr-only Each seat also has a text label with its status.
+          = card card_class: "mt-6 border border-base-300 bg-base-100", body_class: "gap-3 sm:flex-row sm:items-center sm:justify-between" do
+            %div
+              %h3.font-semibold Your seat preview
+              %p.mt-1.text-sm{class: "text-base-content/60", "data-selection-count": ""}
+                Click or drag across up to 6 open seats.
+              %p.mt-1.text-sm.text-primary{"aria-live": "polite", "data-selection-message": ""}
+            %form{"data-action": "submit->portal--events#reviewSelection"}
+              = button "Review seats", type: "submit", variant: :primary, size: :sm, disabled: true, data: { selection_review: true }
+    = render "footer"
+  %template#event-error-template
+    = status_alert title: "Event could not load", description: "Check your connection and try again.", variant: :error, icon: "triangle-alert", action: button("Retry", variant: :error, size: :sm, data: { action: "click->portal--events#retry" })
+  %template#event-not-found-template
+    = card card_class: "border border-base-300 bg-base-100", body_class: "items-center py-14 text-center" do
+      = lucide "calendar-x", class: "size-9 text-base-content/35"
+      = card_title "Event not found"
+      %p.text-sm{class: "text-base-content/60"}
+        This event may have been removed or the link may be incorrect.
+      = button "Browse events", variant: :primary, size: :sm, href: root_path

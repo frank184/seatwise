@@ -21,7 +21,7 @@ three:
   status: confirmed
 
 four:
-  event: one
+  event: two
   customer: four
   row_id: 1
   seat_range: "[3,5)"
@@ -35,10 +35,10 @@ five:
   status: cancelled
 
 six:
-  event: one
+  event: two
   customer: six
-  row_id: 2
-  seat_range: "[2,5)"
+  row_id: 1
+  seat_range: "[6,7)"
   status: confirmed
 
 seven:

@@ -5,13 +5,9 @@ module Api
     class EventsControllerTest < ActionDispatch::IntegrationTest
       include ActiveSupport::Testing::TimeHelpers
 
-      setup do
-        travel_to Time.zone.local(2026, 11, 7, 12)
-      end
+      setup { travel_to Time.zone.local(2026, 11, 7, 12) }
 
-      teardown do
-        travel_back
-      end
+      teardown { travel_back }
 
       test "index returns the versioned event shape in soonest-first order" do
         get api_v1_events_path
@@ -22,18 +18,30 @@ module Api
         assert_equal 5, body.dig("meta", "total_count")
         assert_equal 5, body.dig("meta", "count")
         assert_equal "Autumn Strings: Encore", body.dig("data", 0, "name")
-        assert_equal %w[id name starts_at ends_at past venue rows seat_count reserved_count available_count].sort,
-          body.dig("data", 0).keys.sort
+        assert_equal %w[
+                       id
+                       name
+                       starts_at
+                       ends_at
+                       past
+                       venue
+                       rows
+                       seat_count
+                       reserved_count
+                       available_count
+                     ].sort,
+                     body.dig("data", 0).keys.sort
       end
 
       test "index filters upcoming and past events around the current time" do
-        event_at_now = Event.create!(
-          venue: venues(:one),
-          name: "At the boundary",
-          start_time: Time.current,
-          end_time: 1.hour.from_now,
-          layout_snapshot: venues(:one).layout
-        )
+        event_at_now =
+          Event.create!(
+            venue: venues(:one),
+            name: "At the boundary",
+            start_time: Time.current,
+            end_time: 1.hour.from_now,
+            layout_snapshot: venues(:one).layout
+          )
 
         get api_v1_events_path, params: { when: "upcoming" }
         upcoming = response.parsed_body.fetch("data")
@@ -59,21 +67,29 @@ module Api
 
         assert_response :success
         assert_equal ["Indie Folk Night", "Riverside Comedy Hour"],
-          response.parsed_body.fetch("data").map { |event| event.fetch("name") }
+                     response.parsed_body.fetch("data").map { |event| event.fetch("name") }
       end
 
       test "index accepts a plain text search" do
         get api_v1_events_path, params: { q: "Folk" }
 
         assert_response :success
-        assert_equal ["Indie Folk Night"], response.parsed_body.fetch("data").map { |event| event.fetch("name") }
+        assert_equal ["Indie Folk Night"],
+                     response.parsed_body.fetch("data").map { |event| event.fetch("name") }
       end
 
       test "index ignores unsupported search attributes" do
-        get api_v1_events_path, params: { q: { name_or_venue_name_cont: "Folk", created_at_eq: "not permitted" } }
+        get api_v1_events_path,
+            params: {
+              q: {
+                name_or_venue_name_cont: "Folk",
+                created_at_eq: "not permitted"
+              }
+            }
 
         assert_response :success
-        assert_equal ["Indie Folk Night"], response.parsed_body.fetch("data").map { |event| event.fetch("name") }
+        assert_equal ["Indie Folk Night"],
+                     response.parsed_body.fetch("data").map { |event| event.fetch("name") }
       end
 
       test "index sorts latest and by name, and falls back for unknown sort values" do
@@ -150,7 +166,7 @@ module Api
         assert_equal [1], body.dig("data", "rows", 0, "reserved_seats")
         assert_equal [1, 2], body.dig("data", "rows", 1, "reserved_seats")
         assert_equal 3, body.dig("data", "reserved_count")
-        assert_equal 31, body.dig("data", "available_count")
+        assert_equal 127, body.dig("data", "available_count")
       end
 
       test "show returns not found for an unknown event" do

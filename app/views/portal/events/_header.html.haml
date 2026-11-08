@@ -1,0 +1,22 @@
+%header.navbar.sticky.top-0.z-20.border-b.border-base-300.px-4.backdrop-blur.sm:px-8{class: "bg-base-100/95"}
+  .navbar-start
+    = link_to root_path, class: "flex items-center gap-3 text-base-content no-underline" do
+      %span.grid.size-10.shrink-0.place-items-center.rounded-2xl.bg-primary.text-xl.font-black.leading-none.text-primary-content{aria: { hidden: "true" }}
+        S
+      %span
+        %span.block.text-base.font-bold.tracking-tight seatwise
+        %span.block.text-xs{class: "text-base-content/55"} Find your place
+  .navbar-center.hidden.md:flex
+    %nav.flex.items-center.gap-6.text-sm.font-medium{"aria-label" => "Main navigation", class: "text-base-content/65"}
+      = link_to "How it works", events_path(anchor: "about"), class: "link link-hover"
+      = link_to "Events", root_path, class: "link link-hover"
+      = link_to "Status", status_path, class: "link link-hover"
+  .navbar-end.gap-2
+    %details.dropdown.dropdown-end.md:hidden
+      %summary.btn.btn-ghost.btn-square.list-none{aria: { label: "Open navigation menu" }}
+        = lucide "menu", class: "size-5"
+      %ul.menu.menu-sm.dropdown-content.z-30.mt-3.w-52.rounded-box.border.border-base-300.bg-base-100.p-2.shadow
+        %li= link_to "How it works", events_path(anchor: "about")
+        %li= link_to "Events", root_path
+        %li= link_to "Status", status_path
+    = button "Browse events", variant: :primary, size: :sm, href: root_path, class: "hidden md:inline-flex"
