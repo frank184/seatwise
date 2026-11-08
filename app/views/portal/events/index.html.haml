@@ -1,6 +1,5 @@
 - content_for :title, "Discover events · Seatwise"
-.min-h-screen{class: "bg-base-200/60", "data-controller": "portal--events", "data-events-index": ""}
-  = render "header"
+.min-h-full{class: "bg-base-200/60", "data-controller": "portal--events", "data-events-index": ""}
   %main.mx-auto.max-w-7xl.space-y-9.px-4.py-5.sm:px-8.sm:py-8
     %section.relative.isolate.overflow-hidden.rounded-box.bg-neutral.text-neutral-content.shadow-xl
       .absolute.-right-16.-top-24.-z-10.size-96.rounded-full.blur-3xl{
@@ -24,22 +23,6 @@
             hidden: ""
           }
 
-    %section.scroll-mt-24.grid.gap-5.lg:grid-cols-3#about{"aria-label": "How it works"}
-      = card card_class: "border border-base-300 bg-base-100", body_class: "gap-2" do
-        = lucide "sparkles", class: "mb-2 size-5 text-primary"
-        = card_title "A night worth finding"
-        %p.text-sm.leading-6{class: "text-base-content/60"}
-          Explore a growing calendar of live performances and find something new to look forward to.
-      = card card_class: "border border-base-300 bg-base-100", body_class: "gap-2" do
-        = lucide "armchair", class: "mb-2 size-5 text-primary"
-        = card_title "Know the room"
-        %p.text-sm.leading-6{class: "text-base-content/60"}
-          Get a simple view of venue layouts and current seat availability before you choose.
-      = card card_class: "border border-base-300 bg-base-100", body_class: "gap-2" do
-        = lucide "ticket", class: "mb-2 size-5 text-primary"
-        = card_title "Reservations, next"
-        %p.text-sm.leading-6{class: "text-base-content/60"}
-          We’re getting the experience ready. Reservation and checkout flows will follow.
     %section.scroll-mt-24.space-y-6{"aria-labelledby": "events-heading"}
       = section_heading kicker: "The calendar", title: "Find your event", description: "Explore performances and see what’s still open in the room.", heading_id: "events-heading"
       = form_with url: root_path, method: :get, id: "event-filters", class: "flex flex-col gap-3 rounded-box border border-base-300 bg-base-100 p-3 sm:flex-row sm:items-center" do |form|
@@ -71,7 +54,6 @@
         .join
           = button "Previous", size: :sm, class: "join-item", data: { action: "click->portal--events#previousPage", page_previous: true }
           = button "Next", size: :sm, class: "join-item", data: { action: "click->portal--events#nextPage", page_next: true }
-    = render "footer"
   %template#event-card-template
     = card element: :article, body: false, card_class: "overflow-hidden border border-base-300 bg-base-100 transition-shadow hover:shadow-xl" do
       %a.group.block.text-base-content.no-underline{"data-event-link": "", href: "#"}

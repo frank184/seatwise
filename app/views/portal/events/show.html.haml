@@ -1,12 +1,11 @@
 - content_for :title, "Event details · Seatwise"
-.min-h-screen{
+.min-h-full{
   class: "bg-base-200/60",
   "data-action": "pointerup@window->portal--events#endSeatDrag pointercancel@window->portal--events#endSeatDrag",
   "data-controller": "portal--events",
   "data-event-id": "#{@event_id}",
   "data-event-show": ""
 }
-  = render "header"
   %main.mx-auto.max-w-7xl.space-y-6.px-4.py-5.sm:px-8.sm:py-8
     = link_to root_path, class: "btn btn-ghost btn-sm" do
       = lucide "arrow-left", class: "size-4"
@@ -81,7 +80,6 @@
               %p.mt-1.text-sm.text-primary{"aria-live": "polite", "data-selection-message": ""}
             %form{"data-action": "submit->portal--events#reviewSelection"}
               = button "Review seats", type: "submit", variant: :primary, size: :sm, disabled: true, data: { selection_review: true }
-    = render "footer"
   %template#event-error-template
     = status_alert title: "Event could not load", description: "Check your connection and try again.", variant: :error, icon: "triangle-alert", action: button("Retry", variant: :error, size: :sm, data: { action: "click->portal--events#retry" })
   %template#event-not-found-template

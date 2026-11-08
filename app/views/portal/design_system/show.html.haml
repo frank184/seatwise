@@ -1,25 +1,4 @@
-.min-h-screen{class: "bg-base-200/70"}
-  %header.navbar.border-b.border-base-300.bg-base-100.px-4.sm:px-8
-    .navbar-start.gap-3
-      = link_to root_path, class: "flex items-center gap-3 text-base-content no-underline" do
-        %span.grid.size-10.place-items-center.rounded-2xl.bg-primary.text-lg.font-black.text-primary-content
-          s
-        %span
-          %span.block.text-base.font-bold.tracking-tight seatwise
-          %span.block.text-xs{class: "text-base-content/55"} Design system
-    .navbar-center.hidden.md:flex
-      %nav.flex.items-center.gap-6.text-sm.font-medium{
-        "aria-label": "Showcase sections",
-        class: "text-base-content/65"
-      }
-        %a.link.link-hover{href: "#foundations"} Foundations
-        %a.link.link-hover{href: "#components"} Components
-        %a.link.link-hover{href: "#patterns"} Product patterns
-        %a.link.link-hover{href: "#booking-flow"} Booking flow
-        %a.link.link-hover{href: "#model-examples"} Model examples
-    .navbar-end.gap-3
-      = badge "UI reference", style: :outline, extra_class: "hidden sm:inline-flex"
-      = link_to "Browse events", events_path, class: "btn btn-sm"
+.min-h-full{class: "bg-base-200/70"}
   %main.mx-auto.max-w-7xl.space-y-12.px-4.py-8.sm:px-8.sm:py-12
     %section.relative.isolate.overflow-hidden.rounded-box.bg-neutral.text-neutral-content.shadow-xl
       .absolute.-right-16.-top-24.-z-10.size-96.rounded-full.blur-3xl{
@@ -40,9 +19,6 @@
           %p.mt-5.max-w-2xl.text-base.leading-7.sm:text-lg{class: "text-neutral-content/70"}
             A practical reference for the Seatwise portal: calm surfaces, clear status, accessible
             controls, and booking patterns built with Rails, Tailwind, and daisyUI.
-        .flex.flex-wrap.gap-3
-          = button "Explore components", variant: :primary, href: "#components"
-          = button "View foundations",                                     variant: :ghost,                                               href: "#foundations",                                          class: "border border-neutral-content/25 text-neutral-content"
       .grid.border-t.sm:grid-cols-3{class: "border-neutral-content/10"}
         .px-6.py-4.sm:px-10
           %p.text-xs.uppercase.tracking-widest{class: "text-neutral-content/50"} Principle
@@ -456,10 +432,3 @@
           %p.text-sm{class: "text-base-content/60"} New bookings will appear here.
           = button "Browse events", size: :sm, href: events_path
         = status_alert title: "Couldn’t load reservations",   description: "Your data is unchanged. Try again.",  variant: :error,                                    icon: "triangle-alert",                             extra_class: "items-start",                         action: button("Retry", variant: :error, size: :sm)
-    %footer.flex.flex-col.gap-3.border-t.border-base-300.pt-6.text-sm.sm:flex-row.sm:items-center.sm:justify-between{
-      class: "text-base-content/55"
-    }
-      %p Seatwise · Design system reference
-      .flex.items-center.gap-4
-        = link_to "Browse events", events_path, class: "link link-hover"
-        = link_to "API health", "/api/v1/up", class: "link link-hover"

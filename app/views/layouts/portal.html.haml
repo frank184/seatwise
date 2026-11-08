@@ -1,0 +1,44 @@
+!!!
+%html{"data-theme": "light", lang: "en"}
+  %head
+    %meta{content: "text/html; charset=UTF-8", "http-equiv": "Content-Type"}/
+    %title= content_for(:title) || "Seatwise"
+    %meta{content: "width=device-width,initial-scale=1", name: "viewport"}/
+    %meta{content: "yes", name: "apple-mobile-web-app-capable"}/
+    %meta{content: "Seatwise", name: "application-name"}/
+    %meta{content: "yes", name: "mobile-web-app-capable"}/
+    = csrf_meta_tags
+    = csp_meta_tag
+    = yield :head
+    %link{href: "/icon.svg", rel: "icon", type: "image/svg+xml"}/
+    = stylesheet_link_tag :app, "data-turbo-track": "reload"
+    = stylesheet_link_tag "tailwind", "data-turbo-track": "reload"
+    = javascript_importmap_tags
+  %body.flex.min-h-screen.flex-col.bg-base-200.text-base-content
+    %header.navbar.sticky.top-0.z-20.border-b.border-base-300.px-4.backdrop-blur.sm:px-8{class: "bg-base-100/95"}
+      .navbar-start
+        = link_to root_path, class: "flex items-center gap-3 text-base-content no-underline" do
+          %span.grid.size-9.shrink-0.place-items-center.rounded-xl.bg-primary.font-black.leading-none.text-primary-content{aria: { hidden: "true" }} S
+          %span
+            %span.block.text-sm.font-bold.tracking-tight seatwise
+            %span{class: "block text-[0.7rem] leading-tight text-base-content/55"} Find your place
+      .navbar-end.gap-2
+        = link_to root_path, class: "btn btn-primary btn-sm gap-2" do
+          Browse events
+          = lucide "arrow-right", class: "size-4"
+        %details.dropdown.dropdown-end
+          %summary.btn.btn-ghost.btn-circle{aria: { label: "Reservation options" }}
+            = lucide "user-round", class: "size-5"
+          .dropdown-content.z-30.mt-3.w-72.rounded-box.border.border-base-300.bg-base-100.p-4.shadow-lg
+            %p.text-sm.font-semibold Manage a reservation
+            %p.mt-1.text-xs.leading-5{class: "text-base-content/60"}
+              Use the one-time code emailed after payment to manage your booking.
+            = button_tag type: :button, class: "btn btn-sm mt-3 w-full" do
+              = lucide "key-round", class: "size-4"
+              Enter email code
+    .flex-1
+      = yield
+    %footer.footer.footer-horizontal.flex-col.justify-between.gap-3.border-t.border-base-300.bg-base-100.px-4.py-5.text-sm.sm:flex-row.sm:items-center.sm:px-8{class: "text-base-content/60"}
+      %p Seatwise · Find your place in the room
+      .flex.items-center.gap-5
+        = link_to "System status", status_path, class: "link link-hover"
