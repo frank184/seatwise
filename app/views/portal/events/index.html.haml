@@ -4,12 +4,13 @@
   %main.mx-auto.max-w-7xl.space-y-9.px-4.py-5.sm:px-8.sm:py-8
     %section.relative.isolate.overflow-hidden.rounded-box.bg-neutral.text-neutral-content.shadow-xl
       .absolute.-right-16.-top-24.-z-10.size-96.rounded-full.blur-3xl{
-"aria-hidden": "true",
-class: "bg-primary/25"
-}
+        "aria-hidden": "true",
+        class: "bg-primary/25"
+      }
+
       .grid.gap-5.px-6.py-7.sm:px-10.sm:py-9.lg:items-center.lg:px-14{
-class: "lg:grid-cols-[1fr_auto]"
-}
+        class: "lg:grid-cols-[1fr_auto]"
+      }
         .max-w-3xl
           %p.mb-3.text-xs.font-bold.uppercase.text-primary{class: "tracking-[0.24em]"}
             Live experiences, thoughtfully seated
@@ -19,9 +20,10 @@ class: "lg:grid-cols-[1fr_auto]"
         .flex.flex-wrap.gap-2.lg:justify-end
           = badge "Thoughtful seat selection", style: :outline, extra_class: "border-neutral-content/25 text-neutral-content"
           %span.badge.badge-outline.text-neutral-content#event-count{
-class: "border-neutral-content/25",
-hidden: ""
-}
+            class: "border-neutral-content/25",
+            hidden: ""
+          }
+
     %section.scroll-mt-24.grid.gap-5.lg:grid-cols-3#about{"aria-label": "How it works"}
       = card card_class: "border border-base-300 bg-base-100", body_class: "gap-2" do
         = lucide "sparkles", class: "mb-2 size-5 text-primary"
@@ -49,9 +51,9 @@ hidden: ""
         = form.select :sort, [["Oldest first", "soonest"], ["Newest first", "latest"], ["Name", "name"]], { selected: params[:sort].presence || "soonest" }, class: "select select-bordered w-full sm:w-44", aria: { label: "Sort events" }, data: { action: "change->portal--events#filtersChanged" }
         = button "Search", type: "submit", variant: :neutral, class: "sm:ml-auto"
       .hidden.grid.gap-5.md:grid-cols-2.xl:grid-cols-3#events-loading{
-"aria-live": "polite",
-hidden: ""
-}
+        "aria-live": "polite",
+        hidden: ""
+      }
         - 3.times do
           = card card_class: "border border-base-300 bg-base-100", body_class: "gap-4 p-0" do
             .skeleton.h-44.rounded-b-none
@@ -63,9 +65,9 @@ hidden: ""
       #events-empty{hidden: ""}
       .grid.gap-5.md:grid-cols-2.xl:grid-cols-3#events-list{"aria-live": "polite", hidden: ""}
       %nav.flex.items-center.justify-center.gap-4#events-pagination{
-"aria-label": "Event pages",
-hidden: ""
-}
+        "aria-label": "Event pages",
+        hidden: ""
+      }
         .join
           = button "Previous", size: :sm, class: "join-item", data: { action: "click->portal--events#previousPage", page_previous: true }
           = button "Next", size: :sm, class: "join-item", data: { action: "click->portal--events#nextPage", page_next: true }
@@ -74,22 +76,23 @@ hidden: ""
     = card element: :article, body: false, card_class: "overflow-hidden border border-base-300 bg-base-100 transition-shadow hover:shadow-xl" do
       %a.group.block.text-base-content.no-underline{"data-event-link": "", href: "#"}
         .relative.grid.h-44.place-items-center.overflow-hidden.bg-gradient-to-br{
-class: "from-primary/30 via-secondary/20 to-accent/30"
-}
+          class: "from-primary/30 via-secondary/20 to-accent/30"
+        }
           %span.grid.size-14.place-items-center.rounded-full.text-primary.shadow-sm{
-"aria-hidden": "true",
-class: "bg-base-100/75"
-}
+            "aria-hidden": "true",
+            class: "bg-base-100/75"
+          }
             = lucide "music-2", class: "size-6"
           %span.badge.absolute.left-4.top-4{
-class: "border-base-100/70 bg-base-100/90",
-"data-event-date": ""
-}
+            class: "border-base-100/70 bg-base-100/90",
+            "data-event-date": ""
+          }
+
           %span.badge.badge-outline.absolute.right-4.top-4{
-class: "border-base-100/70 bg-base-100/90",
-"data-event-past": "",
-hidden: ""
-}
+            class: "border-base-100/70 bg-base-100/90",
+            "data-event-past": "",
+            hidden: ""
+          }
             Past event
           %span.badge.badge-neutral.absolute.bottom-4.left-4{"data-event-availability": ""}
         = card_body body_class: "gap-3" do

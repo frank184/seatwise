@@ -8,7 +8,10 @@
           %span.block.text-base.font-bold.tracking-tight seatwise
           %span.block.text-xs{class: "text-base-content/55"} Design system
     .navbar-center.hidden.md:flex
-      %nav.flex.items-center.gap-6.text-sm.font-medium{"aria-label" => "Showcase sections", class: "text-base-content/65"}
+      %nav.flex.items-center.gap-6.text-sm.font-medium{
+        "aria-label": "Showcase sections",
+        class: "text-base-content/65"
+      }
         %a.link.link-hover{href: "#foundations"} Foundations
         %a.link.link-hover{href: "#components"} Components
         %a.link.link-hover{href: "#patterns"} Product patterns
@@ -19,8 +22,14 @@
       = link_to "Browse events", events_path, class: "btn btn-sm"
   %main.mx-auto.max-w-7xl.space-y-12.px-4.py-8.sm:px-8.sm:py-12
     %section.relative.isolate.overflow-hidden.rounded-box.bg-neutral.text-neutral-content.shadow-xl
-      .absolute.-right-16.-top-24.-z-10.size-96.rounded-full.blur-3xl{"aria-hidden" => "true", class: "bg-primary/20"}
-      .grid.gap-10.px-6.py-10.sm:px-10.sm:py-14.lg:items-end.lg:px-14{class: "lg:grid-cols-[1fr_auto]"}
+      .absolute.-right-16.-top-24.-z-10.size-96.rounded-full.blur-3xl{
+        "aria-hidden": "true",
+        class: "bg-primary/20"
+      }
+
+      .grid.gap-10.px-6.py-10.sm:px-10.sm:py-14.lg:items-end.lg:px-14{
+        class: "lg:grid-cols-[1fr_auto]"
+      }
         .max-w-3xl
           %p.mb-4.text-xs.font-bold.uppercase.text-primary{class: "tracking-[0.24em]"}
             Seatwise · UI foundations
@@ -63,7 +72,9 @@
                   %code.text-xs{class: "text-base-content/60"}<= color_class
           .grid.gap-3.sm:grid-cols-3
             - [["Canvas", "bg-base-100", "text-base-content"], ["Subtle surface", "bg-base-200", "text-base-content"], ["Raised edge", "bg-base-300", "text-base-content"]].each do |name, color_class, text_class|
-              %div{class: "flex items-center justify-between rounded-box border border-base-300 p-3 #{color_class} #{text_class}"}
+              %div{
+                class: "flex items-center justify-between rounded-box border border-base-300 p-3 #{color_class} #{text_class}"
+              }
                 %span.text-sm.font-medium= name
                 %code.text-xs.opacity-60<= color_class
         = card title: "Type scale", description: "A compact hierarchy keeps event details easy to scan." do
@@ -106,7 +117,12 @@
           .grid.gap-4.sm:grid-cols-2
             %label.form-control.w-full
               %span.label-text.mb-2.font-medium Search events
-              %input.input.input-bordered.w-full{"aria-label" => "Search events", placeholder: "Artist, venue, or event", type: "search"}/
+              %input.input.input-bordered.w-full{
+                "aria-label": "Search events",
+                placeholder: "Artist, venue, or event",
+                type: "search"
+              }/
+
             %label.form-control.w-full
               %span.label-text.mb-2.font-medium Date range
               %select.select.select-bordered.w-full{aria: { label: "Date range" }}
@@ -131,9 +147,17 @@
       = section_heading kicker: "03 · Product patterns",                                             title: "The event card, in context",                                                         description:                                                                                 "Show the details guests need to decide: when, where, and how much availability remains.", heading_id: "patterns-heading"
       .grid.gap-5{class: "lg:grid-cols-[1.4fr_0.6fr]"}
         = card element: :article,                                                         body: false,                                                                    card_class: "card-border overflow-hidden bg-base-100 shadow-sm sm:card-side" do
-          .relative.grid.min-h-56.place-items-center.overflow-hidden.bg-gradient-to-br{class: "from-primary/25 via-secondary/15 to-accent/25 sm:w-2/5"}
-            .absolute.-left-10.-top-10.size-48.rounded-full.blur-2xl{"aria-hidden" => "true", class: "bg-primary/20"}
-            .relative.grid.size-32.place-items-center.rounded-full.border.text-5xl.font-black.tracking-tighter{class: "border-base-content/10 bg-base-100/70 text-base-content/70"}
+          .relative.grid.min-h-56.place-items-center.overflow-hidden.bg-gradient-to-br{
+            class: "from-primary/25 via-secondary/15 to-accent/25 sm:w-2/5"
+          }
+            .absolute.-left-10.-top-10.size-48.rounded-full.blur-2xl{
+              "aria-hidden": "true",
+              class: "bg-primary/20"
+            }
+
+            .relative.grid.size-32.place-items-center.rounded-full.border.text-5xl.font-black.tracking-tighter{
+              class: "border-base-content/10 bg-base-100/70 text-base-content/70"
+            }
               M
             = badge "Illustrative · Nov 20", variant: :neutral, extra_class: "absolute left-4 top-4"
             = badge "18 seats open", variant: :success, extra_class: "absolute bottom-4 left-4"
@@ -401,7 +425,12 @@
                 A wider operational view keeps reference, seats, event, and status together.
             = badge "Operations", style: :outline
           .flex.flex-wrap.gap-2
-            %input.input.input-bordered.input-sm.min-w-40.grow{"aria-label" => "Search reservations", placeholder: "Search reference or email", type: "search"}/
+            %input.input.input-bordered.input-sm.min-w-40.grow{
+              "aria-label": "Search reservations",
+              placeholder: "Search reference or email",
+              type: "search"
+            }/
+
             %select.select.select-bordered.select-sm{aria: { label: "Filter reservation status" }}
               %option All statuses
               %option Held
@@ -427,7 +456,9 @@
           %p.text-sm{class: "text-base-content/60"} New bookings will appear here.
           = button "Browse events", size: :sm, href: events_path
         = status_alert title: "Couldn’t load reservations",   description: "Your data is unchanged. Try again.",  variant: :error,                                    icon: "triangle-alert",                             extra_class: "items-start",                         action: button("Retry", variant: :error, size: :sm)
-    %footer.flex.flex-col.gap-3.border-t.border-base-300.pt-6.text-sm.sm:flex-row.sm:items-center.sm:justify-between{class: "text-base-content/55"}
+    %footer.flex.flex-col.gap-3.border-t.border-base-300.pt-6.text-sm.sm:flex-row.sm:items-center.sm:justify-between{
+      class: "text-base-content/55"
+    }
       %p Seatwise · Design system reference
       .flex.items-center.gap-4
         = link_to "Browse events", events_path, class: "link link-hover"

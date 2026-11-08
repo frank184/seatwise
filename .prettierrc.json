@@ -1,5 +1,5 @@
 {
-  "plugins": ["@prettier/plugin-ruby", "@4az/prettier-plugin-html-erb", "@prettier/plugin-haml"],
+  "plugins": ["@prettier/plugin-ruby", "@4az/prettier-plugin-html-erb"],
   "embeddedLanguageFormatting": "off",
   "printWidth": 100,
   "singleQuote": false
