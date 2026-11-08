@@ -2,6 +2,12 @@ class Reservation < ApplicationRecord
   STATUSES  = %i[held confirmed expired cancelled].freeze
   enum :status, STATUSES.index_with(&:to_s)
 
+  scope :active_for_inventory, -> {
+    where(status: :confirmed).or(
+      where(status: :held).where("hold_expires_at > ?", Time.current)
+    )
+  }
+
   belongs_to :event
   belongs_to :customer
   has_many :payments
