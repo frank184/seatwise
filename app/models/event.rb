@@ -20,9 +20,11 @@ class Event < ApplicationRecord
   end
 
   def reserved_seats_by_row
-    active_reservations.group_by(&:row_id).transform_values do |reservations|
-      reservations.flat_map { |reservation| reservation.seat_range.to_a }
-    end
+    active_reservations
+      .group_by(&:row_id)
+      .transform_values do |reservations|
+        reservations.flat_map { |reservation| reservation.seat_range.to_a }
+      end
   end
 
   def reserved_count

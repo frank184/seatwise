@@ -24,7 +24,7 @@ class ReservationTest < ActiveSupport::TestCase
   end
 
   test "rejects empty, unbounded, zero-based, and oversized ranges" do
-    [ 1...1, (1..), (-1...2), (1...8) ].each do |invalid_range|
+    [1...1, (1..), (-1...2), (1...8)].each do |invalid_range|
       reservation = reservations(:one).dup
       reservation.seat_range = invalid_range
 
@@ -50,45 +50,35 @@ class ReservationTest < ActiveSupport::TestCase
     reservation = reservations(:one).dup
     reservation.seat_range = 1...1
 
-    assert_raises(ActiveRecord::StatementInvalid) do
-      reservation.save!(validate: false)
-    end
+    assert_raises(ActiveRecord::StatementInvalid) { reservation.save!(validate: false) }
   end
 
   test "database rejects unbounded ranges when Rails validation is bypassed" do
     reservation = reservations(:one).dup
     reservation.seat_range = (1..)
 
-    assert_raises(ActiveRecord::StatementInvalid) do
-      reservation.save!(validate: false)
-    end
+    assert_raises(ActiveRecord::StatementInvalid) { reservation.save!(validate: false) }
   end
 
   test "database rejects ranges below seat one when Rails validation is bypassed" do
     reservation = reservations(:one).dup
     reservation.seat_range = -1...2
 
-    assert_raises(ActiveRecord::StatementInvalid) do
-      reservation.save!(validate: false)
-    end
+    assert_raises(ActiveRecord::StatementInvalid) { reservation.save!(validate: false) }
   end
 
   test "database rejects ranges larger than six seats when Rails validation is bypassed" do
     reservation = reservations(:one).dup
     reservation.seat_range = 1...8
 
-    assert_raises(ActiveRecord::StatementInvalid) do
-      reservation.save!(validate: false)
-    end
+    assert_raises(ActiveRecord::StatementInvalid) { reservation.save!(validate: false) }
   end
 
   test "database requires a hold expiry for held reservations when Rails validation is bypassed" do
     reservation = reservations(:one).dup
     reservation.hold_expires_at = nil
 
-    assert_raises(ActiveRecord::StatementInvalid) do
-      reservation.save!(validate: false)
-    end
+    assert_raises(ActiveRecord::StatementInvalid) { reservation.save!(validate: false) }
   end
 
   test "database rejects overlapping active ranges for the same event and row" do
@@ -96,9 +86,7 @@ class ReservationTest < ActiveSupport::TestCase
     reservation.seat_range = 1...2
     reservation.status = :confirmed
 
-    assert_raises(ActiveRecord::StatementInvalid) do
-      reservation.save!(validate: false)
-    end
+    assert_raises(ActiveRecord::StatementInvalid) { reservation.save!(validate: false) }
   end
 
   test "database rejects ranges that share just one seat" do
@@ -108,9 +96,7 @@ class ReservationTest < ActiveSupport::TestCase
     reservation = existing_reservation.dup
     reservation.seat_range = 2...4
 
-    assert_raises(ActiveRecord::StatementInvalid) do
-      reservation.save!(validate: false)
-    end
+    assert_raises(ActiveRecord::StatementInvalid) { reservation.save!(validate: false) }
   end
 
   test "a past hold deadline does not stop a held reservation blocking overlap" do
@@ -118,9 +104,7 @@ class ReservationTest < ActiveSupport::TestCase
     reservation.seat_range = 1...2
     reservation.hold_expires_at = 1.hour.ago
 
-    assert_raises(ActiveRecord::StatementInvalid) do
-      reservation.save!(validate: false)
-    end
+    assert_raises(ActiveRecord::StatementInvalid) { reservation.save!(validate: false) }
   end
 
   test "database allows adjacent ranges for the same event and row" do

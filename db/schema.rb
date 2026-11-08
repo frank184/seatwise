@@ -58,11 +58,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_06_071055) do
     t.datetime "updated_at", null: false
     t.index ["customer_id"], name: "index_reservations_on_customer_id"
     t.index ["event_id"], name: "index_reservations_on_event_id"
-    t.check_constraint "(upper(seat_range) - lower(seat_range)) <= 6", name: "reservations_seat_group_size"
-    t.check_constraint "NOT isempty(seat_range) AND NOT lower_inf(seat_range) AND NOT upper_inf(seat_range)", name: "reservations_seat_range_bounded_and_nonempty"
+    t.check_constraint "(upper(seat_range) - lower(seat_range)) <= 6",
+                       name: "reservations_seat_group_size"
+    t.check_constraint "NOT isempty(seat_range) AND NOT lower_inf(seat_range) AND NOT upper_inf(seat_range)",
+                       name: "reservations_seat_range_bounded_and_nonempty"
     t.check_constraint "lower(seat_range) >= 1", name: "reservations_seat_range_starts_positive"
-    t.check_constraint "status::text <> 'held'::text OR hold_expires_at IS NOT NULL", name: "reservations_held_requires_hold_expiry"
-    t.exclusion_constraint "event_id WITH =, row_id WITH =, seat_range WITH &&", where: "(status)::text = ANY ((ARRAY['held'::character varying, 'confirmed'::character varying])::text[])", using: :gist, name: "reservations_no_active_seat_overlap"
+    t.check_constraint "status::text <> 'held'::text OR hold_expires_at IS NOT NULL",
+                       name: "reservations_held_requires_hold_expiry"
+    t.exclusion_constraint "event_id WITH =, row_id WITH =, seat_range WITH &&",
+                           where:
+                             "(status)::text = ANY ((ARRAY['held'::character varying, 'confirmed'::character varying])::text[])",
+                           using: :gist,
+                           name: "reservations_no_active_seat_overlap"
   end
 
   create_table "venues", force: :cascade do |t|

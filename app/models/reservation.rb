@@ -1,12 +1,13 @@
 class Reservation < ApplicationRecord
-  STATUSES  = %i[held confirmed expired cancelled].freeze
+  STATUSES = %i[held confirmed expired cancelled].freeze
   enum :status, STATUSES.index_with(&:to_s)
 
-  scope :active_for_inventory, -> {
-    where(status: :confirmed).or(
-      where(status: :held).where("hold_expires_at > ?", Time.current)
-    )
-  }
+  scope :active_for_inventory,
+        -> do
+          where(status: :confirmed).or(
+            where(status: :held).where("hold_expires_at > ?", Time.current)
+          )
+        end
 
   belongs_to :event
   belongs_to :customer
@@ -21,7 +22,8 @@ class Reservation < ApplicationRecord
   def seat_range_must_be_valid
     return if seat_range.nil?
 
-    unless seat_range.is_a?(Range) && seat_range.begin.is_a?(Integer) && seat_range.end.is_a?(Integer)
+    unless seat_range.is_a?(Range) && seat_range.begin.is_a?(Integer) &&
+             seat_range.end.is_a?(Integer)
       errors.add(:seat_range, "must have finite integer bounds")
       return
     end

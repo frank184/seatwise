@@ -20,9 +20,7 @@ class CustomerTest < ActiveSupport::TestCase
   test "database enforces email uniqueness when Rails validation is bypassed" do
     customer = Customer.new(email: customers(:one).email, sign_in_code_attempts: 0)
 
-    assert_raises(ActiveRecord::RecordNotUnique) do
-      customer.save!(validate: false)
-    end
+    assert_raises(ActiveRecord::RecordNotUnique) { customer.save!(validate: false) }
   end
 
   test "allows an unverified customer without an active code" do
@@ -35,6 +33,6 @@ class CustomerTest < ActiveSupport::TestCase
   end
 
   test "reaches payments through reservations" do
-    assert_equal [ payments(:one) ], customers(:one).payments.to_a
+    assert_equal [payments(:one)], customers(:one).payments.to_a
   end
 end
