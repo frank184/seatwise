@@ -4,10 +4,64 @@ one:
   reservation: one
   external_id: payment-one
   status: pending
-  amount: 1
+  amount: 7400
 
 two:
   reservation: two
   external_id: payment-two
+  status: succeeded
+  amount: 9600
+
+three:
+  reservation: three
+  external_id: payment-three
+  status: succeeded
+  amount: 14250
+
+four:
+  reservation: four
+  external_id: payment-four
+  status: succeeded
+  amount: 6800
+
+five:
+  reservation: five
+  external_id: payment-five
+  status: refunded
+  amount: 5200
+
+six:
+  reservation: six
+  external_id: payment-six
+  status: succeeded
+  amount: 18750
+
+seven:
+  reservation: seven
+  external_id: payment-seven
+  status: succeeded
+  amount: 22500
+
+eight:
+  reservation: eight
+  external_id: payment-eight
+  status: failed
+  amount: 11700
+
+nine:
+  reservation: nine
+  external_id: payment-nine
+  status: succeeded
+  amount: 17200
+
+ten:
+  reservation: ten
+  external_id: payment-ten
   status: pending
-  amount: 1
+  amount: 9100
+
+eleven:
+  reservation: eleven
+  external_id: payment-eleven
+  status: refunded
+  amount: 19800

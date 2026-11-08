@@ -8,15 +8,35 @@ one:
       - row_id: 1
         label: A
         allocation_order: 1
-        seat_count: 12
+        seat_count: 18
       - row_id: 2
         label: B
         allocation_order: 2
-        seat_count: 12
+        seat_count: 18
       - row_id: 3
         label: C
         allocation_order: 3
-        seat_count: 10
+        seat_count: 18
+      - row_id: 4
+        label: D
+        allocation_order: 4
+        seat_count: 18
+      - row_id: 5
+        label: E
+        allocation_order: 5
+        seat_count: 16
+      - row_id: 6
+        label: F
+        allocation_order: 6
+        seat_count: 16
+      - row_id: 7
+        label: G
+        allocation_order: 7
+        seat_count: 14
+      - row_id: 8
+        label: H
+        allocation_order: 8
+        seat_count: 12
 
 two:
   venue: two
@@ -28,10 +48,26 @@ two:
       - row_id: 1
         label: A
         allocation_order: 1
-        seat_count: 10
+        seat_count: 14
       - row_id: 2
         label: B
         allocation_order: 2
+        seat_count: 16
+      - row_id: 3
+        label: C
+        allocation_order: 3
+        seat_count: 16
+      - row_id: 4
+        label: D
+        allocation_order: 4
+        seat_count: 14
+      - row_id: 5
+        label: E
+        allocation_order: 5
+        seat_count: 12
+      - row_id: 6
+        label: F
+        allocation_order: 6
         seat_count: 10
 
 indie_folk:
@@ -44,11 +80,23 @@ indie_folk:
       - row_id: 1
         label: Front
         allocation_order: 1
-        seat_count: 8
-      - row_id: 2
-        label: Rear
-        allocation_order: 2
         seat_count: 12
+      - row_id: 2
+        label: Middle
+        allocation_order: 2
+        seat_count: 14
+      - row_id: 3
+        label: Rear
+        allocation_order: 3
+        seat_count: 14
+      - row_id: 4
+        label: Balcony Left
+        allocation_order: 4
+        seat_count: 10
+      - row_id: 5
+        label: Balcony Right
+        allocation_order: 5
+        seat_count: 10
 
 sunday_jazz:
   venue: one
@@ -60,15 +108,35 @@ sunday_jazz:
       - row_id: 1
         label: A
         allocation_order: 1
-        seat_count: 12
+        seat_count: 18
       - row_id: 2
         label: B
         allocation_order: 2
-        seat_count: 12
+        seat_count: 18
       - row_id: 3
         label: C
         allocation_order: 3
-        seat_count: 10
+        seat_count: 18
+      - row_id: 4
+        label: D
+        allocation_order: 4
+        seat_count: 18
+      - row_id: 5
+        label: E
+        allocation_order: 5
+        seat_count: 16
+      - row_id: 6
+        label: F
+        allocation_order: 6
+        seat_count: 16
+      - row_id: 7
+        label: G
+        allocation_order: 7
+        seat_count: 14
+      - row_id: 8
+        label: H
+        allocation_order: 8
+        seat_count: 12
 
 past_encore:
   venue: two
@@ -80,8 +148,24 @@ past_encore:
       - row_id: 1
         label: A
         allocation_order: 1
-        seat_count: 10
+        seat_count: 14
       - row_id: 2
         label: B
         allocation_order: 2
+        seat_count: 16
+      - row_id: 3
+        label: C
+        allocation_order: 3
+        seat_count: 16
+      - row_id: 4
+        label: D
+        allocation_order: 4
+        seat_count: 14
+      - row_id: 5
+        label: E
+        allocation_order: 5
+        seat_count: 12
+      - row_id: 6
+        label: F
+        allocation_order: 6
         seat_count: 10

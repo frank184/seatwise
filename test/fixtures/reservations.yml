@@ -19,3 +19,60 @@ three:
   row_id: 2
   seat_range: "[4,7)"
   status: confirmed
+
+four:
+  event: one
+  customer: four
+  row_id: 1
+  seat_range: "[3,5)"
+  status: confirmed
+
+five:
+  event: one
+  customer: five
+  row_id: 1
+  seat_range: "[1,3)"
+  status: cancelled
+
+six:
+  event: one
+  customer: six
+  row_id: 2
+  seat_range: "[2,5)"
+  status: confirmed
+
+seven:
+  event: two
+  customer: seven
+  row_id: 2
+  seat_range: "[3,6)"
+  status: confirmed
+
+eight:
+  event: indie_folk
+  customer: eight
+  row_id: 1
+  seat_range: "[1,4)"
+  status: confirmed
+
+nine:
+  event: sunday_jazz
+  customer: nine
+  row_id: 1
+  seat_range: "[1,4)"
+  status: confirmed
+
+ten:
+  event: sunday_jazz
+  customer: ten
+  row_id: 2
+  seat_range: "[4,7)"
+  status: held
+  hold_expires_at: 2026-11-13 19:45:00
+
+eleven:
+  event: past_encore
+  customer: eleven
+  row_id: 1
+  seat_range: "[5,8)"
+  status: confirmed

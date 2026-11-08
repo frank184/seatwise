@@ -18,3 +18,43 @@ three:
   sign_in_code_digest: MyString
   sign_in_code_expires_at: 2026-11-01 12:05:00
   sign_in_code_attempts: 0
+
+four:
+  email: four@example.test
+  email_verified_at: 2026-11-02 12:00:00
+  sign_in_code_attempts: 0
+
+five:
+  email: five@example.test
+  email_verified_at: 2026-11-03 12:00:00
+  sign_in_code_attempts: 0
+
+six:
+  email: six@example.test
+  email_verified_at: 2026-11-04 12:00:00
+  sign_in_code_attempts: 0
+
+seven:
+  email: seven@example.test
+  email_verified_at: 2026-11-05 12:00:00
+  sign_in_code_attempts: 0
+
+eight:
+  email: eight@example.test
+  email_verified_at: 2026-11-06 12:00:00
+  sign_in_code_attempts: 0
+
+nine:
+  email: nine@example.test
+  email_verified_at: 2026-11-06 13:00:00
+  sign_in_code_attempts: 0
+
+ten:
+  email: ten@example.test
+  email_verified_at: 2026-11-06 14:00:00
+  sign_in_code_attempts: 0
+
+eleven:
+  email: eleven@example.test
+  email_verified_at: 2026-11-06 15:00:00
+  sign_in_code_attempts: 0
