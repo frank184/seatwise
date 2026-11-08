@@ -129,23 +129,28 @@ export default class extends Controller {
       content.querySelector("[data-detail-seats]").textContent = `${event.seat_count} seats`
       content.querySelector("[data-detail-open]").textContent = `${event.available_count} seats`
       this.selectedSeats.clear()
-      content.querySelector("[data-detail-rows]").replaceChildren(...event.rows.sort((a, b) => a.allocation_order - b.allocation_order).map((row) => {
-        const section = document.createElement("div")
-        section.className = "grid grid-cols-[auto_1fr] items-center gap-4 rounded-box bg-base-200 p-4"
+      const tableBody = content.querySelector("[data-detail-rows] tbody")
+      tableBody.replaceChildren(...event.rows.sort((a, b) => a.allocation_order - b.allocation_order).map((row) => {
+        const tableRow = document.createElement("tr")
         const label = document.createElement("span")
-        label.className = "badge badge-neutral"
+        label.className = "badge badge-neutral badge-sm px-3"
         label.textContent = `Row ${row.label}`
+        const rowHeader = document.createElement("th")
+        rowHeader.scope = "row"
+        rowHeader.className = "w-28 px-4 py-3"
+        rowHeader.append(label)
+        const seatCell = document.createElement("td")
+        seatCell.className = "text-center"
         const seats = document.createElement("div")
-        seats.className = "flex w-full flex-wrap justify-center gap-1.5"
-        seats.setAttribute("aria-label", `Seats in row ${row.label}`)
+        seats.className = "mx-auto flex w-max items-center justify-center gap-1.5"
         const reserved = new Set(row.reserved_seats)
         for (let number = 1; number <= row.seat_count; number += 1) {
           const seat = document.createElement("button")
           seat.type = "button"
           const taken = reserved.has(number)
           seat.className = taken
-            ? "size-4 cursor-not-allowed rounded-t-full border-2 border-dashed border-base-content/40 bg-base-300"
-            : "size-4 cursor-pointer touch-none select-none rounded-t-full border border-success bg-success/70 hover:border-primary hover:bg-primary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            ? "size-5 cursor-not-allowed rounded-t-full border-2 border-dashed border-base-content/40 bg-base-300"
+            : "size-5 cursor-pointer touch-none select-none rounded-t-full border border-success bg-success/70 hover:border-primary hover:bg-primary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           seat.dataset.seat = number
           seat.dataset.row = row.row_id
           seat.dataset.rowLabel = row.label
@@ -156,8 +161,9 @@ export default class extends Controller {
           seat.title = `Seat ${number}${taken ? ", held or reserved" : ", open"}`
           seats.append(seat)
         }
-        section.append(label, seats)
-        return section
+        seatCell.append(seats)
+        tableRow.append(rowHeader, seatCell)
+        return tableRow
       }))
       this.element.querySelector("[data-selection-count]").textContent = "Click or drag across up to 6 open seats."
       this.element.querySelector("[data-selection-message]").textContent = ""
@@ -214,13 +220,13 @@ export default class extends Controller {
       seat.setAttribute("aria-pressed", "false")
       seat.setAttribute("aria-label", `Row ${seat.dataset.rowLabel}, seat ${seat.dataset.seat}, open`)
       seat.title = `Seat ${seat.dataset.seat}, open`
-      seat.className = "size-4 cursor-pointer touch-none select-none rounded-t-full border border-success bg-success/70 hover:border-primary hover:bg-primary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      seat.className = "size-5 cursor-pointer touch-none select-none rounded-t-full border border-success bg-success/70 hover:border-primary hover:bg-primary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
     } else if (this.selectedSeats.size < 6) {
       this.selectedSeats.add(key)
       seat.setAttribute("aria-pressed", "true")
       seat.setAttribute("aria-label", `Row ${seat.dataset.rowLabel}, seat ${seat.dataset.seat}, selected`)
       seat.title = `Seat ${seat.dataset.seat}, selected`
-      seat.className = "size-4 cursor-pointer touch-none select-none rounded-t-full border border-primary bg-primary text-primary-content ring-2 ring-primary/30"
+      seat.className = "size-5 cursor-pointer touch-none select-none rounded-t-full border border-primary bg-primary text-primary-content ring-2 ring-primary/30"
     } else {
       message.textContent = "Up to 6 seats can be previewed at a time."
       return

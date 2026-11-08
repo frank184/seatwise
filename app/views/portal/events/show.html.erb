@@ -33,7 +33,7 @@
         </div>
         <section class="border-t border-base-300 p-6 sm:p-10" aria-labelledby="seating-title">
           <div class="mb-5 flex flex-wrap items-end justify-between gap-3"><div><p class="text-sm font-semibold text-primary">The room</p><h2 id="seating-title" class="mt-1 text-2xl font-bold">Seating overview</h2></div><span class="text-sm text-base-content/55">Availability preview</span></div>
-          <div data-detail-rows class="space-y-3"></div>
+          <div data-detail-rows><%= data_table headers: ["Row", "Seats"], rows: [], size: :sm, wrapper_class: "bg-base-100", table_class: "min-w-max w-full [&_thead]:sr-only" %></div>
           <div class="mt-4 flex flex-wrap items-center gap-2 text-sm text-base-content/75"><span class="size-3 rounded-t-full border border-success bg-success/70"></span> Open <span class="ml-3 size-3 rounded-t-full border-2 border-dashed border-base-content/50 bg-base-300"></span> Held or reserved <span class="sr-only">Each seat also has a text label with its status.</span></div>
           <%= card card_class: "mt-6 border border-base-300 bg-base-100", body_class: "gap-3 sm:flex-row sm:items-center sm:justify-between" do %>
             <div>
