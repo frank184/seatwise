@@ -15,10 +15,15 @@
     = stylesheet_link_tag "tailwind", "data-turbo-track": "reload"
     = javascript_importmap_tags
   %body.flex.min-h-screen.flex-col.bg-base-200.text-base-content
-    %header.navbar.sticky.top-0.z-20.border-b.border-base-300.px-4.backdrop-blur.sm:px-8{class: "bg-base-100/95"}
+    %header.navbar.sticky.top-0.z-20.border-b.border-base-300.px-4.backdrop-blur.sm:px-8{
+      class: "bg-base-100/95"
+    }
       .navbar-start
         = link_to root_path, class: "flex items-center gap-3 text-base-content no-underline" do
-          %span.grid.size-9.shrink-0.place-items-center.rounded-xl.bg-primary.font-black.leading-none.text-primary-content{aria: { hidden: "true" }} S
+          %span.grid.size-9.shrink-0.place-items-center.rounded-xl.bg-primary.font-black.leading-none.text-primary-content{
+            aria: { hidden: "true" }
+          }
+            S
           %span
             %span.block.text-sm.font-bold.tracking-tight seatwise
             %span{class: "block text-[0.7rem] leading-tight text-base-content/55"} Find your place
@@ -38,7 +43,9 @@
               Enter email code
     .flex-1
       = yield
-    %footer.footer.footer-horizontal.flex-col.justify-between.gap-3.border-t.border-base-300.bg-base-100.px-4.py-5.text-sm.sm:flex-row.sm:items-center.sm:px-8{class: "text-base-content/60"}
+    %footer.footer.footer-horizontal.flex-col.justify-between.gap-3.border-t.border-base-300.bg-base-100.px-4.py-5.text-sm.sm:flex-row.sm:items-center.sm:px-8{
+      class: "text-base-content/60"
+    }
       %p Seatwise · Find your place in the room
       .flex.items-center.gap-5
         = link_to "System status", status_path, class: "link link-hover"
