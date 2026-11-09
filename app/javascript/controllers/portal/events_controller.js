@@ -1,25 +1,10 @@
 import { Controller } from "@hotwired/stimulus";
+import { cloneTemplate, fetchJson, formatDate } from "controllers/portal/view_helpers";
 
 export default class extends Controller {
   connect() {
     this.page = 1;
-    this.selectedSeats = new Set();
-    if (this.element.hasAttribute("data-events-index")) this.loadEvents();
-    else this.loadEvent();
-  }
-
-  async fetchJson(url) {
-    const response = await fetch(url, { headers: { Accept: "application/json" } });
-    if (!response.ok) throw new Error(`Request failed (${response.status})`);
-    return response.json();
-  }
-
-  clone(selector) {
-    return this.element.querySelector(selector).content.firstElementChild.cloneNode(true);
-  }
-
-  dateLabel(value, options) {
-    return new Intl.DateTimeFormat(undefined, options).format(new Date(value));
+    this.loadEvents();
   }
 
   async loadEvents() {
@@ -45,59 +30,62 @@ export default class extends Controller {
     url.searchParams.set("page", this.page);
 
     try {
-      const { data: events, meta } = await this.fetchJson(url);
-      list.replaceChildren(
-        ...events.map((event) => {
-          const card = this.clone("#event-card-template");
-          if (event.past) card.classList.add("opacity-75", "grayscale");
-          card.querySelector("[data-event-link]").href = `/events/${encodeURIComponent(event.id)}`;
-          card.querySelector("[data-event-date]").textContent = this.dateLabel(event.starts_at, {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-          });
-          card.querySelector("[data-event-time]").textContent = this.dateLabel(event.starts_at, {
-            hour: "numeric",
-            minute: "2-digit",
-          });
-          card.querySelector("[data-event-venue]").textContent = event.venue.name;
-          card.querySelector("[data-event-name]").textContent = event.name;
-          card.querySelector("[data-event-capacity]").textContent =
-            `${event.seat_count} seats in this room`;
-          card.querySelector("[data-event-availability]").textContent =
-            `${event.available_count} seats open`;
-          card.querySelector("[data-event-past]").hidden = !event.past;
-          return card;
-        }),
-      );
+      const { data: events, meta } = await fetchJson(url);
+      list.replaceChildren(...events.map((event) => this.renderEvent(event)));
       count.textContent = `${meta.total_count} ${meta.total_count === 1 ? "event" : "events"}`;
       count.hidden = false;
-      if (!events.length) empty.append(this.clone("#event-empty-template"));
+      if (!events.length) empty.append(cloneTemplate(this.element, "#event-empty-template"));
       empty.hidden = events.length !== 0;
       list.hidden = events.length === 0;
-      pagination.hidden = meta.total_pages < 2;
-      const previous = pagination.querySelector("[data-page-previous]");
-      const next = pagination.querySelector("[data-page-next]");
-      previous.disabled = !meta.previous_page;
-      next.disabled = !meta.next_page;
-      pagination.querySelectorAll("[data-page-number]").forEach((button) => button.remove());
-      for (let page = 1; page <= meta.total_pages; page += 1) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = `btn btn-sm join-item${page === meta.page ? " btn-primary btn-active" : ""}`;
-        button.dataset.pageNumber = page;
-        button.dataset.action = "click->portal--events#goToPage";
-        button.textContent = page;
-        button.setAttribute("aria-label", `Page ${page}`);
-        if (page === meta.page) button.setAttribute("aria-current", "page");
-        next.before(button);
-      }
+      this.renderPagination(pagination, meta);
     } catch (_error) {
-      error.append(this.clone("#event-error-template"));
+      error.append(cloneTemplate(this.element, "#event-error-template"));
       error.hidden = false;
     } finally {
       loading.hidden = true;
       loading.classList.add("hidden");
+    }
+  }
+
+  renderEvent(event) {
+    const card = cloneTemplate(this.element, "#event-card-template");
+    if (event.past) card.classList.add("opacity-75", "grayscale");
+    card.querySelector("[data-event-link]").href = `/events/${encodeURIComponent(event.id)}`;
+    card.querySelector("[data-event-date]").textContent = formatDate(event.starts_at, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+    card.querySelector("[data-event-time]").textContent = formatDate(event.starts_at, {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    card.querySelector("[data-event-venue]").textContent = event.venue.name;
+    card.querySelector("[data-event-name]").textContent = event.name;
+    card.querySelector("[data-event-capacity]").textContent = `${event.seat_count} seats in this room`;
+    card.querySelector("[data-event-availability]").textContent = `${event.available_count} seats open`;
+    card.querySelector("[data-event-past]").hidden = !event.past;
+    return card;
+  }
+
+  renderPagination(pagination, meta) {
+    pagination.hidden = meta.total_pages < 2;
+    const previous = pagination.querySelector("[data-page-previous]");
+    const next = pagination.querySelector("[data-page-next]");
+    previous.disabled = !meta.previous_page;
+    next.disabled = !meta.next_page;
+    pagination.querySelectorAll("[data-page-number]").forEach((button) => button.remove());
+
+    for (let page = 1; page <= meta.total_pages; page += 1) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `btn btn-sm join-item${page === meta.page ? " btn-primary btn-active" : ""}`;
+      button.dataset.pageNumber = page;
+      button.dataset.action = "click->portal--events#goToPage";
+      button.textContent = page;
+      button.setAttribute("aria-label", `Page ${page}`);
+      if (page === meta.page) button.setAttribute("aria-current", "page");
+      next.before(button);
     }
   }
 
@@ -120,178 +108,7 @@ export default class extends Controller {
     this.loadEvents();
   }
 
-  async loadEvent() {
-    const loading = this.element.querySelector("#event-loading");
-    const content = this.element.querySelector("#event-content");
-    const error = this.element.querySelector("#event-error");
-    loading.hidden = false;
-    loading.classList.remove("hidden");
-    content.hidden = true;
-    error.hidden = true;
-    error.replaceChildren();
-
-    try {
-      const { data: event } = await this.fetchJson(
-        `/api/v1/events/${encodeURIComponent(this.element.dataset.eventId)}`,
-      );
-      content.querySelector("[data-detail-date]").textContent = this.dateLabel(event.starts_at, {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-      });
-      content.querySelector("[data-detail-name]").textContent = event.name;
-      content.querySelector("[data-detail-venue]").textContent = event.venue.name;
-      content.querySelector("[data-detail-start]").textContent = this.dateLabel(event.starts_at, {
-        hour: "numeric",
-        minute: "2-digit",
-      });
-      content.querySelector("[data-detail-end]").textContent = this.dateLabel(event.ends_at, {
-        hour: "numeric",
-        minute: "2-digit",
-      });
-      content.querySelector("[data-detail-seats]").textContent = `${event.seat_count} seats`;
-      content.querySelector("[data-detail-open]").textContent = `${event.available_count} seats`;
-      this.selectedSeats.clear();
-      const tableBody = content.querySelector("[data-detail-rows] tbody");
-      tableBody.replaceChildren(
-        ...event.rows
-          .sort((a, b) => a.allocation_order - b.allocation_order)
-          .map((row) => {
-            const tableRow = document.createElement("tr");
-            const label = document.createElement("span");
-            label.className = "badge badge-neutral badge-sm px-3";
-            label.textContent = `Row ${row.label}`;
-            const rowHeader = document.createElement("th");
-            rowHeader.scope = "row";
-            rowHeader.className = "w-28 px-4 py-3";
-            rowHeader.append(label);
-            const seatCell = document.createElement("td");
-            seatCell.className = "text-center";
-            const seats = document.createElement("div");
-            seats.className = "mx-auto flex w-max items-center justify-center gap-1.5";
-            const reserved = new Set(row.reserved_seats);
-            for (let number = 1; number <= row.seat_count; number += 1) {
-              const seat = document.createElement("button");
-              seat.type = "button";
-              const taken = reserved.has(number);
-              seat.className = taken
-                ? "size-5 cursor-not-allowed rounded-t-full border-2 border-dashed border-base-content/40 bg-base-300"
-                : "size-5 cursor-pointer touch-none select-none rounded-t-full border border-success bg-success/70 hover:border-primary hover:bg-primary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
-              seat.dataset.seat = number;
-              seat.dataset.row = row.row_id;
-              seat.dataset.rowLabel = row.label;
-              seat.dataset.action =
-                "pointerdown->portal--events#startSeatDrag pointerenter->portal--events#dragAcrossSeat click->portal--events#toggleSeat";
-              seat.disabled = taken;
-              seat.setAttribute("aria-pressed", "false");
-              seat.setAttribute(
-                "aria-label",
-                `Row ${row.label}, seat ${number}, ${taken ? "held or reserved" : "open"}`,
-              );
-              seat.title = `Seat ${number}${taken ? ", held or reserved" : ", open"}`;
-              seats.append(seat);
-            }
-            seatCell.append(seats);
-            tableRow.append(rowHeader, seatCell);
-            return tableRow;
-          }),
-      );
-      this.element.querySelector("[data-selection-count]").textContent =
-        "Click or drag across up to 6 open seats.";
-      this.element.querySelector("[data-selection-message]").textContent = "";
-      this.element.querySelector("[data-selection-review]").disabled = true;
-      content.hidden = false;
-      document.title = `${event.name} · Seatwise`;
-    } catch (failure) {
-      error.append(
-        this.clone(
-          failure.message.includes("404") ? "#event-not-found-template" : "#event-error-template",
-        ),
-      );
-      error.hidden = false;
-    } finally {
-      loading.hidden = true;
-      loading.classList.add("hidden");
-    }
-  }
-
-  startSeatDrag(event) {
-    if (event.button !== 0) return;
-
-    const seat = event.currentTarget;
-    const key = `${seat.dataset.row}:${seat.dataset.seat}`;
-    this.draggingSeats = true;
-    this.dragSelectSeats = !this.selectedSeats.has(key);
-    this.ignoreNextPointerClick = true;
-    this.setSeatSelected(seat, this.dragSelectSeats);
-  }
-
-  dragAcrossSeat({ currentTarget: seat }) {
-    if (this.draggingSeats) this.setSeatSelected(seat, this.dragSelectSeats);
-  }
-
-  endSeatDrag() {
-    this.draggingSeats = false;
-  }
-
-  toggleSeat(event) {
-    if (event.detail > 0 && this.ignoreNextPointerClick) {
-      this.ignoreNextPointerClick = false;
-      return;
-    }
-
-    const seat = event.currentTarget;
-    const key = `${seat.dataset.row}:${seat.dataset.seat}`;
-    this.setSeatSelected(seat, !this.selectedSeats.has(key));
-  }
-
-  setSeatSelected(seat, selected) {
-    const key = `${seat.dataset.row}:${seat.dataset.seat}`;
-    const message = this.element.querySelector("[data-selection-message]");
-    if (selected && this.selectedSeats.has(key)) return;
-    if (!selected && !this.selectedSeats.has(key)) return;
-
-    if (!selected) {
-      this.selectedSeats.delete(key);
-      seat.setAttribute("aria-pressed", "false");
-      seat.setAttribute(
-        "aria-label",
-        `Row ${seat.dataset.rowLabel}, seat ${seat.dataset.seat}, open`,
-      );
-      seat.title = `Seat ${seat.dataset.seat}, open`;
-      seat.className =
-        "size-5 cursor-pointer touch-none select-none rounded-t-full border border-success bg-success/70 hover:border-primary hover:bg-primary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
-    } else if (this.selectedSeats.size < 6) {
-      this.selectedSeats.add(key);
-      seat.setAttribute("aria-pressed", "true");
-      seat.setAttribute(
-        "aria-label",
-        `Row ${seat.dataset.rowLabel}, seat ${seat.dataset.seat}, selected`,
-      );
-      seat.title = `Seat ${seat.dataset.seat}, selected`;
-      seat.className =
-        "size-5 cursor-pointer touch-none select-none rounded-t-full border border-primary bg-primary text-primary-content ring-2 ring-primary/30";
-    } else {
-      message.textContent = "Up to 6 seats can be previewed at a time.";
-      return;
-    }
-
-    message.textContent = "";
-    this.element.querySelector("[data-selection-count]").textContent = this.selectedSeats.size
-      ? `${this.selectedSeats.size} of 6 seats selected`
-      : "Click or drag across up to 6 open seats.";
-    this.element.querySelector("[data-selection-review]").disabled = this.selectedSeats.size === 0;
-  }
-
-  reviewSelection(event) {
-    event.preventDefault();
-    const count = this.selectedSeats.size;
-    this.element.querySelector("[data-selection-message]").textContent =
-      `${count} seat${count === 1 ? "" : "s"} selected for preview. No reservation has been created.`;
-  }
-
   retry() {
-    if (this.element.hasAttribute("data-events-index")) this.loadEvents();
-    else this.loadEvent();
+    this.loadEvents();
   }
 }

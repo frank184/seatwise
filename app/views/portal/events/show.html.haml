@@ -1,8 +1,8 @@
 - content_for :title, "Event details · Seatwise"
 .min-h-full{
   class: "bg-base-200/60",
-  "data-action": "pointerup@window->portal--events#endSeatDrag pointercancel@window->portal--events#endSeatDrag",
-  "data-controller": "portal--events",
+  "data-action": "pointerup@window->portal--reservation#endSeatDrag pointercancel@window->portal--reservation#endSeatDrag",
+  "data-controller": "portal--reservation",
   "data-event-id": "#{@event_id}",
   "data-event-show": ""
 }
@@ -51,16 +51,16 @@
                 %dt{class: "text-base-content/55"} Room capacity
                 %dd.mt-1.font-semibold{"data-detail-seats": ""}
               %div
-                %dt{class: "text-base-content/55"} Currently open
+                %dt{class: "text-base-content/55"} Available now
                 %dd.mt-1.font-semibold.text-success{"data-detail-open": ""}
             .mt-7
-              = status_alert title: "Preview only", description: "Seat selection and checkout are not enabled yet. Availability may change.", variant: :info, icon: "info", soft: true
+              = status_alert title: "Availability can change", description: "Seat availability updates as guests book. Your seat status stays visible as you move through checkout.", variant: :info, icon: "info", soft: true
         %section.border-t.border-base-300.p-6.sm:p-10{"aria-labelledby": "seating-title"}
           .mb-5.flex.flex-wrap.items-end.justify-between.gap-3
             %div
               %p.text-sm.font-semibold.text-primary The room
               %h2.mt-1.text-2xl.font-bold#seating-title Seating overview
-            %span.text-sm{class: "text-base-content/55"} Availability preview
+            %span.text-sm{class: "text-base-content/55"} Seat map
           %div{"data-detail-rows": ""}
             = data_table headers: %w[Row Seats], rows: [], size: :sm, wrapper_class: "bg-base-100", table_class: "min-w-max w-full [&_thead]:sr-only"
           .mt-4.flex.flex-wrap.items-center.gap-2.text-sm{class: "text-base-content/75"}
@@ -71,17 +71,13 @@
             }
 
             Held or reserved
+            %span.ml-3.size-3.rounded-t-full.border.border-primary.bg-primary
+            %span{"data-seat-legend": ""} Your selection
             %span.sr-only Each seat also has a text label with its status.
-          = card card_class: "mt-6 border border-base-300 bg-base-100", body_class: "gap-3 sm:flex-row sm:items-center sm:justify-between" do
-            %div
-              %h3.font-semibold Your seat preview
-              %p.mt-1.text-sm{class: "text-base-content/60", "data-selection-count": ""}
-                Click or drag across up to 6 open seats.
-              %p.mt-1.text-sm.text-primary{"aria-live": "polite", "data-selection-message": ""}
-            %form{"data-action": "submit->portal--events#reviewSelection"}
-              = button "Review seats", type: "submit", variant: :primary, size: :sm, disabled: true, data: { selection_review: true }
+          = render "portal/reservations/selection_summary"
+          = render "portal/reservations/checkout_flow"
   %template#event-error-template
-    = status_alert title: "Event could not load", description: "Check your connection and try again.", variant: :error, icon: "triangle-alert", action: button("Retry", variant: :error, size: :sm, data: { action: "click->portal--events#retry" })
+    = status_alert title: "Event could not load", description: "Check your connection and try again.", variant: :error, icon: "triangle-alert", action: button("Retry", variant: :error, size: :sm, data: { action: "click->portal--reservation#retry" })
   %template#event-not-found-template
     = card card_class: "border border-base-300 bg-base-100", body_class: "items-center py-14 text-center" do
       = lucide "calendar-x", class: "size-9 text-base-content/35"

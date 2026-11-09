@@ -1,6 +1,6 @@
 # Seatwise API specification
 
-> **Implementation status:** This documents the planned V1 contract. Currently, only `GET /api/v1/up` is implemented; the other endpoints below are design context.
+> **Implementation status:** `GET /api/v1/up`, `GET /api/v1/events`, `GET /api/v1/events/:event_id` and `POST /api/v1/reservations` are implemented. The remaining endpoints below are design context.
 
 The Seatwise JSON API exposes event availability, reservation holds, checkout, cancellation and payment confirmation. See the [V1 requirements](requirements.md).
 
@@ -21,7 +21,7 @@ The Seatwise JSON API exposes event availability, reservation holds, checkout, c
 | `GET /api/v1/events` | — | `200` with `events`, an array of published event summaries ordered by `starts_at` with an ID tie-breaker. |
 | `GET /api/v1/events/:event_id` | — | `200` with an event summary containing `id`, `name` and `starts_at`. |
 | `GET /api/v1/events/:event_id/availability` | — | `200` with the published rows and their merged blocked ranges. |
-| `POST /api/v1/events/:event_id/reservations` | `{"quantity":2,"email":"buyer@example.com"}` for guest checkout. For an authenticated customer, use the credential's customer identity and accept `{"quantity":2}`. Both require an `Idempotency-Key` header. | `201` with the held reservation, a `checkout` object and a `Location` header pointing to the reservation resource. |
+| `POST /api/v1/reservations` | `{"event_id":42,"quantity":2,"email":"buyer@example.com"}` for guest checkout. Requires an `Idempotency-Key` header. | `201` with the held reservation. |
 | `GET /api/v1/reservations/:id` | Customer bearer token. | `200` with the current reservation representation. |
 | `POST /api/v1/reservations/:id/cancellation` | Customer bearer token. Empty body. | `200` with the cancelled reservation. Repeating a successful cancellation returns that same status. |
 | `GET /api/v1/reservations/:id/checkout` | Checkout bearer token for this reservation. | `200` with the current checkout status. |
@@ -51,24 +51,21 @@ Blocked ranges are sorted, with touching or overlapping intervals merged. They r
 
 ### Create reservation response
 
-`201 Created` includes `Location: /api/v1/reservations/res_42` and `Cache-Control: no-store`.
+`201 Created` includes `Cache-Control: no-store`. The event layout is allocated automatically: choose 1–6 adjacent seats in the frontmost row with a suitable block, then the lowest available starting seat. The entire group is held for five minutes or the request fails without a partial reservation.
 
 ```json
 {
-  "id": "res_42",
-  "event_id": "evt_42",
-  "row_id": "front_a",
+  "id": 42,
+  "event_id": 42,
+  "row_id": 1,
   "seat_start": 5,
   "seat_end": 6,
   "status": "held",
-  "expires_at": "2026-11-06T19:05:00Z",
-  "checkout": {
-    "url": "/checkout/res_42#checkout_example",
-    "access_token": "checkout_example",
-    "expires_at": "2026-11-06T19:15:00Z"
-  }
+  "expires_at": "2026-11-06T19:05:00Z"
 }
 ```
+
+The local endpoint requires a guest email and creates or reuses the customer record. Checkout credentials and payment initiation remain a later API step. Repeating the same event, quantity and email with the same key returns the original reservation with `200`; changing those values while reusing a key returns `409`. Stale held reservations are marked expired during allocation, and the database overlap constraint remains the final guard against concurrent claims.
 
 `status` is one of `held`, `confirmed`, `expired` or `cancelled`. `expires_at` is the deadline of the original hold. Once confirmed, the reservation continues to claim its seats past that timestamp. Lookup and cancellation return the reservation fields without the `checkout` object. Manual seat selection is deferred.
 

@@ -3,6 +3,7 @@ Rails.application.routes.draw do
     namespace :v1 do
       get "up", to: "health#show", as: :health
       resources :events, only: %i[index show]
+      resources :reservations, only: %i[create]
     end
   end
 

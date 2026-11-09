@@ -1,0 +1,9 @@
+= card card_class: "mt-6 border border-base-300 bg-base-100", body_class: "gap-3 sm:flex-row sm:items-center sm:justify-between" do
+  %div
+    %h3.font-semibold{tabindex: "-1", "data-selection-title": ""} Your seat preview
+    %p.mt-1.text-sm{class: "text-base-content/60", "data-selection-count": ""}
+      Click or drag across up to 6 open seats.
+    %p.mt-1.text-sm.text-primary{"aria-live": "polite", "data-selection-message": ""}
+  %form{"data-action": "submit->portal--reservation#reviewSelection"}
+    = button "Review seats", type: "submit", variant: :primary, size: :sm, disabled: true, data: { selection_review: true }
+  %span.badge.badge-success.badge-soft{hidden: "", data: { selection_reservation_status: true }}
