@@ -138,12 +138,12 @@ export default class extends Controller {
   renderRow(row) {
     const tableRow = document.createElement("tr");
     const label = document.createElement("span");
-    label.className = "badge badge-neutral badge-sm px-3";
+    label.className = "badge badge-neutral badge-sm whitespace-nowrap px-3";
     label.textContent = `Row ${row.label}`;
 
     const rowHeader = document.createElement("th");
     rowHeader.scope = "row";
-    rowHeader.className = "w-28 px-4 py-3";
+    rowHeader.className = "whitespace-nowrap px-4 py-3";
     rowHeader.append(label);
 
     const seats = document.createElement("div");
