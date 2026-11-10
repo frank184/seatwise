@@ -30,6 +30,7 @@
 
 # Ignore key files for decrypting credentials and more.
 /config/*.key
+/config/credentials/*.key
 
 # Kamal secrets are local deployment credentials.
 /.kamal/secrets
