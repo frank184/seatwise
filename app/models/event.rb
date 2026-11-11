@@ -3,6 +3,7 @@ class Event < ApplicationRecord
   has_many :reservations, dependent: :restrict_with_exception
   has_many :active_reservations, -> { active_for_inventory }, class_name: "Reservation"
   validates_presence_of :venue, :name, :start_time, :end_time, :layout_snapshot
+  validates :ticket_price_cents, numericality: { only_integer: true, greater_than: 0 }
 
   def rows
     Array(layout_snapshot&.dig("rows"))

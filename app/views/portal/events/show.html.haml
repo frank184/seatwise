@@ -1,8 +1,8 @@
 - content_for :title, "Event details · Seatwise"
 .min-h-full{
   class: "bg-base-200/60",
-  "data-action": "pointerup@window->portal--reservation#endSeatDrag pointercancel@window->portal--reservation#endSeatDrag",
-  "data-controller": "portal--reservation",
+  "data-action": "pointerup@window->portal--reservation#endSeatDrag pointercancel@window->portal--reservation#endSeatDrag portal--reservation:confirmation->portal--alert#open portal--alert:confirmed->portal--reservation#handleAlertConfirmed",
+  "data-controller": "portal--reservation portal--alert",
   "data-event-id": "#{@event_id}",
   "data-event-show": ""
 }
@@ -59,7 +59,7 @@
           .mb-5.flex.flex-wrap.items-end.justify-between.gap-3
             %div
               %p.text-sm.font-semibold.text-primary The room
-              %h2.mt-1.text-2xl.font-bold#seating-title Seating overview
+              %h2.mt-1.scroll-mt-24.text-2xl.font-bold#seating-title{tabindex: "-1"} Seating overview
             %span.text-sm{class: "text-base-content/55"} Seat map
           %div{"data-detail-rows": ""}
             = data_table headers: %w[Row Seats], rows: [], size: :sm, wrapper_class: "bg-base-100", table_class: "min-w-max w-full [&_thead]:sr-only"
@@ -85,3 +85,9 @@
       %p.text-sm{class: "text-base-content/60"}
         This event may have been removed or the link may be incorrect.
       = button "Browse events", variant: :primary, size: :sm, href: root_path
+  = render "portal/shared/confirmation_dialog",
+    id: "reservation-release-confirmation",
+    title: "Release your held seats?",
+    description: "Your seats will be released and may not be available if you reserve again.",
+    confirm_label: "Release hold and choose seats",
+    cancel_label: "Keep my seats"

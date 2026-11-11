@@ -62,6 +62,7 @@ module Api
         end
 
         return render_error(conflict, :conflict) if conflict
+        schedule_expiration(reservation) if reservation.held?
 
         response.headers["Cache-Control"] = "no-store"
         render json: reservation_payload(reservation), status: replay ? :ok : :created
@@ -87,6 +88,12 @@ module Api
       end
 
       private
+
+      def schedule_expiration(reservation)
+        ExpireReservationJob.set(wait_until: reservation.hold_expires_at).perform_later(reservation.id)
+      rescue StandardError => error
+        Rails.logger.error("Could not enqueue expiry for reservation #{reservation.id}: #{error.class}")
+      end
 
       def allocation_for(event, quantity)
         blocked_by_row = event.reservations.active_for_inventory.group_by(&:row_id).transform_values do |reservations|

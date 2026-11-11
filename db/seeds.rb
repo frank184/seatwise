@@ -181,6 +181,7 @@ events =
       event,
       start_time: Time.zone.parse(spec[:starts_at]),
       end_time: Time.zone.parse(spec[:ends_at]),
+      ticket_price_cents: spec.fetch(:ticket_price_cents, 1_000),
       layout_snapshot: venue.layout
     )
     [spec[:name], event]
@@ -228,7 +229,8 @@ reservation_specs.each do |spec|
 end
 
 # Keep the original sample reservations, and build a repeatable activity stream
-# around them. Existing developer reservations still occupy their seats.
+# around them. Existing reservations, including prior seeded activity, occupy
+# their seats so a rerun never tries to recreate overlapping inventory.
 simulation_customers =
   customer_specs.grep(/@seatwise\.test\z/).map { |email| customers.fetch(email) }
 simulation_customer_ids = simulation_customers.map(&:id)
@@ -243,7 +245,6 @@ events.each_value do |event|
     .reservations
     .includes(:customer)
     .each do |reservation|
-      next if simulation_customer_ids.include?(reservation.customer_id)
       next unless reservation.held? || reservation.confirmed?
 
       occupied.fetch(reservation.row_id) << reservation.seat_range
@@ -251,10 +252,12 @@ events.each_value do |event|
 
   capacity = rows.sum { |row| row.fetch("seat_count") }
   target_count = rng.rand(9..[capacity / 5, 18].min)
+  existing_simulated_count = event.reservations.where(customer_id: simulation_customer_ids).count
+  missing_count = [target_count - existing_simulated_count, 0].max
   generated = []
   attempts = 0
 
-  while generated.size < target_count && attempts < target_count * 80
+  while generated.size < missing_count && attempts < missing_count * 80
     attempts += 1
     row = rows.sample(random: rng)
     first_seat = rng.rand(1..row.fetch("seat_count"))
@@ -320,7 +323,9 @@ Reservation
       Payment.find_or_initialize_by(external_id: "seed-payment-#{reservation.id}"),
       reservation: reservation,
       status: status,
-      amount: amount
+      amount: amount,
+      provider_key: "simulator",
+      currency: "cad"
     )
 
     if reservation.confirmed? && rng.rand < 0.12
@@ -328,7 +333,9 @@ Reservation
         Payment.find_or_initialize_by(external_id: "seed-retry-#{reservation.id}"),
         reservation: reservation,
         status: "failed",
-        amount: amount
+        amount: amount,
+        provider_key: "simulator",
+        currency: "cad"
       )
     end
   end

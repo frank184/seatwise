@@ -1,5 +1,6 @@
 json.id event.id
 json.name event.name
+json.ticket_price_cents event.ticket_price_cents
 json.starts_at event.start_time.iso8601
 json.ends_at event.end_time.iso8601
 json.past event.start_time < Time.current

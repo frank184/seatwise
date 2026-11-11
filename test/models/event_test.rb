@@ -10,9 +10,18 @@ class EventTest < ActiveSupport::TestCase
     assert_includes event.errors[:start_time], "can't be blank"
     assert_includes event.errors[:end_time], "can't be blank"
     assert_includes event.errors[:layout_snapshot], "can't be blank"
+    assert_includes event.errors[:ticket_price_cents], "is not a number"
   end
 
   test "accepts a populated event" do
     assert_predicate events(:one), :valid?
+  end
+
+  test "requires a positive integer ticket price" do
+    event = events(:one)
+
+    event.ticket_price_cents = 0
+    assert_not event.valid?
+    assert_includes event.errors[:ticket_price_cents], "must be greater than 0"
   end
 end

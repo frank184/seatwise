@@ -4,11 +4,11 @@ import { cloneTemplate, fetchJson, formatDate } from "controllers/portal/view_he
 const SEAT_STYLES = {
   open: "size-6 cursor-pointer touch-none select-none rounded-t-full border border-success bg-success/70 hover:border-primary hover:bg-primary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
   selected:
-    "size-6 cursor-pointer touch-none select-none rounded-t-full border border-primary bg-primary text-primary-content ring-2 ring-primary/30",
+    "flex size-6 cursor-pointer touch-none select-none items-center justify-center rounded-t-full border border-primary bg-primary text-[0.625rem] font-semibold tabular-nums text-primary-content ring-2 ring-primary/30",
   unavailable:
     "size-6 cursor-not-allowed rounded-t-full border-2 border-dashed border-base-content/40 bg-base-300",
   yours:
-    "size-6 cursor-default rounded-t-full border-2 border-primary bg-primary text-primary-content ring-2 ring-primary/40",
+    "flex size-6 cursor-default items-center justify-center rounded-t-full border-2 border-primary bg-primary text-[0.625rem] font-semibold tabular-nums text-primary-content ring-2 ring-primary/40",
 };
 
 const STEP_NUMBERS = { seats: 1, email: 2, payment: 3, redirecting: 3, confirmed: 4, expired: 2 };
@@ -43,7 +43,12 @@ export default class extends Controller {
     try {
       const stored = JSON.parse(sessionStorage.getItem(this.storageKey));
       if (stored && Array.isArray(stored.selectedSeats)) {
-        return { step: "seats", request: null, reservation: null, ...stored };
+        const flow = { step: "seats", request: null, reservation: null, ...stored };
+        flow.furthestStep = Math.max(
+          flow.furthestStep || 1,
+          STEP_NUMBERS[flow.step] || STEP_NUMBERS.seats,
+        );
+        return flow;
       }
     } catch (_error) {
       // Storage can be disabled by the browser; the flow still works in memory.
@@ -53,6 +58,10 @@ export default class extends Controller {
 
   saveFlow() {
     this.flow.selectedSeats = [...this.selectedSeats];
+    this.flow.furthestStep = Math.max(
+      this.flow.furthestStep || 1,
+      STEP_NUMBERS[this.flow.step] || STEP_NUMBERS.seats,
+    );
     try {
       sessionStorage.setItem(this.storageKey, JSON.stringify(this.flow));
     } catch (_error) {
@@ -73,6 +82,7 @@ export default class extends Controller {
     try {
       const { data: event } = await fetchJson(
         `/api/v1/events/${encodeURIComponent(this.element.dataset.eventId)}`,
+        { cache: "no-store" },
       );
       this.event = event;
       this.renderEventDetails(content, event);
@@ -110,6 +120,7 @@ export default class extends Controller {
     try {
       const { data: event } = await fetchJson(
         `/api/v1/events/${encodeURIComponent(this.element.dataset.eventId)}`,
+        { cache: "no-store" },
       );
       this.event = event;
       this.renderSeatMap(this.element.querySelector("#event-content"), event);
@@ -224,6 +235,7 @@ export default class extends Controller {
       "aria-label",
       this.seatLabel(row.label, number, { unavailable, selected, yours }),
     );
+    if (selected || yours) seat.textContent = String(number);
     seat.title = this.seatLabel(row.label, number, { unavailable, selected, yours });
     return seat;
   }
@@ -295,6 +307,7 @@ export default class extends Controller {
     const row = this.event.rows.find((item) => String(item.row_id) === String(seat.dataset.row));
     seat.replaceWith(this.renderSeat(row, Number(seat.dataset.seat), false));
     this.updateSelectionSummary();
+    this.renderFlow();
   }
 
   updateSelectionSummary() {
@@ -313,6 +326,7 @@ export default class extends Controller {
     const reviewButton = this.element.querySelector("[data-selection-review]");
     const reservationStatus = this.element.querySelector("[data-selection-reservation-status]");
     const reservationComplete = held || confirmed;
+    reviewButton.textContent = this.flow.step === "email" ? "Edit seats" : "Review seats";
     reviewButton.hidden = reservationComplete;
     reviewButton.disabled = count === 0 || Boolean(reservation);
     reservationStatus.hidden = !reservationComplete;
@@ -320,11 +334,8 @@ export default class extends Controller {
     this.element.querySelector("[data-selection-message]").textContent = "";
     const summarySeats = reservationComplete ? reservation.seats : this.selectedSeatDetails();
     countText.textContent = countDescription;
-    const seatSummary = this.element.querySelector("[data-selection-seats]");
-    const selectionSeparator = this.element.querySelector("[data-selection-separator]");
-    seatSummary.textContent = this.formatSeatSummary(summarySeats);
-    seatSummary.hidden = summarySeats.length === 0;
-    selectionSeparator.hidden = summarySeats.length === 0;
+    this.element.querySelector("[data-selection-accessible-summary]").textContent =
+      summarySeats.length ? this.formatSeatSummary(summarySeats) : "";
     this.renderSelectionVisual(summarySeats);
     this.element.querySelectorAll("[data-seat-summary]").forEach((node) => {
       node.textContent = this.formatSeatSummary(summarySeats);
@@ -349,7 +360,7 @@ export default class extends Controller {
       group.className = "flex items-center gap-1";
 
       const label = document.createElement("span");
-      label.className = "mr-1 text-xs font-medium text-base-content/60";
+      label.className = "badge badge-neutral badge-sm whitespace-nowrap px-3";
       label.textContent = `Row ${row?.label || rowId}`;
       group.append(label);
 
@@ -412,6 +423,10 @@ export default class extends Controller {
 
   reviewSelection(event) {
     event.preventDefault();
+    if (this.flow.step === "email") {
+      this.backToSeats();
+      return;
+    }
     if (!this.selectedSeats.size || this.flow.reservation) return;
     this.flow.step = "email";
     this.saveFlow();
@@ -423,6 +438,42 @@ export default class extends Controller {
     this.saveFlow();
     this.renderFlow();
     this.updateSelectionSummary();
+    const seatingTitle = this.element.querySelector("#seating-title");
+    seatingTitle?.scrollIntoView({ behavior: "smooth", block: "start" });
+    seatingTitle?.focus({ preventScroll: true });
+  }
+
+  async navigateToStep(event) {
+    const step = event.currentTarget.dataset.flowStep;
+    if (!this.canNavigateToStep(step)) return;
+
+    if (step === "seats" && this.flow.reservation?.status === "held") {
+      this.requestReleaseHoldConfirmation();
+      return;
+    }
+
+    this.flow.step = step;
+    this.flow.showTimeline = true;
+    this.saveFlow();
+    this.renderFlow();
+    this.updateSelectionSummary();
+    if (step === "payment" && this.flow.reservation?.status === "held" && !this.paymentConfiguration) {
+      await this.loadCheckout();
+    }
+  }
+
+  canNavigateToStep(step) {
+    const targetStep = STEP_NUMBERS[step];
+    const furthestStep = Math.max(
+      this.flow.furthestStep || 1,
+      STEP_NUMBERS[this.flow.step] || STEP_NUMBERS.seats,
+    );
+    return (
+      targetStep &&
+      (targetStep <= furthestStep || (step === "email" && this.selectedSeats.size > 0)) &&
+      (step !== "payment" || this.flow.reservation?.status === "held") &&
+      !["confirmed", "expired", "redirecting"].includes(this.flow.step)
+    );
   }
 
   retry() {
@@ -438,6 +489,7 @@ export default class extends Controller {
     if (this.selectedSeats.size < 1 || this.selectedSeats.size > 6) return;
 
     this.flow.email = email;
+    this.flow.showTimeline = true;
     this.flow.request = {
       method: "POST",
       path: "/api/v1/reservations",
@@ -572,7 +624,9 @@ export default class extends Controller {
 
       this.checkout = this.stripe.initCheckoutElementsSdk({
         clientSecret: session.client_secret,
-        elementsOptions: { appearance: { theme: "stripe" } },
+        elementsOptions: {
+          appearance: { theme: "stripe", inputs: "condensed", labels: "auto" },
+        },
       });
       let actionsTimeout;
       const actionsResult = await Promise.race([
@@ -754,7 +808,7 @@ export default class extends Controller {
           this.flow.step = "confirmed";
           this.saveFlow();
           clearInterval(this.holdTimer);
-          this.renderSeatMap(this.element.querySelector("#event-content"), this.event);
+          await this.refreshEventAvailability();
           this.renderFlow();
           this.clearCheckoutReturnParams();
           return;
@@ -779,6 +833,7 @@ export default class extends Controller {
           clearInterval(this.holdTimer);
           this.renderSeatMap(this.element.querySelector("#event-content"), this.event);
           this.renderFlow();
+          await this.refreshEventAvailability();
           this.clearCheckoutReturnParams();
           return;
         }
@@ -901,7 +956,11 @@ export default class extends Controller {
             ? "Your held seats"
             : "Your selection";
     }
-    const stageVisible = step !== "seats";
+    const stageVisible =
+      step !== "seats" ||
+      this.flow.showTimeline ||
+      (this.flow.furthestStep || 1) > 1 ||
+      this.selectedSeats.size > 0;
     panel.hidden = !stageVisible;
     panel.classList.toggle("hidden", !stageVisible);
     stages.forEach((stage) => {
@@ -909,15 +968,24 @@ export default class extends Controller {
     });
 
     const currentStep = STEP_NUMBERS[step] || STEP_NUMBERS.seats;
+    const furthestStep = Math.max(this.flow.furthestStep || 1, currentStep);
     panel.querySelectorAll("[data-booking-step]").forEach((item, index) => {
       const isCurrent = index + 1 === currentStep;
-      const isComplete = step === "confirmed" || index + 1 < currentStep;
+      const isComplete = step === "confirmed" || index + 1 < furthestStep;
       item.classList.toggle("step-primary", isCurrent && step !== "confirmed");
       item.classList.toggle("step-success", isComplete);
+      item.classList.toggle("before:bg-success", index > 0 && index < furthestStep);
       item.classList.toggle("font-semibold", isCurrent);
       item.dataset.content = isComplete ? "✓" : String(index + 1);
       if (isCurrent) item.setAttribute("aria-current", "step");
       else item.removeAttribute("aria-current");
+
+      const control = item.querySelector("[data-flow-step]");
+      if (control) {
+        control.disabled = !this.canNavigateToStep(control.dataset.flowStep);
+        if (isCurrent) control.setAttribute("aria-current", "step");
+        else control.removeAttribute("aria-current");
+      }
     });
 
     this.element.querySelectorAll("[data-seat-summary]").forEach((node) => {
@@ -952,7 +1020,19 @@ export default class extends Controller {
     }
 
     const emailInput = panel.querySelector("[name=email]");
-    if (emailInput && this.flow.email) emailInput.value = this.flow.email;
+    const heldReservation = this.flow.reservation?.status === "held";
+    if (emailInput) {
+      if (this.flow.email) emailInput.value = this.flow.email;
+      emailInput.readOnly = heldReservation;
+    }
+    const emailHelp = panel.querySelector("[data-email-help]");
+    if (emailHelp) {
+      emailHelp.textContent = heldReservation
+        ? "This email is attached to your hold. Cancel the hold before changing it."
+        : "We’ll send your tickets and booking details here.";
+    }
+    const holdSubmit = panel.querySelector("[data-hold-submit]");
+    if (holdSubmit) holdSubmit.hidden = heldReservation;
     const paymentButton = panel.querySelector("[data-payment-submit]");
     if (paymentButton) {
       paymentButton.disabled =
@@ -1076,6 +1156,7 @@ export default class extends Controller {
       this.renderSeatMap(this.element.querySelector("#event-content"), this.event);
       this.renderFlow();
       this.updateSelectionSummary();
+      this.refreshEventAvailability();
       return;
     }
 
@@ -1087,23 +1168,44 @@ export default class extends Controller {
     });
   }
 
-  async cancelHold() {
+  cancelHold() {
     if (!this.flow.reservation || this.flow.reservation.status !== "held") return;
+    this.requestReleaseHoldConfirmation();
+  }
+
+  requestReleaseHoldConfirmation() {
+    this.dispatch("confirmation", { detail: { action: "release-hold" } });
+  }
+
+  async handleAlertConfirmed({ detail }) {
+    if (detail.action === "release-hold") await this.releaseHold();
+  }
+
+  async releaseHold() {
+    if (!this.flow.reservation || this.flow.reservation.status !== "held") return;
+    if (this.releasingHold) return;
+    this.releasingHold = true;
     const button = this.element.querySelector(
       "[data-flow-stage='payment'] [data-action*='cancelHold']",
     );
     const error = this.element.querySelector("[data-cancel-error]");
-    button.disabled = true;
-    error.hidden = true;
+    if (button) button.disabled = true;
+    if (error) error.hidden = true;
     try {
       await fetchJson(`/api/v1/reservations/${encodeURIComponent(this.flow.reservation.id)}`, {
         method: "DELETE",
       });
     } catch (failure) {
-      error.textContent =
+      this.releasingHold = false;
+      if (this.flow.step !== "payment") {
+        this.flow.step = "payment";
+        this.saveFlow();
+        this.renderFlow();
+      }
+      if (error) error.textContent =
         failure.message || "We couldn’t cancel this hold. It will expire automatically.";
-      error.hidden = false;
-      button.disabled = false;
+      if (error) error.hidden = false;
+      if (button) button.disabled = false;
       return;
     }
 
@@ -1117,15 +1219,23 @@ export default class extends Controller {
     this.flow.reservation = null;
     this.flow.request = null;
     this.flow.payment = null;
+    this.flow.paymentSession = null;
     this.flow.step = "seats";
+    this.flow.furthestStep = 1;
+    this.flow.showTimeline = true;
     this.selectedSeats.clear();
+    this.releasingHold = false;
     this.saveFlow();
-    this.renderSeatMap(this.element.querySelector("#event-content"), this.event);
+    await this.refreshEventAvailability();
     this.renderFlow();
     this.updateSelectionSummary();
+    this.announce("Your hold was released. Choose seats again to change your booking.");
+    const seatingTitle = this.element.querySelector("#seating-title");
+    seatingTitle?.scrollIntoView({ behavior: "smooth", block: "start" });
+    seatingTitle?.focus({ preventScroll: true });
   }
 
-  startAgain() {
+  async startAgain() {
     clearInterval(this.holdTimer);
     this.paymentElement?.unmount?.();
     this.expressCheckoutElement?.unmount?.();
@@ -1140,7 +1250,7 @@ export default class extends Controller {
     }
     this.flow = { step: "seats", selectedSeats: [], request: null, reservation: null };
     this.selectedSeats.clear();
-    this.renderSeatMap(this.element.querySelector("#event-content"), this.event);
+    await this.refreshEventAvailability();
     this.renderFlow();
     this.updateSelectionSummary();
   }

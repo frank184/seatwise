@@ -21,6 +21,7 @@ module Api
         assert_equal %w[
                        id
                        name
+                       ticket_price_cents
                        starts_at
                        ends_at
                        past
@@ -31,6 +32,7 @@ module Api
                        available_count
                      ].sort,
                      body.dig("data", 0).keys.sort
+        assert_equal 1_000, body.dig("data", 0, "ticket_price_cents")
       end
 
       test "index filters upcoming and past events around the current time" do
@@ -40,6 +42,7 @@ module Api
             name: "At the boundary",
             start_time: Time.current,
             end_time: 1.hour.from_now,
+            ticket_price_cents: 1_000,
             layout_snapshot: venues(:one).layout
           )
 
@@ -60,6 +63,7 @@ module Api
           name: "Riverside Comedy Hour",
           start_time: Time.zone.local(2026, 11, 24, 20),
           end_time: Time.zone.local(2026, 11, 24, 22),
+          ticket_price_cents: 1_000,
           layout_snapshot: venues(:one).layout
         )
 
@@ -110,6 +114,7 @@ module Api
             name: "Pagination case #{index + 1}",
             start_time: Time.current + (index + 1).days,
             end_time: Time.current + (index + 1).days + 1.hour,
+            ticket_price_cents: 1_000,
             layout_snapshot: venues(:one).layout
           )
         end

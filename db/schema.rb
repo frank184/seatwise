@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_08_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_11_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -34,6 +34,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_090000) do
     t.jsonb "layout_snapshot", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "ticket_price_cents", null: false
     t.index ["venue_id"], name: "index_events_on_venue_id"
   end
 
@@ -44,7 +45,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_090000) do
     t.integer "amount", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "provider_key", null: false
+    t.string "currency", null: false
+    t.string "failure_code"
+    t.index ["external_id"], name: "index_payments_on_external_id", unique: true
     t.index ["reservation_id"], name: "index_payments_on_reservation_id"
+    t.index ["reservation_id"], name: "index_payments_one_pending_per_reservation", unique: true, where: "((status)::text = 'pending'::text)"
   end
 
   create_table "reservations", force: :cascade do |t|
@@ -61,18 +67,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_08_090000) do
     t.index ["customer_id"], name: "index_reservations_on_customer_id"
     t.index ["event_id", "idempotency_key"], name: "index_reservations_on_event_and_idempotency_key", unique: true, where: "(idempotency_key IS NOT NULL)"
     t.index ["event_id"], name: "index_reservations_on_event_id"
-    t.check_constraint "(upper(seat_range) - lower(seat_range)) <= 6",
-                       name: "reservations_seat_group_size"
-    t.check_constraint "NOT isempty(seat_range) AND NOT lower_inf(seat_range) AND NOT upper_inf(seat_range)",
-                       name: "reservations_seat_range_bounded_and_nonempty"
+    t.check_constraint "(upper(seat_range) - lower(seat_range)) <= 6", name: "reservations_seat_group_size"
+    t.check_constraint "NOT isempty(seat_range) AND NOT lower_inf(seat_range) AND NOT upper_inf(seat_range)", name: "reservations_seat_range_bounded_and_nonempty"
     t.check_constraint "lower(seat_range) >= 1", name: "reservations_seat_range_starts_positive"
-    t.check_constraint "status::text <> 'held'::text OR hold_expires_at IS NOT NULL",
-                       name: "reservations_held_requires_hold_expiry"
-    t.exclusion_constraint "event_id WITH =, row_id WITH =, seat_range WITH &&",
-                           where:
-                             "(status)::text = ANY ((ARRAY['held'::character varying, 'confirmed'::character varying])::text[])",
-                           using: :gist,
-                           name: "reservations_no_active_seat_overlap"
+    t.check_constraint "status::text <> 'held'::text OR hold_expires_at IS NOT NULL", name: "reservations_held_requires_hold_expiry"
+    t.exclusion_constraint "event_id WITH =, row_id WITH =, seat_range WITH &&", where: "(status)::text = ANY ((ARRAY['held'::character varying, 'confirmed'::character varying])::text[])", using: :gist, name: "reservations_no_active_seat_overlap"
+  end
+
+  create_table "stripe_webhook_events", force: :cascade do |t|
+    t.string "external_id", null: false
+    t.string "event_type", null: false
+    t.datetime "processed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["external_id"], name: "index_stripe_webhook_events_on_external_id", unique: true
   end
 
   create_table "venues", force: :cascade do |t|
