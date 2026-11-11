@@ -25,6 +25,10 @@ services:
     init: true
     environment:
       RAILS_ENV: development
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_DEVELOPMENT_CURRENCY: ${STRIPE_DEVELOPMENT_CURRENCY:-}
       PGHOST: postgres
       PGPORT: 5432
       PIDFILE: /tmp/seatwise.pid

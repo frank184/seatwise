@@ -10,6 +10,7 @@
     = csrf_meta_tags
     = csp_meta_tag
     = yield :head
+    %script{src: "https://js.stripe.com/dahlia/stripe.js", async: true}
     %link{href: "/icon.svg", rel: "icon", type: "image/svg+xml"}/
     = stylesheet_link_tag :app, "data-turbo-track": "reload"
     = stylesheet_link_tag "tailwind", "data-turbo-track": "reload"

@@ -75,6 +75,17 @@ module Api
         render_error("Those seats were just claimed; retry with a new Idempotency-Key", :conflict)
       end
 
+      def destroy
+        reservation = Reservation.find(params[:id])
+        reservation.with_lock do
+          reservation.update!(status: :cancelled) if reservation.held?
+        end
+        response.headers["Cache-Control"] = "no-store"
+        render json: { id: reservation.id, status: reservation.status }
+      rescue ActiveRecord::RecordNotFound
+        render_error("Reservation not found", :not_found)
+      end
+
       private
 
       def allocation_for(event, quantity)

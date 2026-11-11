@@ -12,6 +12,7 @@ class Reservation < ApplicationRecord
   belongs_to :event
   belongs_to :customer
   has_many :payments
+  def seat_count = seat_range.end - seat_range.begin
   validates_presence_of :event, :customer, :status
   validates_presence_of :hold_expires_at, if: :held?
   validates :seat_range, presence: true
