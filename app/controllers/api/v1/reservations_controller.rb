@@ -75,7 +75,7 @@ module Api
             else
               allocation_for(event, quantity)
             end
-            if allocation
+            if allocation && allocation.first
               row, first_seat = allocation
               customer = Customer.find_or_create_by!(email: email)
               reservation = event.reservations.create!(

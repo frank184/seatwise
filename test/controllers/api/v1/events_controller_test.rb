@@ -165,6 +165,7 @@ module Api
         get api_v1_event_path(event)
 
         assert_response :success
+        assert_equal "no-store", response.headers["Cache-Control"]
         body = response.parsed_body
         assert_equal "v1", body.dig("meta", "api_version")
         assert_equal event.venue.name, body.dig("data", "venue", "name")

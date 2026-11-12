@@ -56,18 +56,38 @@ module Checkouts
       assert_equal "failed", @payment.reload.status
     end
 
+    test "does not confirm a session whose amount does not match the payment" do
+      ProcessStripeEvent.call(
+        event: event("evt_amount_mismatch", "checkout.session.completed", session(payment_status: "paid", amount_total: @payment.amount + 1))
+      )
+
+      assert @reservation.reload.held?
+      assert_equal "failed", @payment.reload.status
+      assert_equal "session_mismatch", @payment.failure_code
+    end
+
+    test "does not confirm a session whose currency does not match the payment" do
+      ProcessStripeEvent.call(
+        event: event("evt_currency_mismatch", "checkout.session.completed", session(payment_status: "paid", currency: "usd"))
+      )
+
+      assert @reservation.reload.held?
+      assert_equal "failed", @payment.reload.status
+      assert_equal "session_mismatch", @payment.failure_code
+    end
+
     private
 
     def event(id, type, object)
       Struct.new(:id, :type, :data).new(id, type, Struct.new(:object).new(object))
     end
 
-    def session(payment_status:, reservation_id: @reservation.id)
+    def session(payment_status:, reservation_id: @reservation.id, amount_total: @payment.amount, currency: @payment.currency)
       Struct.new(:id, :metadata, :amount_total, :currency, :payment_status).new(
         @payment.external_id,
         Struct.new(:reservation_id).new(reservation_id.to_s),
-        @payment.amount,
-        @payment.currency,
+        amount_total,
+        currency,
         payment_status
       )
     end

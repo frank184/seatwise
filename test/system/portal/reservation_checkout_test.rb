@@ -430,6 +430,13 @@ module Portal
       assert_selector "[data-flow-stage='confirmed']:not([hidden])"
       assert_selector "[data-booking-step='4'].step-success"
       assert_selector "[data-held-seat='1:4']"
+      assert_selector "[data-confirmed-invoice]:not([hidden])"
+      assert_text "SW-987"
+      assert_text "Row A · seat 4"
+      assert_text "1 ticket × CA$10.00 each"
+      assert_text "CA$10.00"
+      assert_text "Payment complete"
+      assert_selector "[data-confirmed-invoice] img[src='/stripe.png'][alt='Stripe']"
       assert_equal 1, page.evaluate_script("window.__stripeConfirmCalls")
       assert_no_selector "input[name='card_number']"
     end

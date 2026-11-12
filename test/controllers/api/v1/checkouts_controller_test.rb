@@ -14,6 +14,7 @@ module Api
           end
         end
         assert_response :success
+        assert_equal "no-store", response.headers["Cache-Control"]
         assert_equal "cs_secret_public", response.parsed_body.fetch("client_secret")
         assert_equal 2_000, response.parsed_body.fetch("amount")
         assert_not_includes response.body, "sk_test_secret"
@@ -51,6 +52,21 @@ module Api
         assert_response :success
         assert_equal "succeeded", response.parsed_body.fetch("status")
         assert reservation.reload.confirmed?
+      end
+
+      test "returns not found when a session does not belong to the reservation" do
+        reservation = Reservation.create!(event: events(:indie_folk), customer: customers(:one), row_id: 9,
+          seat_range: 1...3, status: :held, hold_expires_at: 5.minutes.from_now)
+        reservation.payments.create!(external_id: "cs_test_owned_session", provider_key: "stripe", status: "pending", amount: 2_000, currency: "cad")
+        config = PaymentProviders::DevelopmentStripe::Configuration.new(secret_key: "sk_test_secret", publishable_key: "pk_test_public",
+          webhook_secret: "whsec_secret", currency: "cad", error: nil)
+
+        with_method_stub(PaymentProviders::DevelopmentStripe, :configuration, config) do
+          get api_v1_checkout_status_path(reservation, session_id: "cs_test_other_reservation")
+        end
+
+        assert_response :not_found
+        assert_equal "not_found", response.parsed_body.dig("error", "code")
       end
 
       private

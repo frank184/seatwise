@@ -23,5 +23,9 @@ class EventTest < ActiveSupport::TestCase
     event.ticket_price_cents = 0
     assert_not event.valid?
     assert_includes event.errors[:ticket_price_cents], "must be greater than 0"
+
+    event.ticket_price_cents = -1
+    assert_not event.valid?
+    assert_includes event.errors[:ticket_price_cents], "must be greater than 0"
   end
 end

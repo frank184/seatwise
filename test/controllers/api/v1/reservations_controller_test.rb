@@ -180,6 +180,26 @@ module Api
         assert_response :unprocessable_entity
       end
 
+      test "rejects incomplete selected-seat coordinates" do
+        post api_v1_reservations_path,
+             params: { event_id: @event.id, quantity: 2, email: "buyer@example.com", row_id: 29, seat_start: 5 },
+             headers: { "Idempotency-Key" => "reservation-partial-range-1" },
+             as: :json
+
+        assert_response :unprocessable_entity
+        assert_equal "unprocessable_entity", response.parsed_body.dig("error", "code")
+      end
+
+      test "rejects selected seats beyond the requested row" do
+        post api_v1_reservations_path,
+             params: { event_id: @event.id, quantity: 2, email: "buyer@example.com", row_id: 29, seat_start: 8, seat_end: 9 },
+             headers: { "Idempotency-Key" => "reservation-out-of-bounds-1" },
+             as: :json
+
+        assert_response :unprocessable_entity
+        assert_equal 0, @event.reservations.count
+      end
+
       test "rejects selected seats that are already reserved" do
         @event.reservations.create!(
           customer: customers(:one), row_id: 29, seat_range: 5...7, status: :held, hold_expires_at: 5.minutes.from_now
