@@ -1,11 +1,25 @@
-%dialog.modal{role: "alertdialog", "aria-describedby": "#{id}-description", "aria-labelledby": "#{id}-title", data: { portal__alert_target: "dialog", action: "cancel->portal--alert#clearAction click->portal--alert#backdropClick" }, id: id}
+%dialog.modal{
+  role: "alertdialog",
+  "aria-describedby": "#{id}-description",
+  "aria-labelledby": "#{id}-title",
+  data: {
+    portal__alert_target: "dialog",
+    action: "cancel->portal--alert#clearAction click->portal--alert#backdropClick"
+  },
+  id: id
+}
   .modal-box.max-w-md
     .flex.items-start.gap-3
       .grid.size-10.shrink-0.place-items-center.rounded-box{class: "bg-warning/15 text-warning"}
         = lucide "triangle-alert", class: "size-5"
       %div
         %h2.text-lg.font-bold{id: "#{id}-title", data: { portal__alert_target: "title" }}= title
-        %p.mt-2.text-sm.leading-6{class: "text-base-content/70", id: "#{id}-description", data: { portal__alert_target: "description" }}= description
+        %p.mt-2.text-sm.leading-6{
+          class: "text-base-content/70",
+          id: "#{id}-description",
+          data: { portal__alert_target: "description" }
+        }
+          = description
     .modal-action
       = button cancel_label, variant: :ghost, data: { action: "click->portal--alert#dismiss" }
       = button confirm_label, variant: :error, data: { action: "click->portal--alert#confirm" }

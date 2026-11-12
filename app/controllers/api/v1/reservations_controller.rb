@@ -14,32 +14,49 @@ module Api
         idempotency_key = request.headers["Idempotency-Key"].to_s.strip
         coordinates_provided = %i[row_id seat_start seat_end].any? { |key| params.key?(key) }
 
-        return render_error("event_id must be a positive integer", :unprocessable_entity) unless
-          event_id.is_a?(Integer) ? event_id.positive? : event_id.to_s.match?(/\A[1-9]\d*\z/)
-        return render_error("a valid email is required", :unprocessable_entity) unless
-          email.match?(/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/)
-        return render_error("quantity must be an integer from 1 to 6", :unprocessable_entity) unless
-          quantity.is_a?(Integer) && quantity.between?(1, MAX_QUANTITY)
+        unless event_id.is_a?(Integer) ? event_id.positive? : event_id.to_s.match?(/\A[1-9]\d*\z/)
+          return render_error("event_id must be a positive integer", :unprocessable_entity)
+        end
+        unless email.match?(/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/)
+          return render_error("a valid email is required", :unprocessable_entity)
+        end
+        unless quantity.is_a?(Integer) && quantity.between?(1, MAX_QUANTITY)
+          return render_error("quantity must be an integer from 1 to 6", :unprocessable_entity)
+        end
         if coordinates_provided
           coordinates = [params[:row_id], params[:seat_start], params[:seat_end]]
-          return render_error("row_id, seat_start, and seat_end must be positive integers", :unprocessable_entity) unless
-            coordinates.all? { |value| value.is_a?(Integer) && value.positive? }
-          return render_error("seat range must match quantity", :unprocessable_entity) unless
-            params[:seat_end] >= params[:seat_start] && params[:seat_end] - params[:seat_start] + 1 == quantity
+          unless coordinates.all? { |value| value.is_a?(Integer) && value.positive? }
+            return(
+              render_error(
+                "row_id, seat_start, and seat_end must be positive integers",
+                :unprocessable_entity
+              )
+            )
+          end
+          unless params[:seat_end] >= params[:seat_start] &&
+                   params[:seat_end] - params[:seat_start] + 1 == quantity
+            return render_error("seat range must match quantity", :unprocessable_entity)
+          end
         end
         return render_error("Idempotency-Key is required", :bad_request) if idempotency_key.blank?
-        return render_error("Idempotency-Key is too long", :bad_request) if idempotency_key.length > 255
+        if idempotency_key.length > 255
+          return render_error("Idempotency-Key is too long", :bad_request)
+        end
 
         event = Event.find(event_id)
-        selected_row = if coordinates_provided
-          event.rows.find { |row| row.fetch("row_id").to_i == params[:row_id] }
-        end
-        if coordinates_provided && (!selected_row || params[:seat_end] > selected_row.fetch("seat_count", 0).to_i)
+        selected_row =
+          if coordinates_provided
+            event.rows.find { |row| row.fetch("row_id").to_i == params[:row_id] }
+          end
+        if coordinates_provided &&
+             (!selected_row || params[:seat_end] > selected_row.fetch("seat_count", 0).to_i)
           return render_error("The selected row or seats do not exist", :unprocessable_entity)
         end
 
         request_details = [event.id, quantity, email]
-        request_details.concat([params[:row_id], params[:seat_start], params[:seat_end]]) if coordinates_provided
+        if coordinates_provided
+          request_details.concat([params[:row_id], params[:seat_start], params[:seat_end]])
+        end
         fingerprint = Digest::SHA256.hexdigest(request_details.join("\0"))
         reservation = nil
         replay = false
@@ -55,38 +72,44 @@ module Api
             end
           else
             now = Time.current
-            event.reservations
+            event
+              .reservations
               .where(status: :held)
               .where("hold_expires_at <= ?", now)
               .update_all(status: Reservation.statuses.fetch("expired"), updated_at: now)
 
-            allocation = if coordinates_provided
-              blocked = event.reservations.active_for_inventory
-                .where(row_id: params[:row_id])
-                .flat_map { |active_reservation| active_reservation.seat_range.to_a }
-                .to_set
-              requested_seats = (params[:seat_start]..params[:seat_end]).to_a
-              if requested_seats.any? { |seat| blocked.include?(seat) }
-                conflict = "Those seats are no longer available"
-                nil
+            allocation =
+              if coordinates_provided
+                blocked =
+                  event
+                    .reservations
+                    .active_for_inventory
+                    .where(row_id: params[:row_id])
+                    .flat_map { |active_reservation| active_reservation.seat_range.to_a }
+                    .to_set
+                requested_seats = (params[:seat_start]..params[:seat_end]).to_a
+                if requested_seats.any? { |seat| blocked.include?(seat) }
+                  conflict = "Those seats are no longer available"
+                  nil
+                else
+                  [selected_row, params[:seat_start]]
+                end
               else
-                [selected_row, params[:seat_start]]
+                allocation_for(event, quantity)
               end
-            else
-              allocation_for(event, quantity)
-            end
             if allocation && allocation.first
               row, first_seat = allocation
               customer = Customer.find_or_create_by!(email: email)
-              reservation = event.reservations.create!(
-                customer: customer,
-                row_id: row.fetch("row_id").to_i,
-                seat_range: first_seat...(first_seat + quantity),
-                status: :held,
-                hold_expires_at: now + HOLD_DURATION,
-                idempotency_key: idempotency_key,
-                request_fingerprint: fingerprint
-              )
+              reservation =
+                event.reservations.create!(
+                  customer: customer,
+                  row_id: row.fetch("row_id").to_i,
+                  seat_range: first_seat...(first_seat + quantity),
+                  status: :held,
+                  hold_expires_at: now + HOLD_DURATION,
+                  idempotency_key: idempotency_key,
+                  request_fingerprint: fingerprint
+                )
             elsif conflict.nil?
               conflict = "No adjacent seats are available"
             end
@@ -101,7 +124,10 @@ module Api
       rescue ActiveRecord::RecordNotFound
         render_error("Event not found", :not_found)
       rescue ActiveRecord::RecordNotUnique
-        render_error("Reservation request could not be replayed safely; retry with the same Idempotency-Key", :conflict)
+        render_error(
+          "Reservation request could not be replayed safely; retry with the same Idempotency-Key",
+          :conflict
+        )
       rescue ActiveRecord::StatementInvalid => error
         raise unless error.cause.is_a?(PG::ExclusionViolation)
 
@@ -110,9 +136,7 @@ module Api
 
       def destroy
         reservation = Reservation.find(params[:id])
-        reservation.with_lock do
-          reservation.update!(status: :cancelled) if reservation.held?
-        end
+        reservation.with_lock { reservation.update!(status: :cancelled) if reservation.held? }
         response.headers["Cache-Control"] = "no-store"
         render json: { id: reservation.id, status: reservation.status }
       rescue ActiveRecord::RecordNotFound
@@ -122,23 +146,37 @@ module Api
       private
 
       def schedule_expiration(reservation)
-        ExpireReservationJob.set(wait_until: reservation.hold_expires_at).perform_later(reservation.id)
+        ExpireReservationJob.set(wait_until: reservation.hold_expires_at).perform_later(
+          reservation.id
+        )
       rescue StandardError => error
-        Rails.logger.error("Could not enqueue expiry for reservation #{reservation.id}: #{error.class}")
+        Rails.logger.error(
+          "Could not enqueue expiry for reservation #{reservation.id}: #{error.class}"
+        )
       end
 
       def allocation_for(event, quantity)
-        blocked_by_row = event.reservations.active_for_inventory.group_by(&:row_id).transform_values do |reservations|
-          reservations.flat_map { |reservation| reservation.seat_range.to_a }.to_set
-        end
+        blocked_by_row =
+          event
+            .reservations
+            .active_for_inventory
+            .group_by(&:row_id)
+            .transform_values do |reservations|
+              reservations.flat_map { |reservation| reservation.seat_range.to_a }.to_set
+            end
 
-        event.rows.sort_by { |row| row.fetch("allocation_order", 0).to_i }.each do |row|
-          capacity = row.fetch("seat_count", 0).to_i
-          blocked = blocked_by_row.fetch(row.fetch("row_id").to_i, Set.new)
-          (1..(capacity - quantity + 1)).each do |first_seat|
-            return [row, first_seat] if (first_seat...(first_seat + quantity)).none? { |seat| blocked.include?(seat) }
+        event
+          .rows
+          .sort_by { |row| row.fetch("allocation_order", 0).to_i }
+          .each do |row|
+            capacity = row.fetch("seat_count", 0).to_i
+            blocked = blocked_by_row.fetch(row.fetch("row_id").to_i, Set.new)
+            (1..(capacity - quantity + 1)).each do |first_seat|
+              if (first_seat...(first_seat + quantity)).none? { |seat| blocked.include?(seat) }
+                return row, first_seat
+              end
+            end
           end
-        end
 
         [nil, nil]
       end

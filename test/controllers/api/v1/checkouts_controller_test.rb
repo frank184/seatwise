@@ -4,11 +4,28 @@ module Api
   module V1
     class CheckoutsControllerTest < ActionDispatch::IntegrationTest
       test "returns session details without returning provider secrets" do
-        reservation = Reservation.create!(event: events(:indie_folk), customer: customers(:one), row_id: 9,
-          seat_range: 1...3, status: :held, hold_expires_at: 5.minutes.from_now)
-        config = PaymentProviders::DevelopmentStripe::Configuration.new(secret_key: "sk_test_secret", publishable_key: "pk_test_public",
-          webhook_secret: "whsec_secret", currency: "cad", error: nil)
-        with_method_stub(Stripe::Checkout::Session, :create, Struct.new(:id, :client_secret).new("cs_test_endpoint", "cs_secret_public")) do
+        reservation =
+          Reservation.create!(
+            event: events(:indie_folk),
+            customer: customers(:one),
+            row_id: 9,
+            seat_range: 1...3,
+            status: :held,
+            hold_expires_at: 5.minutes.from_now
+          )
+        config =
+          PaymentProviders::DevelopmentStripe::Configuration.new(
+            secret_key: "sk_test_secret",
+            publishable_key: "pk_test_public",
+            webhook_secret: "whsec_secret",
+            currency: "cad",
+            error: nil
+          )
+        with_method_stub(
+          Stripe::Checkout::Session,
+          :create,
+          Struct.new(:id, :client_secret).new("cs_test_endpoint", "cs_secret_public")
+        ) do
           with_method_stub(PaymentProviders::DevelopmentStripe, :configuration, config) do
             post api_v1_checkout_session_path(reservation)
           end
@@ -22,10 +39,23 @@ module Api
       end
 
       test "returns conflict for an expired hold" do
-        reservation = Reservation.create!(event: events(:indie_folk), customer: customers(:one), row_id: 9,
-          seat_range: 1...3, status: :held, hold_expires_at: 1.second.ago)
-        config = PaymentProviders::DevelopmentStripe::Configuration.new(secret_key: "sk_test_secret", publishable_key: "pk_test_public",
-          webhook_secret: nil, currency: "cad", error: nil)
+        reservation =
+          Reservation.create!(
+            event: events(:indie_folk),
+            customer: customers(:one),
+            row_id: 9,
+            seat_range: 1...3,
+            status: :held,
+            hold_expires_at: 1.second.ago
+          )
+        config =
+          PaymentProviders::DevelopmentStripe::Configuration.new(
+            secret_key: "sk_test_secret",
+            publishable_key: "pk_test_public",
+            webhook_secret: nil,
+            currency: "cad",
+            error: nil
+          )
         with_method_stub(PaymentProviders::DevelopmentStripe, :configuration, config) do
           post api_v1_checkout_session_path(reservation)
         end
@@ -34,14 +64,39 @@ module Api
       end
 
       test "return reconciliation confirms only the matching server-side Checkout Session" do
-        reservation = Reservation.create!(event: events(:indie_folk), customer: customers(:one), row_id: 19,
-          seat_range: 1...3, status: :held, hold_expires_at: 5.minutes.from_now)
-        payment = reservation.payments.create!(external_id: "cs_test_return", provider_key: "stripe", status: "pending", amount: 2_000, currency: "cad")
-        session = Struct.new(:id, :metadata, :amount_total, :currency, :payment_status).new(
-          payment.external_id, Struct.new(:reservation_id).new(reservation.id.to_s), payment.amount, payment.currency, "paid"
-        )
-        config = PaymentProviders::DevelopmentStripe::Configuration.new(secret_key: "sk_test_secret", publishable_key: "pk_test_public",
-          webhook_secret: "whsec_secret", currency: "cad", error: nil)
+        reservation =
+          Reservation.create!(
+            event: events(:indie_folk),
+            customer: customers(:one),
+            row_id: 19,
+            seat_range: 1...3,
+            status: :held,
+            hold_expires_at: 5.minutes.from_now
+          )
+        payment =
+          reservation.payments.create!(
+            external_id: "cs_test_return",
+            provider_key: "stripe",
+            status: "pending",
+            amount: 2_000,
+            currency: "cad"
+          )
+        session =
+          Struct.new(:id, :metadata, :amount_total, :currency, :payment_status).new(
+            payment.external_id,
+            Struct.new(:reservation_id).new(reservation.id.to_s),
+            payment.amount,
+            payment.currency,
+            "paid"
+          )
+        config =
+          PaymentProviders::DevelopmentStripe::Configuration.new(
+            secret_key: "sk_test_secret",
+            publishable_key: "pk_test_public",
+            webhook_secret: "whsec_secret",
+            currency: "cad",
+            error: nil
+          )
 
         with_method_stub(Stripe::Checkout::Session, :retrieve, session) do
           with_method_stub(PaymentProviders::DevelopmentStripe, :configuration, config) do
@@ -55,11 +110,30 @@ module Api
       end
 
       test "returns not found when a session does not belong to the reservation" do
-        reservation = Reservation.create!(event: events(:indie_folk), customer: customers(:one), row_id: 9,
-          seat_range: 1...3, status: :held, hold_expires_at: 5.minutes.from_now)
-        reservation.payments.create!(external_id: "cs_test_owned_session", provider_key: "stripe", status: "pending", amount: 2_000, currency: "cad")
-        config = PaymentProviders::DevelopmentStripe::Configuration.new(secret_key: "sk_test_secret", publishable_key: "pk_test_public",
-          webhook_secret: "whsec_secret", currency: "cad", error: nil)
+        reservation =
+          Reservation.create!(
+            event: events(:indie_folk),
+            customer: customers(:one),
+            row_id: 9,
+            seat_range: 1...3,
+            status: :held,
+            hold_expires_at: 5.minutes.from_now
+          )
+        reservation.payments.create!(
+          external_id: "cs_test_owned_session",
+          provider_key: "stripe",
+          status: "pending",
+          amount: 2_000,
+          currency: "cad"
+        )
+        config =
+          PaymentProviders::DevelopmentStripe::Configuration.new(
+            secret_key: "sk_test_secret",
+            publishable_key: "pk_test_public",
+            webhook_secret: "whsec_secret",
+            currency: "cad",
+            error: nil
+          )
 
         with_method_stub(PaymentProviders::DevelopmentStripe, :configuration, config) do
           get api_v1_checkout_status_path(reservation, session_id: "cs_test_other_reservation")

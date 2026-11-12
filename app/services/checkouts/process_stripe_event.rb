@@ -15,7 +15,10 @@ module Checkouts
 
     def self.process_session(session:, event_id:, event_type:)
       StripeWebhookEvent.transaction do
-        record = StripeWebhookEvent.create_or_find_by!(external_id: event_id) { |row| row.event_type = event_type }
+        record =
+          StripeWebhookEvent.create_or_find_by!(external_id: event_id) do |row|
+            row.event_type = event_type
+          end
 
         payment = Payment.find_by!(provider_key: "stripe", external_id: session.id)
         reservation = payment.reservation
@@ -25,7 +28,8 @@ module Checkouts
           next if record.processed_at
 
           if session.metadata&.reservation_id.to_s != reservation.id.to_s ||
-              session.amount_total.to_i != payment.amount || session.currency.to_s.downcase != payment.currency
+               session.amount_total.to_i != payment.amount ||
+               session.currency.to_s.downcase != payment.currency
             payment.update!(status: "failed", failure_code: "session_mismatch")
           elsif event_type == "checkout.session.async_payment_failed"
             payment.update!(status: "failed", failure_code: "payment_failed")

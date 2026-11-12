@@ -7,15 +7,15 @@ module Portal
       normalized_test_name = name.downcase.tr(" -", "_")
       @defer_availability_fallback = normalized_test_name.include?("initial_fallback")
       if normalized_test_name.include?("subscription_confirmation") ||
-          normalized_test_name.include?("initial_fallback") ||
-          normalized_test_name.include?("in_flight_snapshot_across_expiry") ||
-          normalized_test_name.include?("in_flight_invalidation") ||
-          normalized_test_name.include?("removes_unavailable_selection") ||
-          normalized_test_name.include?("availability_summary") ||
-          normalized_test_name.include?("cancel_refresh_failure") ||
-          normalized_test_name.include?("another_reservation") ||
-          normalized_test_name.include?("seat_map_selection") ||
-          normalized_test_name.include?("seat_map_drag")
+           normalized_test_name.include?("initial_fallback") ||
+           normalized_test_name.include?("in_flight_snapshot_across_expiry") ||
+           normalized_test_name.include?("in_flight_invalidation") ||
+           normalized_test_name.include?("removes_unavailable_selection") ||
+           normalized_test_name.include?("availability_summary") ||
+           normalized_test_name.include?("cancel_refresh_failure") ||
+           normalized_test_name.include?("another_reservation") ||
+           normalized_test_name.include?("seat_map_selection") ||
+           normalized_test_name.include?("seat_map_drag")
         install_availability_preload
       end
       visit "/events/#{@event.id}"
@@ -24,7 +24,9 @@ module Portal
     end
 
     teardown do
-      page.execute_script("Date.now = window.__seatwiseAvailabilityHarness.originalDateNow") if @restore_date_now
+      if @restore_date_now
+        page.execute_script("Date.now = window.__seatwiseAvailabilityHarness.originalDateNow")
+      end
       if @availability_preload_identifier
         page.driver.browser.execute_cdp(
           "Page.removeScriptToEvaluateOnNewDocument",
@@ -88,15 +90,16 @@ module Portal
         row = seat.fetch("row")
         number = seat.fetch("number")
         page.execute_script(
-          "document.querySelector(\"[data-detail-rows] button[data-row='#{row}'][data-seat='#{number}']\").click()",
+          "document.querySelector(\"[data-detail-rows] button[data-row='#{row}'][data-seat='#{number}']\").click()"
         )
       end
 
       assert_text "6 of 6 seats selected"
       assert_text "You can select up to 6 seats."
-      assert_equal 6, page.evaluate_script(
-        "window.Stimulus.getControllerForElementAndIdentifier(document.querySelector('[data-event-show]'), 'portal--reservation').selectedSeats.size",
-      )
+      assert_equal 6,
+                   page.evaluate_script(
+                     "window.Stimulus.getControllerForElementAndIdentifier(document.querySelector('[data-event-show]'), 'portal--reservation').selectedSeats.size"
+                   )
     end
 
     test "keeps seat nodes stable while dragging and clicking another seat" do
@@ -133,9 +136,10 @@ module Portal
       JS
 
       assert_equal true, page.evaluate_script("window.__seatMapDragNodesPreserved")
-      assert_equal 3, page.evaluate_script(
-        "window.Stimulus.getControllerForElementAndIdentifier(document.querySelector('[data-event-show]'), 'portal--reservation').selectedSeats.size",
-      )
+      assert_equal 3,
+                   page.evaluate_script(
+                     "window.Stimulus.getControllerForElementAndIdentifier(document.querySelector('[data-event-show]'), 'portal--reservation').selectedSeats.size"
+                   )
     end
 
     test "ignores an in-flight snapshot across expiry and applies one trailing fresh snapshot" do
@@ -175,14 +179,11 @@ module Portal
       JS
       @restore_date_now = true
 
-      assert_equal(
-        { "step" => "payment", "status" => "held" },
-        page.evaluate_script(<<~JS)
+      assert_equal({ "step" => "payment", "status" => "held" }, page.evaluate_script(<<~JS))
           const root = document.querySelector("[data-event-show]");
           const controller = window.Stimulus.getControllerForElementAndIdentifier(root, "portal--reservation");
           ({ step: controller.flow.step, status: controller.flow.reservation.status })
         JS
-      )
       assert_selector "[data-detail-rows][aria-busy='true']"
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='4'][data-held-seat='1:4']"
       assert_selector "[data-flow-stage='payment']:not([hidden])"
@@ -216,7 +217,7 @@ module Portal
       JS
 
       page.execute_script(
-        "document.querySelector(\"[data-detail-rows] button[data-row='1'][data-seat='2']\").click()",
+        "document.querySelector(\"[data-detail-rows] button[data-row='1'][data-seat='2']\").click()"
       )
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='2'][aria-label$='selected'][aria-pressed='true']"
       assert_selector "button[data-selection-review]:not([disabled])"
@@ -301,8 +302,14 @@ module Portal
       assert_selector "#event-content:not([hidden])"
       begin_checkout
 
-      displayed_availability = page.evaluate_script("Number(document.querySelector('[data-detail-open]').textContent.match(/\\d+/)[0])")
-      assert_equal page.evaluate_script("window.__seatwiseAvailabilityHarness.lastSnapshot.available_count - 1"), displayed_availability
+      displayed_availability =
+        page.evaluate_script(
+          "Number(document.querySelector('[data-detail-open]').textContent.match(/\\d+/)[0])"
+        )
+      assert_equal page.evaluate_script(
+                     "window.__seatwiseAvailabilityHarness.lastSnapshot.available_count - 1"
+                   ),
+                   displayed_availability
 
       page.execute_script(<<~JS)
         const harness = window.__seatwiseAvailabilityHarness;
@@ -311,10 +318,17 @@ module Portal
       JS
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='4'][data-held-seat='1:4']"
 
-      canonical_availability = page.evaluate_script("window.__seatwiseAvailabilityHarness.lastSnapshot.available_count")
-      displayed_availability = page.evaluate_script("Number(document.querySelector('[data-detail-open]').textContent.match(/\\d+/)[0])")
+      canonical_availability =
+        page.evaluate_script("window.__seatwiseAvailabilityHarness.lastSnapshot.available_count")
+      displayed_availability =
+        page.evaluate_script(
+          "Number(document.querySelector('[data-detail-open]').textContent.match(/\\d+/)[0])"
+        )
       assert_equal canonical_availability, displayed_availability
-      assert_equal canonical_availability, page.evaluate_script("window.Stimulus.getControllerForElementAndIdentifier(document.querySelector('[data-event-show]'), 'portal--reservation').event.available_count")
+      assert_equal canonical_availability,
+                   page.evaluate_script(
+                     "window.Stimulus.getControllerForElementAndIdentifier(document.querySelector('[data-event-show]'), 'portal--reservation').event.available_count"
+                   )
     end
 
     test "keeps seats disabled after cancel refresh failure until retry applies a fresh snapshot" do
@@ -340,7 +354,9 @@ module Portal
       assert_selector "#event-error:not([hidden])"
       assert_selector "[data-detail-rows][aria-busy='true']"
 
-      page.execute_script("window.__seatwiseAvailabilityHarness.resolveNext(window.__seatwiseAvailabilityHarness.lastSnapshot)")
+      page.execute_script(
+        "window.__seatwiseAvailabilityHarness.resolveNext(window.__seatwiseAvailabilityHarness.lastSnapshot)"
+      )
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='4'][aria-label$='open']"
       assert_no_selector "#event-error:not([hidden])"
       assert_no_selector "[data-detail-rows][aria-busy='true']"
@@ -363,7 +379,9 @@ module Portal
       assert_selector "#event-error:not([hidden])"
       assert_selector "[data-detail-rows][aria-busy='true']"
 
-      page.execute_script("window.__seatwiseAvailabilityHarness.resolveNext(window.__seatwiseAvailabilityHarness.lastSnapshot)")
+      page.execute_script(
+        "window.__seatwiseAvailabilityHarness.resolveNext(window.__seatwiseAvailabilityHarness.lastSnapshot)"
+      )
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='4'][aria-label$='open']"
       assert_no_selector "#event-error:not([hidden])"
       assert_no_selector "[data-detail-rows][aria-busy='true']"
@@ -372,7 +390,8 @@ module Portal
     test "loads the provider and renders card payment when no wallet is eligible" do
       begin_checkout(wait_for_payment: false)
 
-      assert_equal false, page.evaluate_script("'defaultValues' in window.__checkoutElementsOptions")
+      assert_equal false,
+                   page.evaluate_script("'defaultValues' in window.__checkoutElementsOptions")
       assert_text "Loading payment options"
       assert_selector "button[data-payment-submit]:not([disabled])"
       assert_selector "[data-payment-element]"
@@ -650,10 +669,8 @@ module Portal
           };
         })();
       JS
-      result = page.driver.browser.execute_cdp(
-        "Page.addScriptToEvaluateOnNewDocument",
-        source: source
-      )
+      result =
+        page.driver.browser.execute_cdp("Page.addScriptToEvaluateOnNewDocument", source: source)
       @availability_preload_identifier = result.fetch("identifier")
     end
 

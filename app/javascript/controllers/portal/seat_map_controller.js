@@ -146,8 +146,7 @@ export default class extends Controller {
       });
 
       seat.className = SEAT_STYLES[state];
-      seat.disabled =
-        this.busyValue || unavailable || Boolean(yours) || this.isReservationActive();
+      seat.disabled = this.busyValue || unavailable || Boolean(yours) || this.isReservationActive();
       seat.setAttribute("aria-pressed", String(selected || Boolean(yours)));
       seat.setAttribute("aria-label", label);
       seat.textContent = selected || yours ? String(number) : "";

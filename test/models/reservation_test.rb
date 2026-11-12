@@ -163,9 +163,7 @@ class ReservationTest < ActiveSupport::TestCase
     reservation.seat_range = 4...5
     stream = "event_availability:#{reservation.event_id}"
 
-    assert_broadcast_on(stream, { type: "availability_changed" }) do
-      reservation.save!
-    end
+    assert_broadcast_on(stream, { type: "availability_changed" }) { reservation.save! }
   end
 
   test "broadcasts inventory invalidations for status changes only" do
@@ -179,13 +177,9 @@ class ReservationTest < ActiveSupport::TestCase
       end
     end
 
-    assert_no_broadcasts(stream) do
-      reservation.update!(hold_expires_at: 2.hours.from_now)
-    end
+    assert_no_broadcasts(stream) { reservation.update!(hold_expires_at: 2.hours.from_now) }
 
-    assert_no_broadcasts(other_stream) do
-      reservation.update!(status: :held)
-    end
+    assert_no_broadcasts(other_stream) { reservation.update!(status: :held) }
   end
 
   test "database allows the same range for a different event" do

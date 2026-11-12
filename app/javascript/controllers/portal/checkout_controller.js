@@ -25,7 +25,10 @@ export default class extends Controller {
   setup({ detail }) {
     const reservation = detail?.reservation;
     if (!reservation || reservation.status !== "held") {
-      this.emit("failed", { requestId: detail?.requestId, error: "Your hold is no longer active." });
+      this.emit("failed", {
+        requestId: detail?.requestId,
+        error: "Your hold is no longer active.",
+      });
       return;
     }
     if (this.setupPromise && this.reservation?.id === reservation.id) return;
@@ -66,14 +69,16 @@ export default class extends Controller {
       await this.waitForStripe();
       this.assertCurrent(generation, reservation);
       const stripe = window.Stripe(provider.publishable_key);
-      if (!stripe) throw new Error("Online payment is temporarily unavailable. Please try again shortly.");
+      if (!stripe)
+        throw new Error("Online payment is temporarily unavailable. Please try again shortly.");
 
       const sessionResponse = await fetchJson(
         `/api/v1/reservations/${encodeURIComponent(reservation.id)}/checkout/session`,
         { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" },
       );
       const session = sessionResponse.data || sessionResponse;
-      if (!session.client_secret) throw new Error("We couldn’t start secure checkout. Your seats remain held.");
+      if (!session.client_secret)
+        throw new Error("We couldn’t start secure checkout. Your seats remain held.");
       this.assertCurrent(generation, reservation);
       if (reservation.expiresAt <= Date.now()) throw new Error("Your hold has expired.");
 
@@ -99,20 +104,32 @@ export default class extends Controller {
         }),
       ]).finally(() => window.clearTimeout(actionsTimeout));
       this.assertCurrent(generation, reservation);
-      if (actionsResult.type !== "success") throw new Error("Secure payment couldn’t be loaded. Your seats remain held.");
+      if (actionsResult.type !== "success")
+        throw new Error("Secure payment couldn’t be loaded. Your seats remain held.");
       this.checkoutActions = actionsResult.actions;
       this.mountElements();
       this.setStatus("Enter your payment details to finish booking.");
       this.activeRequestId = null;
-      this.emit("ready", { requestId, provider: { ...provider, enabled: true }, paymentSession: this.paymentSession });
+      this.emit("ready", {
+        requestId,
+        provider: { ...provider, enabled: true },
+        paymentSession: this.paymentSession,
+      });
     } catch (failure) {
       if (generation !== this.generation) return;
       this.activeRequestId = null;
       this.setPayDisabled(true);
       this.setRetryVisible(true);
       this.setStatus("Payment setup didn’t finish. Your seats remain held.", true);
-      this.showError(failure.message || "Online payment is temporarily unavailable. Your seats remain held.");
-      this.emit("failed", { requestId, provider, paymentSession: this.paymentSession, error: failure.message });
+      this.showError(
+        failure.message || "Online payment is temporarily unavailable. Your seats remain held.",
+      );
+      this.emit("failed", {
+        requestId,
+        provider,
+        paymentSession: this.paymentSession,
+        error: failure.message,
+      });
     } finally {
       if (generation === this.generation) this.setLoading(false);
     }
@@ -131,7 +148,9 @@ export default class extends Controller {
       };
       const onLoad = () => {
         cleanup();
-        window.Stripe ? resolve() : reject(new Error("Secure payment couldn’t be loaded. Please try again shortly."));
+        window.Stripe
+          ? resolve()
+          : reject(new Error("Secure payment couldn’t be loaded. Please try again shortly."));
       };
       const onError = () => {
         cleanup();
@@ -164,11 +183,14 @@ export default class extends Controller {
         paymentMethods: { googlePay: "always" },
       });
       this.expressCheckoutElement.on("ready", ({ availablePaymentMethods }) => {
-        this.walletMethodsAvailable =
-          Boolean(availablePaymentMethods && Object.values(availablePaymentMethods).some(Boolean));
+        this.walletMethodsAvailable = Boolean(
+          availablePaymentMethods && Object.values(availablePaymentMethods).some(Boolean),
+        );
         this.updateWalletAvailability(region, fallback);
       });
-      this.expressCheckoutElement.on("loaderror", () => this.handleElementLoadError(this.generation));
+      this.expressCheckoutElement.on("loaderror", () =>
+        this.handleElementLoadError(this.generation),
+      );
       this.expressCheckoutElement.on("confirm", (event) => this.confirm(event, this.generation));
     }
     this.expressCheckoutElement.mount(target);
@@ -200,7 +222,10 @@ export default class extends Controller {
     this.setRetryVisible(true);
     this.setStatus("Secure payment couldn’t be loaded. Your seats remain held.", true);
     this.showError("Secure payment couldn’t be loaded. Please try again.");
-    this.emit("failed", { kind: "element_load_error", error: "Secure payment couldn’t be loaded." });
+    this.emit("failed", {
+      kind: "element_load_error",
+      error: "Secure payment couldn’t be loaded.",
+    });
   }
 
   updateWalletAvailability(region, fallback) {
@@ -219,7 +244,11 @@ export default class extends Controller {
         const requestId = this.activeRequestId;
         this.activeRequestId = null;
         this.generation += 1;
-        this.emit("failed", { requestId, interrupted: true, error: "Checkout setup was interrupted." });
+        this.emit("failed", {
+          requestId,
+          interrupted: true,
+          error: "Checkout setup was interrupted.",
+        });
       }
     } else if (this.stage === "payment" && this.checkoutActions) this.mountElements();
   }
@@ -255,7 +284,9 @@ export default class extends Controller {
   }
 
   async checkStatus() {
-    const sessionId = new URLSearchParams(window.location.search).get("session_id") || this.paymentSession?.session_id;
+    const sessionId =
+      new URLSearchParams(window.location.search).get("session_id") ||
+      this.paymentSession?.session_id;
     if (sessionId) await this.pollStatus(sessionId);
   }
 
@@ -281,7 +312,9 @@ export default class extends Controller {
         }
         if (result.status === "failed") {
           this.clearReturnParams();
-          this.showError("That payment didn’t go through. Your seats are still held; try another payment method.");
+          this.showError(
+            "That payment didn’t go through. Your seats are still held; try another payment method.",
+          );
           this.emit("failed", { result, error: "Payment failed." });
           return;
         }
@@ -290,15 +323,23 @@ export default class extends Controller {
           this.emit("expired", { result });
           return;
         }
-        this.showReturnStatus("Your payment is processing. We’re waiting for Stripe to confirm it.");
+        this.showReturnStatus(
+          "Your payment is processing. We’re waiting for Stripe to confirm it.",
+        );
       } catch (_failure) {
-        this.showReturnStatus("We’re having trouble checking the payment status. We’ll keep trying.");
+        this.showReturnStatus(
+          "We’re having trouble checking the payment status. We’ll keep trying.",
+        );
       }
       await new Promise((resolve) => setTimeout(resolve, 1500));
     }
     if (this.pollingId === pollingId) {
       if (reservation.expiresAt <= Date.now()) this.emit("expired", { result: null });
-      else this.showReturnStatus("Your payment is still being confirmed. You can check again in a moment.", true);
+      else
+        this.showReturnStatus(
+          "Your payment is still being confirmed. You can check again in a moment.",
+          true,
+        );
     }
   }
 
@@ -309,7 +350,13 @@ export default class extends Controller {
 
   async confirm(expressEvent = null, generation = this.generation) {
     const reservation = this.reservation;
-    if (this.stage !== "payment" || !reservation || reservation.status !== "held" || !this.checkoutActions) return;
+    if (
+      this.stage !== "payment" ||
+      !reservation ||
+      reservation.status !== "held" ||
+      !this.checkoutActions
+    )
+      return;
     if (reservation.expiresAt <= Date.now()) {
       this.emit("expired", { result: null });
       return;
@@ -322,7 +369,10 @@ export default class extends Controller {
       const result = await this.checkoutActions.confirm(options);
       if (generation !== this.generation) return;
       if (result.type === "error") {
-        this.showError(result.error?.message || "Your payment couldn’t be completed. Try another payment method.");
+        this.showError(
+          result.error?.message ||
+            "Your payment couldn’t be completed. Try another payment method.",
+        );
         this.emit("failed", { result, error: result.error?.message });
         return;
       }
@@ -330,22 +380,35 @@ export default class extends Controller {
       if (this.paymentSession?.session_id) this.pollStatus(this.paymentSession.session_id);
     } catch (failure) {
       if (generation !== this.generation) return;
-      console.error("Stripe checkout confirmation threw an error", { name: failure?.name, message: failure?.message });
-      this.showError("We couldn’t confirm that payment. Your hold is still active; please try again.");
+      console.error("Stripe checkout confirmation threw an error", {
+        name: failure?.name,
+        message: failure?.message,
+      });
+      this.showError(
+        "We couldn’t confirm that payment. Your hold is still active; please try again.",
+      );
       this.emit("failed", { error: failure.message });
     }
   }
 
   retrySetup(event) {
     event.currentTarget.disabled = true;
-    this.setup({ detail: { requestId: null, reservation: this.reservation, paymentSession: this.paymentSession } });
+    this.setup({
+      detail: {
+        requestId: null,
+        reservation: this.reservation,
+        paymentSession: this.paymentSession,
+      },
+    });
   }
 
   renderPaymentTotal(amount, currency) {
     const total = this.element.querySelector("[data-reservation-total]");
     if (!total || !Number.isFinite(Number(amount)) || !currency) return;
-    total.textContent = new Intl.NumberFormat(undefined, { style: "currency", currency: currency.toUpperCase() })
-      .format(Number(amount) / 100);
+    total.textContent = new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: currency.toUpperCase(),
+    }).format(Number(amount) / 100);
   }
 
   assertCurrent(generation, reservation) {

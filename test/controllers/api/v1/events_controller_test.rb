@@ -177,14 +177,15 @@ module Api
 
       test "show omits a held reservation at its exact expiry time without requiring a status update" do
         event = events(:one)
-        reservation = Reservation.create!(
-          event: event,
-          customer: customers(:one),
-          row_id: 1,
-          seat_range: 2...3,
-          status: :held,
-          hold_expires_at: Time.current
-        )
+        reservation =
+          Reservation.create!(
+            event: event,
+            customer: customers(:one),
+            row_id: 1,
+            seat_range: 2...3,
+            status: :held,
+            hold_expires_at: Time.current
+          )
 
         get api_v1_event_path(event)
 

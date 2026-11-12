@@ -23,7 +23,11 @@ class AddStripeCheckoutSupport < ActiveRecord::Migration[8.1]
     change_column_null :payments, :provider_key, false
     change_column_null :payments, :currency, false
     add_index :payments, :external_id, unique: true
-    add_index :payments, :reservation_id, unique: true, where: "status = 'pending'", name: "index_payments_one_pending_per_reservation"
+    add_index :payments,
+              :reservation_id,
+              unique: true,
+              where: "status = 'pending'",
+              name: "index_payments_one_pending_per_reservation"
 
     create_table :stripe_webhook_events do |t|
       t.string :external_id, null: false

@@ -38,14 +38,24 @@ class PaymentTest < ActiveSupport::TestCase
   end
 
   test "database permits only one pending payment per reservation and one payment per external id" do
-    pending_payment = Payment.new(
-      reservation: reservations(:one), external_id: "second-pending-payment", provider_key: "stripe",
-      status: "pending", amount: 1_000, currency: "cad"
-    )
-    duplicate_external_id = Payment.new(
-      reservation: reservations(:two), external_id: payments(:one).external_id, provider_key: "stripe",
-      status: "succeeded", amount: 1_000, currency: "cad"
-    )
+    pending_payment =
+      Payment.new(
+        reservation: reservations(:one),
+        external_id: "second-pending-payment",
+        provider_key: "stripe",
+        status: "pending",
+        amount: 1_000,
+        currency: "cad"
+      )
+    duplicate_external_id =
+      Payment.new(
+        reservation: reservations(:two),
+        external_id: payments(:one).external_id,
+        provider_key: "stripe",
+        status: "succeeded",
+        amount: 1_000,
+        currency: "cad"
+      )
 
     assert_raises(ActiveRecord::RecordNotUnique) { pending_payment.save!(validate: false) }
     assert_raises(ActiveRecord::RecordNotUnique) { duplicate_external_id.save!(validate: false) }

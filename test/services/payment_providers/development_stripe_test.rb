@@ -25,7 +25,10 @@ module PaymentProviders
 
     test "development credentials provide a valid sandbox configuration" do
       with_stripe_env do
-        with_credentials(secret_key: "sk_test_credentials", publishable_key: "pk_test_credentials") do
+        with_credentials(
+          secret_key: "sk_test_credentials",
+          publishable_key: "pk_test_credentials"
+        ) do
           configuration = DevelopmentStripe.configuration
 
           assert configuration.enabled?
@@ -76,10 +79,7 @@ module PaymentProviders
     end
 
     test "a test key prefix without key material is rejected" do
-      with_stripe_env(
-        "STRIPE_SECRET_KEY" => "sk_test_",
-        "STRIPE_PUBLISHABLE_KEY" => "pk_test_"
-      ) do
+      with_stripe_env("STRIPE_SECRET_KEY" => "sk_test_", "STRIPE_PUBLISHABLE_KEY" => "pk_test_") do
         with_credentials({}) do
           configuration = DevelopmentStripe.configuration
 

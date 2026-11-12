@@ -11,9 +11,8 @@ export default class extends Controller {
     this.inFlight = null;
     this.refreshRequested = false;
     const persistedDeadline = Number(this.element.dataset.availabilityDeadline);
-    this.expiryDeadline = Number.isFinite(persistedDeadline) && persistedDeadline > 0
-      ? persistedDeadline
-      : null;
+    this.expiryDeadline =
+      Number.isFinite(persistedDeadline) && persistedDeadline > 0 ? persistedDeadline : null;
     this.refreshRequestIds = new Set();
     this.activeRequestIds = new Set();
     this.initialFallbackStarted = false;
@@ -92,10 +91,9 @@ export default class extends Controller {
     this.refreshRequestIds = new Set();
     const requestStartedAt = Date.now();
     this.dispatch("refreshing");
-    const request = fetchJson(
-      `/api/v1/events/${encodeURIComponent(this.eventId)}`,
-      { cache: "no-store" },
-    );
+    const request = fetchJson(`/api/v1/events/${encodeURIComponent(this.eventId)}`, {
+      cache: "no-store",
+    });
     this.inFlight = request;
 
     try {
@@ -107,10 +105,7 @@ export default class extends Controller {
 
       if (crossedExpiry || this.refreshRequested) {
         this.refreshRequested = true;
-        this.refreshRequestIds = new Set([
-          ...this.activeRequestIds,
-          ...this.refreshRequestIds,
-        ]);
+        this.refreshRequestIds = new Set([...this.activeRequestIds, ...this.refreshRequestIds]);
       } else {
         this.dispatch("updated", {
           detail: { event, requestIds: [...this.activeRequestIds] },
@@ -118,10 +113,7 @@ export default class extends Controller {
       }
     } catch (error) {
       if (this.refreshRequested) {
-        this.refreshRequestIds = new Set([
-          ...this.activeRequestIds,
-          ...this.refreshRequestIds,
-        ]);
+        this.refreshRequestIds = new Set([...this.activeRequestIds, ...this.refreshRequestIds]);
       } else {
         this.dispatch("failed", {
           detail: { error, requestIds: [...this.activeRequestIds] },

@@ -37,7 +37,11 @@
 
           .flex.flex-col.justify-center.p-5.sm:p-9
             = badge "Event details", variant: :primary, style: :outline, extra_class: "w-fit"
-            %h1{class: "mt-3 text-[2.025rem] font-black leading-tight tracking-tight", "data-detail-name": ""}
+            %h1{
+              class: "mt-3 text-[2.025rem] font-black leading-tight tracking-tight",
+              "data-detail-name": ""
+            }
+
             %p.mt-2.text-base{class: "text-base-content/65", "data-detail-venue": ""}
             .divider
             %dl.grid.grid-cols-2.gap-4.text-sm
@@ -59,7 +63,8 @@
           .mb-4.flex.flex-wrap.items-end.justify-between.gap-3
             %div
               %p.text-sm.font-semibold.text-primary The room
-              %h2#seating-title{class: "mt-1 scroll-mt-24 text-[1.35rem] font-bold", tabindex: "-1"} Seating overview
+              %h2#seating-title{class: "mt-1 scroll-mt-24 text-[1.35rem] font-bold", tabindex: "-1"}
+                Seating overview
             %span.text-sm{class: "text-base-content/55"} Seat map
           %div{
             "data-detail-rows": "",
@@ -93,9 +98,4 @@
       %p.text-sm{class: "text-base-content/60"}
         This event may have been removed or the link may be incorrect.
       = button "Browse events", variant: :primary, size: :sm, href: root_path
-  = render "portal/shared/confirmation_dialog",
-    id: "reservation-release-confirmation",
-    title: "Release your held seats?",
-    description: "Your seats will be released and may not be available if you reserve again.",
-    confirm_label: "Release hold and choose seats",
-    cancel_label: "Keep my seats"
+  = render "portal/shared/confirmation_dialog", id: "reservation-release-confirmation", title: "Release your held seats?", description: "Your seats will be released and may not be available if you reserve again.", confirm_label: "Release hold and choose seats", cancel_label: "Keep my seats"

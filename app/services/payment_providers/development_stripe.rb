@@ -1,16 +1,11 @@
 module PaymentProviders
   class DevelopmentStripe
-    Configuration = Data.define(
-      :secret_key,
-      :publishable_key,
-      :webhook_secret,
-      :currency,
-      :error
-    ) do
-      def enabled?
-        error.nil?
+    Configuration =
+      Data.define(:secret_key, :publishable_key, :webhook_secret, :currency, :error) do
+        def enabled?
+          error.nil?
+        end
       end
-    end
 
     class << self
       def configuration
@@ -34,14 +29,17 @@ module PaymentProviders
 
       def setting(environment_key, credential_key)
         value = ENV[environment_key]
-        value = Rails.application.credentials.dig(:stripe, credential_key) if value.nil? || value.strip.empty?
+        value = Rails.application.credentials.dig(:stripe, credential_key) if value.nil? ||
+          value.strip.empty?
         value = value.to_s.strip
         value.presence
       end
 
       def configuration_error(secret_key, publishable_key, currency)
         return "A Stripe test secret key is required." unless test_key?(secret_key, "sk_test_")
-        return "A Stripe test publishable key is required." unless test_key?(publishable_key, "pk_test_")
+        unless test_key?(publishable_key, "pk_test_")
+          return "A Stripe test publishable key is required."
+        end
         return "Currency must be a three-letter ISO code." unless currency.match?(/\A[a-zA-Z]{3}\z/)
 
         nil

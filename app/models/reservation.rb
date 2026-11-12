@@ -25,10 +25,7 @@ class Reservation < ApplicationRecord
   private
 
   def broadcast_inventory_invalidation
-    ActionCable.server.broadcast(
-      "event_availability:#{event_id}",
-      { type: "availability_changed" }
-    )
+    ActionCable.server.broadcast("event_availability:#{event_id}", { type: "availability_changed" })
   end
 
   def broadcast_status_change_invalidation

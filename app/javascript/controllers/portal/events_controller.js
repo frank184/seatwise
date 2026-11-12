@@ -62,8 +62,10 @@ export default class extends Controller {
     });
     card.querySelector("[data-event-venue]").textContent = event.venue.name;
     card.querySelector("[data-event-name]").textContent = event.name;
-    card.querySelector("[data-event-capacity]").textContent = `${event.seat_count} seats in this room`;
-    card.querySelector("[data-event-availability]").textContent = `${event.available_count} seats open`;
+    card.querySelector("[data-event-capacity]").textContent =
+      `${event.seat_count} seats in this room`;
+    card.querySelector("[data-event-availability]").textContent =
+      `${event.available_count} seats open`;
     card.querySelector("[data-event-past]").hidden = !event.past;
     return card;
   }

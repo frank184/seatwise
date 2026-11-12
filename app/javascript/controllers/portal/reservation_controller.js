@@ -79,10 +79,7 @@ export default class extends Controller {
     this.event = event;
     this.reconciliationRequired = false;
 
-    if (
-      this.flow.reservation?.status === "held" &&
-      this.flow.reservation.expiresAt <= Date.now()
-    ) {
+    if (this.flow.reservation?.status === "held" && this.flow.reservation.expiresAt <= Date.now()) {
       this.expiryPending = true;
     }
 
@@ -108,7 +105,9 @@ export default class extends Controller {
     if (removedSelections.length) {
       if (this.flow.request?.status === "failed") this.flow.request.idempotencyKey = null;
       this.saveFlow();
-      this.announce("Some selected seats are no longer available and were removed from your selection.");
+      this.announce(
+        "Some selected seats are no longer available and were removed from your selection.",
+      );
     }
 
     this.renderEventDetails(content, event);
@@ -233,7 +232,9 @@ export default class extends Controller {
 
   requestAvailabilityRefresh(detail = {}) {
     const requestId = crypto.randomUUID();
-    const promise = new Promise((resolve) => this.availabilityRefreshWaiters.set(requestId, resolve));
+    const promise = new Promise((resolve) =>
+      this.availabilityRefreshWaiters.set(requestId, resolve),
+    );
     this.dispatch("refresh-availability", { detail: { ...detail, requestId } });
     return promise;
   }
@@ -319,9 +320,10 @@ export default class extends Controller {
     reservationStatus.hidden = !reservationComplete;
     reservationStatus.textContent = confirmed ? "Booking confirmed" : "Seats held";
     const selectionMessage = this.element.querySelector("[data-selection-message]");
-    selectionMessage.textContent = count > 0 && !selectedRange
-      ? "Choose up to 6 adjacent seats in the same row to continue."
-      : "";
+    selectionMessage.textContent =
+      count > 0 && !selectedRange
+        ? "Choose up to 6 adjacent seats in the same row to continue."
+        : "";
     const summarySeats = reservationComplete ? reservation.seats : this.selectedSeatDetails();
     countText.textContent = countDescription;
     this.element.querySelector("[data-selection-accessible-summary]").textContent =
@@ -354,13 +356,15 @@ export default class extends Controller {
       label.textContent = `Row ${row?.label || rowId}`;
       group.append(label);
 
-      numbers.sort((left, right) => left - right).forEach((number) => {
-        const seat = document.createElement("span");
-        seat.className =
-          "flex size-6 items-center justify-center rounded-t-full border border-primary bg-primary text-[0.625rem] font-semibold tabular-nums text-primary-content";
-        seat.textContent = String(number);
-        group.append(seat);
-      });
+      numbers
+        .sort((left, right) => left - right)
+        .forEach((number) => {
+          const seat = document.createElement("span");
+          seat.className =
+            "flex size-6 items-center justify-center rounded-t-full border border-primary bg-primary text-[0.625rem] font-semibold tabular-nums text-primary-content";
+          seat.textContent = String(number);
+          group.append(seat);
+        });
 
       preview.append(group);
     });
@@ -387,7 +391,8 @@ export default class extends Controller {
     if (this.selectedSeats.size < 1 || this.selectedSeats.size > 6) return null;
     const seats = this.selectedSeatDetails().sort((left, right) => left.number - right.number);
     if (seats.some((seat) => seat.rowId !== seats[0].rowId)) return null;
-    if (seats.some((seat, index) => index > 0 && seat.number !== seats[index - 1].number + 1)) return null;
+    if (seats.some((seat, index) => index > 0 && seat.number !== seats[index - 1].number + 1))
+      return null;
     return {
       rowId: Number(seats[0].rowId),
       seatStart: seats[0].number,
@@ -429,10 +434,8 @@ export default class extends Controller {
       this.backToSeats();
       return;
     }
-    if (
-      !this.selectedSeatRange() ||
-      ["held", "confirmed"].includes(this.flow.reservation?.status)
-    ) return;
+    if (!this.selectedSeatRange() || ["held", "confirmed"].includes(this.flow.reservation?.status))
+      return;
     this.flow.step = "email";
     this.saveFlow();
     this.renderFlow();
@@ -462,7 +465,11 @@ export default class extends Controller {
     this.saveFlow();
     this.renderFlow();
     this.updateSelectionSummary();
-    if (step === "payment" && this.flow.reservation?.status === "held" && !this.paymentConfiguration) {
+    if (
+      step === "payment" &&
+      this.flow.reservation?.status === "held" &&
+      !this.paymentConfiguration
+    ) {
       await this.loadCheckout();
     }
   }
@@ -627,7 +634,8 @@ export default class extends Controller {
       this.renderFlow();
       return;
     }
-    if (detail.requestId) this.paymentConfiguration = { ...(detail.provider || {}), enabled: false };
+    if (detail.requestId)
+      this.paymentConfiguration = { ...(detail.provider || {}), enabled: false };
     if (detail.result?.status === "failed") {
       this.flow.payment = null;
       this.flow.step = "payment";
@@ -982,8 +990,9 @@ export default class extends Controller {
         this.saveFlow();
         this.renderFlow();
       }
-      if (error) error.textContent =
-        failure.message || "We couldn’t cancel this hold. It will expire automatically.";
+      if (error)
+        error.textContent =
+          failure.message || "We couldn’t cancel this hold. It will expire automatically.";
       if (error) error.hidden = false;
       if (button) button.disabled = false;
       return;
