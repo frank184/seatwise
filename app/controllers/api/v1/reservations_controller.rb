@@ -26,12 +26,8 @@ module Api
         if coordinates_provided
           coordinates = [params[:row_id], params[:seat_start], params[:seat_end]]
           unless coordinates.all? { |value| value.is_a?(Integer) && value.positive? }
-            return(
-              render_error(
-                "row_id, seat_start, and seat_end must be positive integers",
-                :unprocessable_entity
-              )
-            )
+            message = "row_id, seat_start, and seat_end must be positive integers"
+            return render_error(message, :unprocessable_entity)
           end
           unless params[:seat_end] >= params[:seat_start] &&
                    params[:seat_end] - params[:seat_start] + 1 == quantity
