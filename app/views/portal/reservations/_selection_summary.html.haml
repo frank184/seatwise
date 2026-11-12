@@ -8,7 +8,7 @@
       %p.whitespace-nowrap.text-sm{class: "text-base-content/60", data: { selection_count: true }}
         Click or drag across up to 6 open seats in one row.
       %p.mt-1.text-sm.text-primary{"aria-live": "polite", "data-selection-message": ""}
-      %span.sr-only{data: { selection_accessible_summary: true }}
+      %span.sr-only{aria: { atomic: true, live: "polite" }, data: { selection_accessible_summary: true }}
   .flex.min-w-0.flex-wrap.items-center.gap-4.sm:flex-1.sm:justify-end
     .flex.flex-wrap.items-center.gap-3{
       hidden: "",
@@ -16,6 +16,4 @@
       data: { selection_visual: true }
     }
 
-    %form.shrink-0{"data-action": "submit->portal--reservation#reviewSelection"}
-      = button "Review seats", type: "submit", variant: :primary, size: :sm, disabled: true, data: { selection_review: true }
     %span.badge.badge-success.badge-soft{hidden: "", data: { selection_reservation_status: true }}

@@ -21,12 +21,15 @@ export default class extends Controller {
   connect() {
     this.draggingSeats = false;
     this.ignoreNextPointerClick = false;
+    this.pendingSnapshotReconciliation = false;
+    this.pendingSnapshotRequestIds = [];
     this.selectedSeatsValue = this.selectedSeatsValue || [];
     this.reservationValue = this.reservationValue || {};
     this.hasRenderedState = false;
   }
 
-  updateState({ event, selectedSeats, reservation, busy }) {
+  updateState({ event, selectedSeats, reservation, busy, holdPending }) {
+    const wasHoldPending = this.holdPendingState;
     const eventState = JSON.stringify(event || {});
     const reservationState = JSON.stringify(reservation || {});
     const nextSelectedSeats = selectedSeats || [];
@@ -35,12 +38,14 @@ export default class extends Controller {
       this.hasRenderedState &&
       eventState === this.eventState &&
       reservationState === this.reservationState &&
-      Boolean(busy) === this.busyState;
+      Boolean(busy) === this.availabilityBusyState &&
+      Boolean(holdPending) === this.holdPendingState;
     this.deferRender = true;
     this.eventValue = event || {};
     this.selectedSeatsValue = nextSelectedSeats;
     this.reservationValue = reservation || {};
-    this.busyValue = Boolean(busy);
+    this.holdPendingValue = Boolean(holdPending);
+    this.busyValue = Boolean(busy) || this.holdPendingValue;
     this.deferRender = false;
     if (selectionOnlyChange) {
       if (selectedSeatsState !== this.selectedSeatsState) this.updateSeatButtons();
@@ -50,8 +55,56 @@ export default class extends Controller {
     this.eventState = eventState;
     this.selectedSeatsState = selectedSeatsState;
     this.reservationState = reservationState;
-    this.busyState = Boolean(busy);
+    this.availabilityBusyState = Boolean(busy);
+    this.holdPendingState = this.holdPendingValue;
     this.hasRenderedState = true;
+
+    if (wasHoldPending && !this.holdPendingValue && this.pendingSnapshotReconciliation) {
+      this.pendingSnapshotReconciliation = false;
+      this.reconcileSelectionAgainstAvailability();
+      this.dispatch("snapshot-reconciled", {
+        detail: { requestIds: this.pendingSnapshotRequestIds },
+      });
+      this.pendingSnapshotRequestIds = [];
+    }
+  }
+
+  availabilityUpdated({ detail: { event, requestIds = [] } }) {
+    if (!event || !Array.isArray(event.rows)) return;
+
+    const selectedSeats = this.selectedSeatsValue;
+    this.updateState({
+      event,
+      selectedSeats,
+      reservation: this.reservationValue,
+      busy: this.busyValue && !this.holdPendingValue,
+      holdPending: this.holdPendingValue,
+    });
+
+    if (this.holdPendingValue) {
+      this.pendingSnapshotReconciliation = true;
+      this.pendingSnapshotRequestIds = [...new Set([...this.pendingSnapshotRequestIds, ...requestIds])];
+      return;
+    }
+
+    this.reconcileSelectionAgainstAvailability();
+    this.dispatch("snapshot-reconciled", { detail: { requestIds } });
+  }
+
+  reconcileSelectionAgainstAvailability() {
+    const unavailableSeats = new Set(
+      this.eventValue.rows.flatMap((row) =>
+        row.reserved_seats.map((number) => this.seatKey(row.row_id, number)),
+      ),
+    );
+    if (!this.selectedSeatsValue.some((seat) => unavailableSeats.has(seat))) return;
+
+    this.selectedSeatsValue = [];
+    this.selectedSeatsState = JSON.stringify([]);
+    this.updateSeatButtons();
+    this.dispatch("selection-changed", {
+      detail: { selectedSeats: [], reason: "availability_changed" },
+    });
   }
 
   render() {

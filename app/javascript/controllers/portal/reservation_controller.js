@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus";
 import { cloneTemplate, fetchJson, formatDate } from "controllers/portal/view_helpers";
 
-const STEP_NUMBERS = { seats: 1, email: 2, payment: 3, redirecting: 3, confirmed: 4, expired: 2 };
+const STEP_NUMBERS = { seats: 1, payment: 2, redirecting: 2, confirmed: 3, expired: 1 };
 
 export default class extends Controller {
   connect() {
@@ -16,7 +16,11 @@ export default class extends Controller {
     this.checkoutSetupWaiters = new Map();
     this.checkoutLoadPromise = null;
     this.availabilityRefreshWaiters = new Map();
+    this.conflictRefreshPending = false;
+    this.conflictRefreshRequestId = null;
+    this.conflictRefreshRecoveryAllowed = false;
     this.reconciliationRequired = false;
+    this.selectionReady = false;
     this.beginEventLoad();
   }
 
@@ -35,6 +39,14 @@ export default class extends Controller {
       const stored = JSON.parse(sessionStorage.getItem(this.storageKey));
       if (stored && Array.isArray(stored.selectedSeats)) {
         const flow = { step: "seats", request: null, reservation: null, ...stored };
+        if (flow.step === "email") {
+          flow.step = "seats";
+          if (!["held", "confirmed"].includes(flow.reservation?.status)) {
+            flow.furthestStep = STEP_NUMBERS.seats;
+            flow.showTimeline = false;
+          }
+        }
+        if (flow.step === "payment") flow.furthestStep = Math.min(flow.furthestStep || 2, 2);
         flow.furthestStep = Math.max(
           flow.furthestStep || 1,
           STEP_NUMBERS[flow.step] || STEP_NUMBERS.seats,
@@ -73,11 +85,23 @@ export default class extends Controller {
 
   applyAvailabilitySnapshot({ detail }) {
     const { event, requestIds = [] } = detail;
+    const conflictRefreshSucceeded =
+      this.conflictRefreshPending &&
+      (requestIds.includes(this.conflictRefreshRequestId) ||
+        (this.conflictRefreshRecoveryAllowed && requestIds.length === 0));
     const content = this.element.querySelector("#event-content");
     const loading = this.element.querySelector("#event-loading");
     const error = this.element.querySelector("#event-error");
     this.event = event;
-    this.reconciliationRequired = false;
+    if (conflictRefreshSucceeded) {
+      this.conflictRefreshPending = false;
+      this.conflictRefreshRequestId = null;
+      this.conflictRefreshRecoveryAllowed = false;
+      this.reconciliationRequired = false;
+    } else if (!this.conflictRefreshPending) {
+      this.reconciliationRequired = false;
+    }
+    this.selectionReady = false;
 
     if (this.flow.reservation?.status === "held" && this.flow.reservation.expiresAt <= Date.now()) {
       this.expiryPending = true;
@@ -95,26 +119,11 @@ export default class extends Controller {
       delete this.element.dataset.availabilityDeadline;
     }
 
-    const unavailableSeats = new Set(
-      event.rows.flatMap((row) =>
-        row.reserved_seats.map((number) => this.seatKey(row.row_id, number)),
-      ),
-    );
-    const removedSelections = [...this.selectedSeats].filter((seat) => unavailableSeats.has(seat));
-    removedSelections.forEach((seat) => this.selectedSeats.delete(seat));
-    if (removedSelections.length) {
-      if (this.flow.request?.status === "failed") this.flow.request.idempotencyKey = null;
-      this.saveFlow();
-      this.announce(
-        "Some selected seats are no longer available and were removed from your selection.",
-      );
-    }
-
     this.renderEventDetails(content, event);
     this.renderReservationEventDetails(event);
-    this.renderFlow();
     this.updateSelectionSummary();
-    this.setAvailabilityPending(false);
+    this.setAvailabilityPending(this.conflictRefreshPending);
+    this.renderFlow();
     content.hidden = false;
     loading.hidden = true;
     loading.classList.add("hidden");
@@ -148,6 +157,12 @@ export default class extends Controller {
 
   availabilityRefreshFailed({ detail }) {
     const { error: failure, requestIds = [] } = detail;
+    if (this.conflictRefreshPending && requestIds.includes(this.conflictRefreshRequestId)) {
+      this.conflictRefreshRequestId = null;
+      this.conflictRefreshRecoveryAllowed = true;
+      this.reconciliationRequired = true;
+      this.selectionReady = false;
+    }
     requestIds.forEach((requestId) => this.resolveAvailabilityRefresh(requestId, false));
     const error = this.element.querySelector("#event-error");
     const loading = this.element.querySelector("#event-loading");
@@ -173,6 +188,7 @@ export default class extends Controller {
   setAvailabilityPending(pending) {
     this.availabilityBusy = pending;
     this.syncSeatMapState();
+    this.updateHoldSubmitState();
   }
 
   syncSeatMapState() {
@@ -187,13 +203,27 @@ export default class extends Controller {
       selectedSeats: [...this.selectedSeats],
       reservation: this.flow.reservation,
       busy: this.availabilityBusy,
+      holdPending: this.flow.request?.status === "pending",
     });
   }
 
+  handleSeatMapSnapshotReconciled({ detail: { requestIds = [] } = {} }) {
+    if (
+      this.conflictRefreshPending &&
+      (!this.conflictRefreshRequestId || !requestIds.includes(this.conflictRefreshRequestId))
+    ) return;
+    this.selectionReady = true;
+    this.saveFlow();
+    this.updateHoldSubmitState();
+  }
+
   handleSeatMapSelectionChanged({ detail }) {
+    if (this.flow.request?.status === "pending") return;
+    const availabilityInvalidation =
+      detail.reason === "availability_changed" && detail.selectedSeats.length === 0;
     if (
       !this.event ||
-      this.availabilityBusy ||
+      (this.availabilityBusy && !availabilityInvalidation) ||
       ["held", "confirmed"].includes(this.flow.reservation?.status)
     ) {
       this.syncSeatMapState();
@@ -222,16 +252,29 @@ export default class extends Controller {
       [...requestedSeats].some((seat) => !this.selectedSeats.has(seat));
     if (!changed) return;
 
+    if (this.flow.step === "expired" && requestedSeats.size > 0) {
+      this.flow.step = "seats";
+      this.flow.furthestStep = STEP_NUMBERS.seats;
+      this.flow.showTimeline = true;
+      this.flow.reservation = null;
+      this.flow.request = null;
+      this.flow.payment = null;
+      this.flow.paymentSession = null;
+    }
     this.selectedSeats = requestedSeats;
     if (this.flow.request?.status === "failed") this.flow.request.idempotencyKey = null;
     this.saveFlow();
     this.updateSelectionSummary();
     this.renderFlow();
     this.syncSeatMapState();
+    if (detail.reason === "availability_changed") {
+      this.announce("Selected seats are no longer available. Choose available seats to continue.");
+    }
   }
 
   requestAvailabilityRefresh(detail = {}) {
     const requestId = crypto.randomUUID();
+    if (this.conflictRefreshPending) this.conflictRefreshRequestId = requestId;
     const promise = new Promise((resolve) =>
       this.availabilityRefreshWaiters.set(requestId, resolve),
     );
@@ -311,12 +354,8 @@ export default class extends Controller {
           ? `${count} of 6 seats selected`
           : "Click or drag across up to 6 open seats.";
     const selectedRange = this.selectedSeatRange();
-    const reviewButton = this.element.querySelector("[data-selection-review]");
     const reservationStatus = this.element.querySelector("[data-selection-reservation-status]");
     const reservationComplete = held || confirmed;
-    reviewButton.textContent = this.flow.step === "email" ? "Edit seats" : "Review seats";
-    reviewButton.hidden = reservationComplete;
-    reviewButton.disabled = count === 0 || !selectedRange || reservationComplete;
     reservationStatus.hidden = !reservationComplete;
     reservationStatus.textContent = confirmed ? "Booking confirmed" : "Seats held";
     const selectionMessage = this.element.querySelector("[data-selection-message]");
@@ -377,6 +416,7 @@ export default class extends Controller {
     }
     this.flow.email = email;
     this.saveFlow();
+    this.updateHoldSubmitState();
   }
 
   selectedSeatDetails() {
@@ -428,29 +468,6 @@ export default class extends Controller {
     this.element.querySelector("[data-selection-message]").textContent = message;
   }
 
-  reviewSelection(event) {
-    event.preventDefault();
-    if (this.flow.step === "email") {
-      this.backToSeats();
-      return;
-    }
-    if (!this.selectedSeatRange() || ["held", "confirmed"].includes(this.flow.reservation?.status))
-      return;
-    this.flow.step = "email";
-    this.saveFlow();
-    this.renderFlow();
-  }
-
-  backToSeats() {
-    this.flow.step = "seats";
-    this.saveFlow();
-    this.renderFlow();
-    this.updateSelectionSummary();
-    const seatingTitle = this.element.querySelector("#seating-title");
-    seatingTitle?.scrollIntoView({ behavior: "smooth", block: "start" });
-    seatingTitle?.focus({ preventScroll: true });
-  }
-
   async navigateToStep(event) {
     const step = event.currentTarget.dataset.flowStep;
     if (!this.canNavigateToStep(step)) return;
@@ -482,8 +499,7 @@ export default class extends Controller {
     );
     return (
       targetStep &&
-      (step !== "email" || Boolean(this.selectedSeatRange())) &&
-      (targetStep <= furthestStep || (step === "email" && this.selectedSeatRange())) &&
+      targetStep <= furthestStep &&
       (step !== "payment" || this.flow.reservation?.status === "held") &&
       !["confirmed", "expired", "redirecting"].includes(this.flow.step)
     );
@@ -496,10 +512,14 @@ export default class extends Controller {
 
   async placeHold(event) {
     event.preventDefault();
-    if (this.flow.request?.status === "pending") return;
+    if (
+      this.flow.request?.status === "pending" ||
+      !this.selectionReady ||
+      this.availabilityBusy ||
+      this.reconciliationRequired
+    ) return;
     const form = event.currentTarget;
     const email = form.querySelector("[name=email]").value.trim();
-    const button = form.querySelector("[data-hold-submit]");
     const selectedRange = this.selectedSeatRange();
     if (!selectedRange) {
       this.announce("Choose up to 6 adjacent seats in the same row to continue.");
@@ -518,7 +538,7 @@ export default class extends Controller {
     };
     this.saveFlow();
     this.renderFlow();
-    button.disabled = true;
+    this.syncSeatMapState();
     this.clearHoldError();
 
     try {
@@ -569,15 +589,39 @@ export default class extends Controller {
       await this.loadCheckout();
     } catch (failure) {
       this.flow.request.status = "failed";
+      if (failure.status === 409) {
+        this.flow.request.idempotencyKey = null;
+        this.selectionReady = false;
+        this.reconciliationRequired = true;
+        this.conflictRefreshPending = true;
+        this.conflictRefreshRecoveryAllowed = false;
+      }
       this.saveFlow();
-      this.renderFlow();
       const error = this.element.querySelector("[data-hold-error]");
-      error.textContent = failure.message || "We couldn’t hold those seats. Please try again.";
+      error.textContent =
+        failure.status === 409
+          ? "Those seats were just taken. Choose available seats to continue."
+          : failure.message || "We couldn’t hold those seats. Please try again.";
       error.hidden = false;
       if (failure.status === 409) this.requestAvailabilityRefresh();
+      this.renderFlow();
+      this.syncSeatMapState();
     } finally {
-      button.disabled = false;
+      this.updateHoldSubmitState();
     }
+  }
+
+  updateHoldSubmitState() {
+    const button = this.element.querySelector("[data-hold-submit]");
+    if (!button) return;
+    button.disabled =
+      !this.selectionReady ||
+      !this.event ||
+      this.availabilityBusy ||
+      this.reconciliationRequired ||
+      this.flow.request?.status === "pending" ||
+      !this.selectedSeatRange() ||
+      !this.element.querySelector("[name=email]")?.validity.valid;
   }
 
   async loadCheckout() {
@@ -803,6 +847,7 @@ export default class extends Controller {
     }
     const holdSubmit = panel.querySelector("[data-hold-submit]");
     if (holdSubmit) holdSubmit.hidden = heldReservation;
+    this.updateHoldSubmitState();
     const paymentButton = panel.querySelector("[data-payment-submit]");
     if (paymentButton) {
       paymentButton.disabled =

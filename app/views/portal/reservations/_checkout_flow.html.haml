@@ -1,6 +1,7 @@
 .mt-6.scroll-mt-20.hidden#checkout-panel{
   hidden: "",
-  "aria-labelledby": "checkout-title",
+  role: "region",
+  "aria-label": "Reservation",
   data: {
     controller: "portal--checkout",
     action: "portal--reservation:checkout-setup->portal--checkout#setup portal--reservation:checkout-stage->portal--checkout#stageChanged portal--reservation:checkout-reset->portal--checkout#reset portal--reservation:checkout-return->portal--checkout#restore portal--reservation:checkout-poll->portal--checkout#poll"
@@ -17,16 +18,10 @@
       %li.step{"data-booking-step": "2", "data-content": "2"}
         %button.cursor-pointer.border-0.bg-transparent.px-1.py-0.font-sans.text-xs.text-inherit.hover:underline.focus-visible:outline-2.focus-visible:outline-offset-2.focus-visible:outline-primary.sm:text-sm.disabled:cursor-not-allowed.disabled:opacity-60{
           type: "button",
-          data: { action: "click->portal--reservation#navigateToStep", flow_step: "email" }
-        }
-          Email &amp; hold
-      %li.step{"data-booking-step": "3", "data-content": "3"}
-        %button.cursor-pointer.border-0.bg-transparent.px-1.py-0.font-sans.text-xs.text-inherit.hover:underline.focus-visible:outline-2.focus-visible:outline-offset-2.focus-visible:outline-primary.sm:text-sm.disabled:cursor-not-allowed.disabled:opacity-60{
-          type: "button",
           data: { action: "click->portal--reservation#navigateToStep", flow_step: "payment" }
         }
           Payment
-      %li.step{"data-booking-step": "4", "data-content": "4"} Confirmation
+      %li.step{"data-booking-step": "3", "data-content": "3"} Confirmation
     .rounded-box.border.border-base-300.bg-base-100.p-4{hidden: "", "data-reservation-request": ""}
       .flex.flex-wrap.items-center.justify-between.gap-3
         %div
@@ -35,15 +30,15 @@
           }
             Your seats are held while you complete checkout.
         %span.badge.badge-success.badge-soft{data: { reservation_request_status: true }} Hold active
-    %section.space-y-0{"data-flow-stage": "email", "aria-labelledby": "email-title"}
+    %section.space-y-5{"data-flow-stage": "seats", "aria-labelledby": "email-title"}
       %div
         %h2.reservation-stage-heading.mt-1.w-fit.max-w-full.text-2xl.font-bold#email-title{
           tabindex: "-1",
           "data-stage-heading": ""
         }
-          Where should we send your tickets?
+          Choose your seats and add your email
         %p.mt-2.text-sm{class: "text-base-content/65"}
-          After you continue, we’ll hold these seats for five minutes.
+          We’ll hold your seats for five minutes when you continue to payment.
       %form.max-w-xl.space-y-4{
         "data-action": "submit->portal--reservation#placeHold",
         "data-checkout-form": ""

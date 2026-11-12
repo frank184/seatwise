@@ -1,7 +1,7 @@
 - content_for :title, "Event details · Seatwise"
 .min-h-full{
   class: "bg-base-200/60",
-  "data-action": "portal--seat-map:selection-changed->portal--reservation#handleSeatMapSelectionChanged portal--reservation:confirmation->portal--alert#open portal--alert:confirmed->portal--reservation#handleAlertConfirmed portal--reservation:refresh-availability->portal--availability#refresh portal--availability:refreshing->portal--reservation#availabilityRefreshStarted portal--availability:updated->portal--reservation#applyAvailabilitySnapshot portal--availability:failed->portal--reservation#availabilityRefreshFailed portal--checkout:ready->portal--reservation#checkoutReady portal--checkout:failed->portal--reservation#checkoutFailed portal--checkout:redirecting->portal--reservation#checkoutRedirecting portal--checkout:confirmed->portal--reservation#checkoutConfirmed portal--checkout:expired->portal--reservation#checkoutExpired",
+  "data-action": "portal--seat-map:selection-changed->portal--reservation#handleSeatMapSelectionChanged portal--seat-map:snapshot-reconciled->portal--reservation#handleSeatMapSnapshotReconciled portal--reservation:confirmation->portal--alert#open portal--alert:confirmed->portal--reservation#handleAlertConfirmed portal--reservation:refresh-availability->portal--availability#refresh portal--availability:refreshing->portal--reservation#availabilityRefreshStarted portal--availability:updated->portal--reservation#applyAvailabilitySnapshot portal--availability:failed->portal--reservation#availabilityRefreshFailed portal--checkout:ready->portal--reservation#checkoutReady portal--checkout:failed->portal--reservation#checkoutFailed portal--checkout:redirecting->portal--reservation#checkoutRedirecting portal--checkout:confirmed->portal--reservation#checkoutConfirmed portal--checkout:expired->portal--reservation#checkoutExpired",
   "data-controller": "portal--reservation portal--alert portal--availability",
   "data-event-id": "#{@event_id}",
   "data-event-show": ""
@@ -70,7 +70,7 @@
             "data-detail-rows": "",
             "data-seat-map": "",
             "data-controller": "portal--seat-map",
-            "data-action": "pointerup@window->portal--seat-map#endDrag pointercancel@window->portal--seat-map#endDrag",
+            "data-action": "portal--availability:updated@window->portal--seat-map#availabilityUpdated pointerup@window->portal--seat-map#endDrag pointercancel@window->portal--seat-map#endDrag",
             "data-portal--seat-map-selected-seats-value": "[]",
             "data-portal--seat-map-reservation-value": "{}",
             "data-portal--seat-map-busy-value": "true"
