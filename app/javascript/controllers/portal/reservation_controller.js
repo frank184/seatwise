@@ -773,7 +773,9 @@ export default class extends Controller {
     const paymentButton = panel.querySelector("[data-payment-submit]");
     if (paymentButton) {
       paymentButton.disabled =
-        this.paymentConfiguration?.enabled !== true || this.flow.payment?.status === "processing";
+        this.paymentConfiguration?.enabled !== true ||
+        panel.dataset.paymentReady !== "true" ||
+        this.flow.payment?.status === "processing";
       paymentButton.textContent =
         this.flow.payment?.status === "processing" ? "Confirming payment…" : "Pay securely";
     }

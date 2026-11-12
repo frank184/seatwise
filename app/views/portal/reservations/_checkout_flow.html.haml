@@ -130,7 +130,7 @@
           .mt-4.grid.grid-cols-2.items-center.gap-4.border-t.border-base-300.pt-4{role: "status"}
             %p.text-sm{class: "text-base-content/65"}
               Payment processed by
-              %span.font-semibold.text-base-content Stripe
+              = image_tag "/stripe.png", alt: "Stripe", class: "ml-1 inline-block h-3.5 w-auto align-middle"
             %span.badge.badge-success.badge-soft Payment complete
       = button "Start another reservation", variant: :primary, data: { action: "click->portal--reservation#startAgain" }
     %section.space-y-5{hidden: "", "data-flow-stage": "expired", "aria-labelledby": "expired-title"}

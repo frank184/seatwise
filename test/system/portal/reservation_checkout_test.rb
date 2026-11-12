@@ -718,10 +718,14 @@ module Portal
                 },
               }),
               createPaymentElement: () => ({
-                on: (name, callback) => { if (name === "loaderror") window.__paymentLoadError = callback; },
+                on: (name, callback) => {
+                  if (name === "ready") window.__paymentReady = callback;
+                  if (name === "loaderror") window.__paymentLoadError = callback;
+                },
                 mount: (target) => {
                   target.dataset.mountedElement = "payment";
                   target.textContent = "Card payment form";
+                  window.__paymentReady?.();
                 },
                 unmount: () => {
                   const target = document.querySelector("[data-payment-element]");

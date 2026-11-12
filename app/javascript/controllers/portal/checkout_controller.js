@@ -9,6 +9,11 @@ export default class extends Controller {
     this.paymentSession = null;
     this.stage = null;
     this.pollingId = null;
+    this.elementsMounted = false;
+    this.expressElementMounted = false;
+    this.paymentElementMounted = false;
+    this.paymentElementReady = false;
+    this.walletMethodsAvailable = null;
   }
 
   disconnect() {
@@ -37,6 +42,7 @@ export default class extends Controller {
     this.activeRequestId = requestId;
     const reservation = this.reservation;
     this.unmountElements();
+    this.clearElements();
     this.checkout = null;
     this.checkoutActions = null;
     this.setStatus("Loading payment options…");
@@ -95,9 +101,8 @@ export default class extends Controller {
       this.assertCurrent(generation, reservation);
       if (actionsResult.type !== "success") throw new Error("Secure payment couldn’t be loaded. Your seats remain held.");
       this.checkoutActions = actionsResult.actions;
-      this.mountElements(generation);
+      this.mountElements();
       this.setStatus("Enter your payment details to finish booking.");
-      this.setPayDisabled(false);
       this.activeRequestId = null;
       this.emit("ready", { requestId, provider: { ...provider, enabled: true }, paymentSession: this.paymentSession });
     } catch (failure) {
@@ -145,34 +150,52 @@ export default class extends Controller {
     });
   }
 
-  mountElements(generation) {
-    if (this.stage !== "payment") return;
+  mountElements() {
+    if (this.stage !== "payment" || this.elementsMounted) return;
     const region = this.element.querySelector("[data-express-checkout-region]");
     const target = this.element.querySelector("[data-express-checkout-element]");
     const fallback = this.element.querySelector("[data-wallet-availability]");
-    this.expressCheckoutElement = this.checkout.createExpressCheckoutElement({
-      buttonType: { applePay: "buy", googlePay: "buy", paypal: "buynow" },
-      paymentMethods: { googlePay: "always" },
-    });
-    this.expressCheckoutElement.on("ready", ({ availablePaymentMethods }) => {
-      if (generation !== this.generation) return;
-      const available = availablePaymentMethods && Object.values(availablePaymentMethods).some(Boolean);
-      region.hidden = !available;
-      fallback.hidden = Boolean(available);
-    });
-    this.expressCheckoutElement.on("loaderror", () => this.handleElementLoadError(generation));
-    this.expressCheckoutElement.on("confirm", (event) => this.confirm(event, generation));
+    this.paymentElementReady = false;
+    this.walletMethodsAvailable = null;
+    delete this.element.dataset.paymentReady;
+    if (!this.expressCheckoutElement) {
+      this.expressCheckoutElement = this.checkout.createExpressCheckoutElement({
+        buttonType: { applePay: "buy", googlePay: "buy", paypal: "buynow" },
+        paymentMethods: { googlePay: "always" },
+      });
+      this.expressCheckoutElement.on("ready", ({ availablePaymentMethods }) => {
+        this.walletMethodsAvailable =
+          Boolean(availablePaymentMethods && Object.values(availablePaymentMethods).some(Boolean));
+        this.updateWalletAvailability(region, fallback);
+      });
+      this.expressCheckoutElement.on("loaderror", () => this.handleElementLoadError(this.generation));
+      this.expressCheckoutElement.on("confirm", (event) => this.confirm(event, this.generation));
+    }
     this.expressCheckoutElement.mount(target);
+    this.expressElementMounted = true;
 
     const paymentTarget = this.element.querySelector("[data-payment-element]");
-    paymentTarget.replaceChildren();
-    this.paymentElement = this.checkout.createPaymentElement({ layout: { type: "accordion", defaultCollapsed: true } });
-    this.paymentElement.on("loaderror", () => this.handleElementLoadError(generation));
+    if (!this.paymentElement) {
+      paymentTarget.replaceChildren();
+      this.paymentElement = this.checkout.createPaymentElement({ layout: { type: "accordion" } });
+      this.paymentElement.on("ready", () => {
+        this.paymentElementReady = true;
+        this.element.dataset.paymentReady = "true";
+        this.updateWalletAvailability(region, fallback);
+        if (this.stage === "payment") this.setPayDisabled(false);
+      });
+      this.paymentElement.on("loaderror", () => this.handleElementLoadError(this.generation));
+    }
+    this.setPayDisabled(true);
     this.paymentElement.mount(paymentTarget);
+    this.paymentElementMounted = true;
+    this.elementsMounted = true;
   }
 
   handleElementLoadError(generation) {
     if (generation !== this.generation) return;
+    this.paymentElementReady = false;
+    delete this.element.dataset.paymentReady;
     this.setPayDisabled(true);
     this.setRetryVisible(true);
     this.setStatus("Secure payment couldn’t be loaded. Your seats remain held.", true);
@@ -180,11 +203,17 @@ export default class extends Controller {
     this.emit("failed", { kind: "element_load_error", error: "Secure payment couldn’t be loaded." });
   }
 
+  updateWalletAvailability(region, fallback) {
+    const ready = this.paymentElementReady && this.walletMethodsAvailable !== null;
+    region.hidden = !ready || !this.walletMethodsAvailable;
+    fallback.hidden = !ready || this.walletMethodsAvailable;
+  }
+
   stageChanged({ detail }) {
     const previousStage = this.stage;
     this.stage = detail?.stage;
     this.reservation = detail?.reservation || this.reservation;
-    if (this.stage !== "payment") {
+    if (this.stage !== "payment" && this.stage !== "redirecting") {
       this.unmountElements();
       if (previousStage === "payment" && this.activeRequestId) {
         const requestId = this.activeRequestId;
@@ -192,8 +221,7 @@ export default class extends Controller {
         this.generation += 1;
         this.emit("failed", { requestId, interrupted: true, error: "Checkout setup was interrupted." });
       }
-    }
-    else if (this.checkoutActions && !this.paymentElement) this.mountElements(this.generation);
+    } else if (this.stage === "payment" && this.checkoutActions) this.mountElements();
   }
 
   reset() {
@@ -201,6 +229,7 @@ export default class extends Controller {
     this.pollingId = null;
     this.setupPromise = null;
     this.unmountElements();
+    this.clearElements();
     this.checkout = null;
     this.checkoutActions = null;
     this.reservation = null;
@@ -326,8 +355,18 @@ export default class extends Controller {
   }
 
   unmountElements() {
-    this.paymentElement?.unmount?.();
-    this.expressCheckoutElement?.unmount?.();
+    if (this.paymentElementMounted) this.paymentElement?.unmount?.();
+    if (this.expressElementMounted) this.expressCheckoutElement?.unmount?.();
+    this.elementsMounted = false;
+    this.expressElementMounted = false;
+    this.paymentElementMounted = false;
+    this.paymentElementReady = false;
+    this.walletMethodsAvailable = null;
+    delete this.element.dataset.paymentReady;
+  }
+
+  clearElements() {
+    this.unmountElements();
     this.paymentElement = null;
     this.expressCheckoutElement = null;
   }

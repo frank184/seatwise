@@ -1,13 +1,13 @@
 import { Controller } from "@hotwired/stimulus";
 
 const SEAT_STYLES = {
-  open: "size-6 cursor-pointer touch-none select-none rounded-t-full border border-success bg-success/70 hover:border-primary hover:bg-primary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+  open: "relative isolate size-6 cursor-pointer touch-none select-none rounded-t-full border-0 bg-transparent p-0 before:absolute before:inset-[1.2px] before:-z-10 before:rounded-t-full before:border before:border-success before:bg-success/70 hover:before:border-primary hover:before:bg-primary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
   selected:
-    "flex size-6 cursor-pointer touch-none select-none items-center justify-center rounded-t-full border border-primary bg-primary text-[0.625rem] font-semibold tabular-nums text-primary-content ring-2 ring-primary/30",
+    "relative isolate flex size-6 cursor-pointer touch-none select-none items-center justify-center rounded-t-full border-0 bg-transparent p-0 text-[0.625rem] font-semibold tabular-nums text-primary-content before:absolute before:inset-[1.2px] before:-z-10 before:rounded-t-full before:border-2 before:border-primary before:bg-primary",
   unavailable:
-    "size-6 cursor-not-allowed rounded-t-full border-2 border-dashed border-base-content/40 bg-base-300",
+    "relative isolate size-6 cursor-not-allowed rounded-t-full border-0 bg-transparent p-0 before:absolute before:inset-[1.2px] before:-z-10 before:rounded-t-full before:border before:border-dashed before:border-base-content/40 before:bg-base-300",
   yours:
-    "flex size-6 cursor-default items-center justify-center rounded-t-full border-2 border-primary bg-primary text-[0.625rem] font-semibold tabular-nums text-primary-content ring-2 ring-primary/40",
+    "relative isolate flex size-6 cursor-default items-center justify-center rounded-t-full border-0 bg-transparent p-0 text-[0.625rem] font-semibold tabular-nums text-primary-content before:absolute before:inset-[1.2px] before:-z-10 before:rounded-t-full before:border-2 before:border-primary before:bg-primary",
 };
 
 export default class extends Controller {
@@ -76,11 +76,11 @@ export default class extends Controller {
 
     const rowHeader = document.createElement("th");
     rowHeader.scope = "row";
-    rowHeader.className = "whitespace-nowrap px-4 py-3";
+    rowHeader.className = "whitespace-nowrap px-4 py-2.5";
     rowHeader.append(label);
 
     const seats = document.createElement("div");
-    seats.className = "mx-auto flex w-max items-center justify-center gap-1.5";
+    seats.className = "mx-auto flex w-max items-center justify-center gap-1.25";
     const seatCell = document.createElement("td");
     seatCell.className = "text-center";
     const reservedSeats = new Set(row.reserved_seats);
