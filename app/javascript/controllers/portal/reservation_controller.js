@@ -309,15 +309,19 @@ export default class extends Controller {
         : count
           ? `${count} of 6 seats selected`
           : "Click or drag across up to 6 open seats.";
+    const selectedRange = this.selectedSeatRange();
     const reviewButton = this.element.querySelector("[data-selection-review]");
     const reservationStatus = this.element.querySelector("[data-selection-reservation-status]");
     const reservationComplete = held || confirmed;
     reviewButton.textContent = this.flow.step === "email" ? "Edit seats" : "Review seats";
     reviewButton.hidden = reservationComplete;
-    reviewButton.disabled = count === 0 || reservationComplete;
+    reviewButton.disabled = count === 0 || !selectedRange || reservationComplete;
     reservationStatus.hidden = !reservationComplete;
     reservationStatus.textContent = confirmed ? "Booking confirmed" : "Seats held";
-    this.element.querySelector("[data-selection-message]").textContent = "";
+    const selectionMessage = this.element.querySelector("[data-selection-message]");
+    selectionMessage.textContent = count > 0 && !selectedRange
+      ? "Choose up to 6 adjacent seats in the same row to continue."
+      : "";
     const summarySeats = reservationComplete ? reservation.seats : this.selectedSeatDetails();
     countText.textContent = countDescription;
     this.element.querySelector("[data-selection-accessible-summary]").textContent =
@@ -379,6 +383,18 @@ export default class extends Controller {
     });
   }
 
+  selectedSeatRange() {
+    if (this.selectedSeats.size < 1 || this.selectedSeats.size > 6) return null;
+    const seats = this.selectedSeatDetails().sort((left, right) => left.number - right.number);
+    if (seats.some((seat) => seat.rowId !== seats[0].rowId)) return null;
+    if (seats.some((seat, index) => index > 0 && seat.number !== seats[index - 1].number + 1)) return null;
+    return {
+      rowId: Number(seats[0].rowId),
+      seatStart: seats[0].number,
+      seatEnd: seats[seats.length - 1].number,
+    };
+  }
+
   formatSeatSummary(seats) {
     if (!seats.length) return "No seats selected";
     const rows = [...new Set(seats.map((seat) => String(seat.rowId)))];
@@ -414,7 +430,7 @@ export default class extends Controller {
       return;
     }
     if (
-      !this.selectedSeats.size ||
+      !this.selectedSeatRange() ||
       ["held", "confirmed"].includes(this.flow.reservation?.status)
     ) return;
     this.flow.step = "email";
@@ -459,7 +475,8 @@ export default class extends Controller {
     );
     return (
       targetStep &&
-      (targetStep <= furthestStep || (step === "email" && this.selectedSeats.size > 0)) &&
+      (step !== "email" || Boolean(this.selectedSeatRange())) &&
+      (targetStep <= furthestStep || (step === "email" && this.selectedSeatRange())) &&
       (step !== "payment" || this.flow.reservation?.status === "held") &&
       !["confirmed", "expired", "redirecting"].includes(this.flow.step)
     );
@@ -476,7 +493,12 @@ export default class extends Controller {
     const form = event.currentTarget;
     const email = form.querySelector("[name=email]").value.trim();
     const button = form.querySelector("[data-hold-submit]");
-    if (this.selectedSeats.size < 1 || this.selectedSeats.size > 6) return;
+    const selectedRange = this.selectedSeatRange();
+    if (!selectedRange) {
+      this.announce("Choose up to 6 adjacent seats in the same row to continue.");
+      this.updateSelectionSummary();
+      return;
+    }
 
     this.flow.email = email;
     this.flow.showTimeline = true;
@@ -502,6 +524,9 @@ export default class extends Controller {
         body: JSON.stringify({
           event_id: Number(this.element.dataset.eventId),
           quantity: this.selectedSeats.size,
+          row_id: selectedRange.rowId,
+          seat_start: selectedRange.seatStart,
+          seat_end: selectedRange.seatEnd,
           email,
         }),
       });

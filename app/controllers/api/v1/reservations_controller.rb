@@ -12,6 +12,7 @@ module Api
         quantity = params[:quantity]
         email = params[:email].to_s.strip.downcase
         idempotency_key = request.headers["Idempotency-Key"].to_s.strip
+        coordinates_provided = %i[row_id seat_start seat_end].any? { |key| params.key?(key) }
 
         return render_error("event_id must be a positive integer", :unprocessable_entity) unless
           event_id.is_a?(Integer) ? event_id.positive? : event_id.to_s.match?(/\A[1-9]\d*\z/)
@@ -19,11 +20,27 @@ module Api
           email.match?(/\A[^@\s]+@[^@\s]+\.[^@\s]+\z/)
         return render_error("quantity must be an integer from 1 to 6", :unprocessable_entity) unless
           quantity.is_a?(Integer) && quantity.between?(1, MAX_QUANTITY)
+        if coordinates_provided
+          coordinates = [params[:row_id], params[:seat_start], params[:seat_end]]
+          return render_error("row_id, seat_start, and seat_end must be positive integers", :unprocessable_entity) unless
+            coordinates.all? { |value| value.is_a?(Integer) && value.positive? }
+          return render_error("seat range must match quantity", :unprocessable_entity) unless
+            params[:seat_end] >= params[:seat_start] && params[:seat_end] - params[:seat_start] + 1 == quantity
+        end
         return render_error("Idempotency-Key is required", :bad_request) if idempotency_key.blank?
         return render_error("Idempotency-Key is too long", :bad_request) if idempotency_key.length > 255
 
         event = Event.find(event_id)
-        fingerprint = Digest::SHA256.hexdigest([event.id, quantity, email].join("\0"))
+        selected_row = if coordinates_provided
+          event.rows.find { |row| row.fetch("row_id").to_i == params[:row_id] }
+        end
+        if coordinates_provided && (!selected_row || params[:seat_end] > selected_row.fetch("seat_count", 0).to_i)
+          return render_error("The selected row or seats do not exist", :unprocessable_entity)
+        end
+
+        request_details = [event.id, quantity, email]
+        request_details.concat([params[:row_id], params[:seat_start], params[:seat_end]]) if coordinates_provided
+        fingerprint = Digest::SHA256.hexdigest(request_details.join("\0"))
         reservation = nil
         replay = false
         conflict = nil
@@ -43,8 +60,23 @@ module Api
               .where("hold_expires_at <= ?", now)
               .update_all(status: Reservation.statuses.fetch("expired"), updated_at: now)
 
-            row, first_seat = allocation_for(event, quantity)
-            if row
+            allocation = if coordinates_provided
+              blocked = event.reservations.active_for_inventory
+                .where(row_id: params[:row_id])
+                .flat_map { |active_reservation| active_reservation.seat_range.to_a }
+                .to_set
+              requested_seats = (params[:seat_start]..params[:seat_end]).to_a
+              if requested_seats.any? { |seat| blocked.include?(seat) }
+                conflict = "Those seats are no longer available"
+                nil
+              else
+                [selected_row, params[:seat_start]]
+              end
+            else
+              allocation_for(event, quantity)
+            end
+            if allocation
+              row, first_seat = allocation
               customer = Customer.find_or_create_by!(email: email)
               reservation = event.reservations.create!(
                 customer: customer,
@@ -55,7 +87,7 @@ module Api
                 idempotency_key: idempotency_key,
                 request_fingerprint: fingerprint
               )
-            else
+            elsif conflict.nil?
               conflict = "No adjacent seats are available"
             end
           end

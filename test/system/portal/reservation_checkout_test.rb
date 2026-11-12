@@ -377,6 +377,17 @@ module Portal
       assert_selector "button[data-payment-submit]:not([disabled])"
       assert_selector "[data-payment-element]"
       assert_text "No accelerated payment methods are available"
+      assert_equal(
+        {
+          "event_id" => @event.id,
+          "quantity" => 1,
+          "row_id" => 1,
+          "seat_start" => 4,
+          "seat_end" => 4,
+          "email" => "alex@example.com"
+        },
+        page.evaluate_script("window.__holdPayload")
+      )
       assert_text "Row A · seats 4"
       assert_text /4:5\d remaining/
       assert_selector "[data-held-seat='1:4']"
@@ -669,9 +680,10 @@ module Portal
         window.fetch = async (input, init = {}) => {
           const url = new URL(typeof input === "string" ? input : input.url, window.location.href);
           if (url.pathname === "/api/v1/reservations" && init.method === "POST") {
-            window.__holdPayload = JSON.parse(init.body);
-            return new Response(JSON.stringify({ id: 987, event_id: #{@event.id}, row_id: 1,
-              seat_start: 4, seat_end: 4, status: "held", expires_at: new Date(Date.now() + 300000).toISOString() }),
+            const payload = JSON.parse(init.body);
+            window.__holdPayload = payload;
+            return new Response(JSON.stringify({ id: 987, event_id: #{@event.id}, row_id: payload.row_id,
+              seat_start: payload.seat_start, seat_end: payload.seat_end, status: "held", expires_at: new Date(Date.now() + 300000).toISOString() }),
               { status: 201, headers: { "Content-Type": "application/json" } });
           }
           if (url.pathname === "/api/v1/organizations/development") {

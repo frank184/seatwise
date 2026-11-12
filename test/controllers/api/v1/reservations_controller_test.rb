@@ -152,7 +152,7 @@ module Api
         assert_equal 0, @event.reservations.where(idempotency_key: "reservation-full-3").count
       end
 
-      test "ignores client-supplied seat coordinates and allocates from the event layout" do
+      test "creates a hold for the exact client-selected row and seats" do
         post api_v1_reservations_path,
              params: {
                event_id: @event.id,
@@ -162,13 +162,47 @@ module Api
                seat_start: 5,
                seat_end: 6
              },
-             headers: { "Idempotency-Key" => "reservation-server-allocation-1" },
+             headers: { "Idempotency-Key" => "reservation-selected-seats-1" },
              as: :json
 
         assert_response :created
-        assert_equal 17, response.parsed_body.fetch("row_id")
-        assert_equal 1, response.parsed_body.fetch("seat_start")
-        assert_equal 2, response.parsed_body.fetch("seat_end")
+        assert_equal 29, response.parsed_body.fetch("row_id")
+        assert_equal 5, response.parsed_body.fetch("seat_start")
+        assert_equal 6, response.parsed_body.fetch("seat_end")
+      end
+
+      test "rejects a selected range when its quantity does not match" do
+        post api_v1_reservations_path,
+             params: { event_id: @event.id, quantity: 2, email: "buyer@example.com", row_id: 29, seat_start: 5, seat_end: 7 },
+             headers: { "Idempotency-Key" => "reservation-range-mismatch-1" },
+             as: :json
+
+        assert_response :unprocessable_entity
+      end
+
+      test "rejects selected seats that are already reserved" do
+        @event.reservations.create!(
+          customer: customers(:one), row_id: 29, seat_range: 5...7, status: :held, hold_expires_at: 5.minutes.from_now
+        )
+
+        post api_v1_reservations_path,
+             params: { event_id: @event.id, quantity: 2, email: "buyer@example.com", row_id: 29, seat_start: 5, seat_end: 6 },
+             headers: { "Idempotency-Key" => "reservation-selected-taken-1" },
+             as: :json
+
+        assert_response :conflict
+        assert_equal 0, @event.reservations.where(idempotency_key: "reservation-selected-taken-1").count
+      end
+
+      test "coordinates are part of the idempotency fingerprint" do
+        headers = { "Idempotency-Key" => "reservation-selected-replay-1" }
+        params = { event_id: @event.id, quantity: 2, email: "buyer@example.com", row_id: 29, seat_start: 5, seat_end: 6 }
+        post api_v1_reservations_path, params:, headers:, as: :json
+        assert_response :created
+
+        post api_v1_reservations_path, params: params.merge(seat_start: 6, seat_end: 7), headers:, as: :json
+
+        assert_response :conflict
       end
 
 
