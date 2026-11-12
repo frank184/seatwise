@@ -62,7 +62,7 @@ module Api
         end
 
         return render_error(conflict, :conflict) if conflict
-        schedule_expiration(reservation) if reservation.held?
+        schedule_expiration(reservation) if reservation.held? && !replay
 
         response.headers["Cache-Control"] = "no-store"
         render json: reservation_payload(reservation), status: replay ? :ok : :created

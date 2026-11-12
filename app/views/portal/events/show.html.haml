@@ -1,8 +1,8 @@
 - content_for :title, "Event details · Seatwise"
 .min-h-full{
   class: "bg-base-200/60",
-  "data-action": "pointerup@window->portal--reservation#endSeatDrag pointercancel@window->portal--reservation#endSeatDrag portal--reservation:confirmation->portal--alert#open portal--alert:confirmed->portal--reservation#handleAlertConfirmed",
-  "data-controller": "portal--reservation portal--alert",
+  "data-action": "portal--seat-map:selection-changed->portal--reservation#handleSeatMapSelectionChanged portal--reservation:confirmation->portal--alert#open portal--alert:confirmed->portal--reservation#handleAlertConfirmed portal--reservation:refresh-availability->portal--availability#refresh portal--availability:refreshing->portal--reservation#availabilityRefreshStarted portal--availability:updated->portal--reservation#applyAvailabilitySnapshot portal--availability:failed->portal--reservation#availabilityRefreshFailed portal--checkout:ready->portal--reservation#checkoutReady portal--checkout:failed->portal--reservation#checkoutFailed portal--checkout:redirecting->portal--reservation#checkoutRedirecting portal--checkout:confirmed->portal--reservation#checkoutConfirmed portal--checkout:expired->portal--reservation#checkoutExpired",
+  "data-controller": "portal--reservation portal--alert portal--availability",
   "data-event-id": "#{@event_id}",
   "data-event-show": ""
 }
@@ -61,7 +61,15 @@
               %p.text-sm.font-semibold.text-primary The room
               %h2.mt-1.scroll-mt-24.text-2xl.font-bold#seating-title{tabindex: "-1"} Seating overview
             %span.text-sm{class: "text-base-content/55"} Seat map
-          %div{"data-detail-rows": ""}
+          %div{
+            "data-detail-rows": "",
+            "data-seat-map": "",
+            "data-controller": "portal--seat-map",
+            "data-action": "pointerup@window->portal--seat-map#endDrag pointercancel@window->portal--seat-map#endDrag",
+            "data-portal--seat-map-selected-seats-value": "[]",
+            "data-portal--seat-map-reservation-value": "{}",
+            "data-portal--seat-map-busy-value": "true"
+          }
             = data_table headers: %w[Row Seats], rows: [], size: :sm, wrapper_class: "bg-base-100", table_class: "min-w-max w-full [&_thead]:sr-only"
           .mt-4.flex.flex-wrap.items-center.gap-2.text-sm{class: "text-base-content/75"}
             %span.size-3.rounded-t-full.border.border-success{class: "bg-success/70"}

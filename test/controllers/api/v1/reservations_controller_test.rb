@@ -57,6 +57,50 @@ module Api
         assert_equal 1, @event.reservations.where(idempotency_key: headers.fetch("Idempotency-Key")).count
       end
 
+      test "schedules expiry once at the hold deadline and not on idempotent replay" do
+        headers = { "Idempotency-Key" => "reservation-expiry-schedule-1" }
+        params = { event_id: @event.id, quantity: 2, email: "buyer@example.com" }
+
+        assert_enqueued_jobs 1, only: ExpireReservationJob do
+          post api_v1_reservations_path, params:, headers:, as: :json
+        end
+
+        assert_response :created
+        reservation_id = response.parsed_body.fetch("id")
+        reservation = @event.reservations.find(reservation_id)
+        assert_enqueued_with(
+          job: ExpireReservationJob,
+          args: [reservation.id],
+          at: reservation.hold_expires_at
+        )
+        assert_no_enqueued_jobs(only: ExpireReservationJob) do
+          post api_v1_reservations_path, params:, headers:, as: :json
+        end
+
+        assert_response :ok
+        assert_equal reservation_id, response.parsed_body.fetch("id")
+      end
+
+      test "reuses seats from an expired hold during a new allocation" do
+        old_reservation = @event.reservations.create!(
+          customer: customers(:one),
+          row_id: 17,
+          seat_range: 1...4,
+          status: :held,
+          hold_expires_at: 1.second.ago
+        )
+
+        post api_v1_reservations_path,
+             params: { event_id: @event.id, quantity: 3, email: "buyer@example.com" },
+             headers: { "Idempotency-Key" => "reservation-reuse-expired-seats-1" },
+             as: :json
+
+        assert_response :created
+        assert_equal 1, response.parsed_body.fetch("seat_start")
+        assert_equal 3, response.parsed_body.fetch("seat_end")
+        assert old_reservation.reload.expired?
+      end
+
       test "rejects reuse of an idempotency key with different request details" do
         headers = { "Idempotency-Key" => "reservation-conflict-1" }
         post api_v1_reservations_path,

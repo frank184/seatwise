@@ -174,6 +174,24 @@ module Api
         assert_equal 127, body.dig("data", "available_count")
       end
 
+      test "show omits a held reservation at its exact expiry time without requiring a status update" do
+        event = events(:one)
+        reservation = Reservation.create!(
+          event: event,
+          customer: customers(:one),
+          row_id: 1,
+          seat_range: 2...3,
+          status: :held,
+          hold_expires_at: Time.current
+        )
+
+        get api_v1_event_path(event)
+
+        assert_response :success
+        assert_equal [1], response.parsed_body.dig("data", "rows", 0, "reserved_seats")
+        assert reservation.reload.held?
+      end
+
       test "show returns not found for an unknown event" do
         get api_v1_event_path(id: "missing")
 

@@ -1,6 +1,8 @@
 require "test_helper"
 
 class ReservationTest < ActiveSupport::TestCase
+  include ActionCable::TestHelper
+
   test "accepts an inclusive Ruby range of one to six seats" do
     reservation = reservations(:one).dup
     reservation.seat_range = 1..6
@@ -156,6 +158,36 @@ class ReservationTest < ActiveSupport::TestCase
     assert reservation.save!(validate: false)
   end
 
+  test "broadcasts only a non-sensitive inventory invalidation after reservation creation" do
+    reservation = reservations(:one).dup
+    reservation.seat_range = 4...5
+    stream = "event_availability:#{reservation.event_id}"
+
+    assert_broadcast_on(stream, { type: "availability_changed" }) do
+      reservation.save!
+    end
+  end
+
+  test "broadcasts inventory invalidations for status changes only" do
+    reservation = reservations(:one)
+    stream = "event_availability:#{reservation.event_id}"
+    other_stream = "event_availability:#{events(:two).id}"
+
+    %i[cancelled confirmed expired].each do |status|
+      assert_broadcast_on(stream, { type: "availability_changed" }) do
+        reservation.update!(status: status)
+      end
+    end
+
+    assert_no_broadcasts(stream) do
+      reservation.update!(hold_expires_at: 2.hours.from_now)
+    end
+
+    assert_no_broadcasts(other_stream) do
+      reservation.update!(status: :held)
+    end
+  end
+
   test "database allows the same range for a different event" do
     reservations(:two).update!(status: :cancelled)
 
@@ -164,5 +196,50 @@ class ReservationTest < ActiveSupport::TestCase
     reservation.seat_range = 1...2
 
     assert reservation.save!(validate: false)
+  end
+end
+
+class ReservationCommitBroadcastTest < ActiveSupport::TestCase
+  self.use_transactional_tests = false
+
+  include ActionCable::TestHelper
+
+  setup do
+    @reservation = reservations(:one)
+    @original_status = @reservation.status
+    @original_updated_at = @reservation.updated_at
+  end
+
+  teardown do
+    Reservation.where(id: @reservation.id).update_all(
+      status: @original_status,
+      updated_at: @original_updated_at
+    )
+  end
+
+  test "broadcasts a status invalidation after the enclosing transaction commits" do
+    stream = "event_availability:#{@reservation.event_id}"
+
+    assert_broadcast_on(stream, { type: "availability_changed" }) do
+      Reservation.transaction do
+        assert_no_broadcasts(stream) do
+          @reservation.update!(status: :cancelled)
+          assert_predicate @reservation, :cancelled?
+        end
+      end
+    end
+  end
+
+  test "does not broadcast a rolled back status change" do
+    stream = "event_availability:#{@reservation.event_id}"
+
+    assert_no_broadcasts(stream) do
+      Reservation.transaction do
+        @reservation.update!(status: :cancelled)
+        raise ActiveRecord::Rollback
+      end
+    end
+
+    assert @reservation.reload.held?
   end
 end

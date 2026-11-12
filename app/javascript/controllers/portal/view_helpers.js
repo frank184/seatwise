@@ -4,7 +4,12 @@ export async function fetchJson(url, options = {}) {
     ...options,
   });
   const body = await response.json();
-  if (!response.ok) throw new Error(body.error?.message || `Request failed (${response.status})`);
+  if (!response.ok) {
+    const error = new Error(body.error?.message || `Request failed (${response.status})`);
+    error.status = response.status;
+    error.code = body.error?.code;
+    throw error;
+  }
   return body;
 }
 

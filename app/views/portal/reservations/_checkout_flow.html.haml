@@ -1,4 +1,4 @@
-#checkout-panel.mt-6.scroll-mt-20.hidden{hidden: "", "aria-labelledby": "checkout-title"}
+#checkout-panel.mt-6.scroll-mt-20.hidden{hidden: "", "aria-labelledby": "checkout-title", data: { controller: "portal--checkout", action: "portal--reservation:checkout-setup->portal--checkout#setup portal--reservation:checkout-stage->portal--checkout#stageChanged portal--reservation:checkout-reset->portal--checkout#reset portal--reservation:checkout-return->portal--checkout#restore portal--reservation:checkout-poll->portal--checkout#poll" }}
   = card card_class: "border border-base-300 bg-base-100", body_class: "gap-6" do
     %ul.steps.steps-horizontal.w-full.text-xs.sm:text-sm{"aria-label": "Reservation progress"}
       %li.step.step-primary{"data-booking-step": "1", "data-content": "1"}
@@ -77,9 +77,9 @@
               %p.text-sm{class: "text-base-content/60", data: { payment_loading: true }} Loading payment options…
               %div{data: { payment_element: true }, aria: { label: "Payment details" }}
               %p.alert.alert-error.alert-soft.py-3.text-sm{role: "alert", data: { payment_error: true }, hidden: ""}
-              = button "Retry payment setup", type: "button", variant: :outline, data: { action: "click->portal--reservation#retryCheckout", payment_retry: true }, hidden: true
+              = button "Retry payment setup", type: "button", variant: :outline, data: { action: "click->portal--checkout#retrySetup", payment_retry: true }, hidden: true
               %p.text-sm.text-info{"aria-live": "polite", data: { payment_status: true }} Loading payment options…
-              = button "Pay securely", type: "button", variant: :primary, size: :lg, class: "w-full", data: { action: "click->portal--reservation#completePayment", payment_submit: true }, disabled: true
+              = button "Pay securely", type: "button", variant: :primary, size: :lg, class: "w-full", data: { action: "click->portal--checkout#confirmPayment", payment_submit: true }, disabled: true
     %section.space-y-5{hidden: "", "data-flow-stage": "redirecting", "aria-labelledby": "redirecting-title", "aria-live": "polite"}
       .mx-auto.w-full.max-w-xl.space-y-5
         .flex.items-center.justify-between.gap-3
@@ -90,7 +90,7 @@
           %h2.reservation-stage-heading.mt-5.w-fit.max-w-full.text-2xl.font-bold#redirecting-title{tabindex: "-1", "data-stage-heading": "", data: { payment_title: true }} Opening secure checkout…
           %p.mt-2.text-sm{class: "text-base-content/65", data: { payment_copy: true }} Waiting for payment confirmation. Your seats remain held.
           %p.mt-3.text-sm{class: "text-base-content/65", aria: { live: "polite" }, data: { checkout_return_status: true }} We’re checking your payment with Stripe.
-          = button "Check payment status", variant: :outline, class: "mt-4", data: { action: "click->portal--reservation#checkPaymentStatus", check_payment_status: true }, hidden: true
+          = button "Check payment status", variant: :outline, class: "mt-4", data: { action: "click->portal--checkout#checkStatus", check_payment_status: true }, hidden: true
           %div.mt-6.text-left{class: "rounded-box bg-base-200/60 p-4"}
             %p.text-sm.font-semibold{"data-seat-summary": ""} No seats selected
             %p.mt-1.text-xs{class: "text-base-content/60"} Hold time remaining

@@ -1,16 +1,6 @@
 import { Controller } from "@hotwired/stimulus";
 import { cloneTemplate, fetchJson, formatDate } from "controllers/portal/view_helpers";
 
-const SEAT_STYLES = {
-  open: "size-6 cursor-pointer touch-none select-none rounded-t-full border border-success bg-success/70 hover:border-primary hover:bg-primary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-  selected:
-    "flex size-6 cursor-pointer touch-none select-none items-center justify-center rounded-t-full border border-primary bg-primary text-[0.625rem] font-semibold tabular-nums text-primary-content ring-2 ring-primary/30",
-  unavailable:
-    "size-6 cursor-not-allowed rounded-t-full border-2 border-dashed border-base-content/40 bg-base-300",
-  yours:
-    "flex size-6 cursor-default items-center justify-center rounded-t-full border-2 border-primary bg-primary text-[0.625rem] font-semibold tabular-nums text-primary-content ring-2 ring-primary/40",
-};
-
 const STEP_NUMBERS = { seats: 1, email: 2, payment: 3, redirecting: 3, confirmed: 4, expired: 2 };
 
 export default class extends Controller {
@@ -18,21 +8,22 @@ export default class extends Controller {
     this.selectedSeats = new Set();
     this.flow = this.readFlow();
     this.selectedSeats = new Set(this.flow.selectedSeats);
-    this.draggingSeats = false;
-    this.ignoreNextPointerClick = false;
+    if (this.flow.reservation?.status === "held") {
+      this.element.dataset.availabilityDeadline = String(this.flow.reservation.expiresAt);
+    }
+    this.availabilityBusy = false;
     this.paymentConfiguration = null;
-    this.stripe = null;
-    this.checkout = null;
-    this.checkoutActions = null;
-    this.paymentElement = null;
-    this.expressCheckoutElement = null;
-    this.loadEvent();
+    this.checkoutSetupWaiters = new Map();
+    this.checkoutLoadPromise = null;
+    this.availabilityRefreshWaiters = new Map();
+    this.reconciliationRequired = false;
+    this.beginEventLoad();
   }
 
   disconnect() {
     clearInterval(this.holdTimer);
-    this.paymentElement?.unmount?.();
-    this.expressCheckoutElement?.unmount?.();
+    this.resolveCheckoutSetupWaiters(false);
+    this.dispatchCheckout("checkout-reset");
   }
 
   get storageKey() {
@@ -69,7 +60,7 @@ export default class extends Controller {
     }
   }
 
-  async loadEvent() {
+  beginEventLoad() {
     const loading = this.element.querySelector("#event-loading");
     const content = this.element.querySelector("#event-content");
     const error = this.element.querySelector("#event-error");
@@ -78,57 +69,180 @@ export default class extends Controller {
     content.hidden = true;
     error.hidden = true;
     error.replaceChildren();
+  }
 
-    try {
-      const { data: event } = await fetchJson(
-        `/api/v1/events/${encodeURIComponent(this.element.dataset.eventId)}`,
-        { cache: "no-store" },
-      );
-      this.event = event;
-      this.renderEventDetails(content, event);
-      this.renderReservationEventDetails(event);
-      this.renderSeatMap(content, event);
-      this.renderFlow();
-      this.updateSelectionSummary();
-      this.startHoldClock();
-      const checkoutSessionId = new URLSearchParams(window.location.search).get("session_id");
-      if (checkoutSessionId) {
-        this.restoreCheckoutReturn(checkoutSessionId);
-      } else if (this.flow.step === "payment" && this.flow.reservation?.status === "held") {
-        this.loadCheckout();
-      } else if (this.flow.step === "redirecting" && this.flow.reservation?.status === "held") {
-        const sessionId = this.flow.paymentSession?.session_id;
-        if (sessionId) this.pollCheckoutStatus(sessionId);
-      }
-      content.hidden = false;
-      document.title = `${event.name} · Seatwise`;
-    } catch (failure) {
-      error.append(
-        cloneTemplate(
-          this.element,
-          failure.message.includes("404") ? "#event-not-found-template" : "#event-error-template",
-        ),
-      );
-      error.hidden = false;
-    } finally {
-      loading.hidden = true;
-      loading.classList.add("hidden");
+  applyAvailabilitySnapshot({ detail }) {
+    const { event, requestIds = [] } = detail;
+    const content = this.element.querySelector("#event-content");
+    const loading = this.element.querySelector("#event-loading");
+    const error = this.element.querySelector("#event-error");
+    this.event = event;
+    this.reconciliationRequired = false;
+
+    if (
+      this.flow.reservation?.status === "held" &&
+      this.flow.reservation.expiresAt <= Date.now()
+    ) {
+      this.expiryPending = true;
+    }
+
+    if (this.expiryPending && this.flow.reservation?.status === "held") {
+      this.flow.reservation.status = "expired";
+      this.flow.step = "expired";
+      this.flow.payment = null;
+      this.flow.paymentSession = null;
+      this.selectedSeats.clear();
+      this.saveFlow();
+      clearInterval(this.holdTimer);
+      this.expiryPending = false;
+      delete this.element.dataset.availabilityDeadline;
+    }
+
+    const unavailableSeats = new Set(
+      event.rows.flatMap((row) =>
+        row.reserved_seats.map((number) => this.seatKey(row.row_id, number)),
+      ),
+    );
+    const removedSelections = [...this.selectedSeats].filter((seat) => unavailableSeats.has(seat));
+    removedSelections.forEach((seat) => this.selectedSeats.delete(seat));
+    if (removedSelections.length) {
+      if (this.flow.request?.status === "failed") this.flow.request.idempotencyKey = null;
+      this.saveFlow();
+      this.announce("Some selected seats are no longer available and were removed from your selection.");
+    }
+
+    this.renderEventDetails(content, event);
+    this.renderReservationEventDetails(event);
+    this.renderFlow();
+    this.updateSelectionSummary();
+    this.setAvailabilityPending(false);
+    content.hidden = false;
+    loading.hidden = true;
+    loading.classList.add("hidden");
+    error.hidden = true;
+    error.replaceChildren();
+    document.title = `${event.name} · Seatwise`;
+    this.startHoldClock();
+
+    requestIds.forEach((requestId) => this.resolveAvailabilityRefresh(requestId, true));
+    if (this.initialSnapshotApplied) return;
+    this.initialSnapshotApplied = true;
+
+    const checkoutSessionId = new URLSearchParams(window.location.search).get("session_id");
+    if (checkoutSessionId) {
+      this.restoreCheckoutReturn(checkoutSessionId);
+    } else if (
+      !this.expiryPending &&
+      this.flow.step === "payment" &&
+      this.flow.reservation?.status === "held"
+    ) {
+      this.loadCheckout();
+    } else if (
+      !this.expiryPending &&
+      this.flow.step === "redirecting" &&
+      this.flow.reservation?.status === "held"
+    ) {
+      const sessionId = this.flow.paymentSession?.session_id;
+      if (sessionId) this.pollCheckoutStatus(sessionId);
     }
   }
 
-  async refreshEventAvailability() {
-    try {
-      const { data: event } = await fetchJson(
-        `/api/v1/events/${encodeURIComponent(this.element.dataset.eventId)}`,
-        { cache: "no-store" },
-      );
-      this.event = event;
-      this.renderSeatMap(this.element.querySelector("#event-content"), event);
-      this.renderEventDetails(this.element.querySelector("#event-content"), event);
-      this.updateAvailabilityCount();
-    } catch (_error) {
-      // Keep the current seat map visible if refreshing availability fails.
+  availabilityRefreshFailed({ detail }) {
+    const { error: failure, requestIds = [] } = detail;
+    requestIds.forEach((requestId) => this.resolveAvailabilityRefresh(requestId, false));
+    const error = this.element.querySelector("#event-error");
+    const loading = this.element.querySelector("#event-loading");
+    error.replaceChildren();
+    error.append(
+      cloneTemplate(
+        this.element,
+        failure.status === 404 ? "#event-not-found-template" : "#event-error-template",
+      ),
+    );
+    error.hidden = false;
+    loading.hidden = true;
+    loading.classList.add("hidden");
+    if (!this.expiryPending && !this.reconciliationRequired) {
+      this.setAvailabilityPending(false);
     }
+  }
+
+  availabilityRefreshStarted() {
+    this.setAvailabilityPending(true);
+  }
+
+  setAvailabilityPending(pending) {
+    this.availabilityBusy = pending;
+    this.syncSeatMapState();
+  }
+
+  syncSeatMapState() {
+    const mapElement = this.element.querySelector("[data-seat-map]");
+    if (!mapElement) return;
+    const seatMap = this.application.getControllerForElementAndIdentifier(
+      mapElement,
+      "portal--seat-map",
+    );
+    seatMap?.updateState({
+      event: this.event,
+      selectedSeats: [...this.selectedSeats],
+      reservation: this.flow.reservation,
+      busy: this.availabilityBusy,
+    });
+  }
+
+  handleSeatMapSelectionChanged({ detail }) {
+    if (
+      !this.event ||
+      this.availabilityBusy ||
+      ["held", "confirmed"].includes(this.flow.reservation?.status)
+    ) {
+      this.syncSeatMapState();
+      return;
+    }
+
+    const requestedSeats = new Set(detail.selectedSeats);
+    if (requestedSeats.size > 6) {
+      this.announce("You can select up to 6 seats.");
+      this.syncSeatMapState();
+      return;
+    }
+
+    const unavailableSeats = new Set(
+      this.event.rows.flatMap((row) =>
+        row.reserved_seats.map((number) => this.seatKey(row.row_id, number)),
+      ),
+    );
+    if ([...requestedSeats].some((seat) => unavailableSeats.has(seat))) {
+      this.syncSeatMapState();
+      return;
+    }
+
+    const changed =
+      requestedSeats.size !== this.selectedSeats.size ||
+      [...requestedSeats].some((seat) => !this.selectedSeats.has(seat));
+    if (!changed) return;
+
+    this.selectedSeats = requestedSeats;
+    if (this.flow.request?.status === "failed") this.flow.request.idempotencyKey = null;
+    this.saveFlow();
+    this.updateSelectionSummary();
+    this.renderFlow();
+    this.syncSeatMapState();
+  }
+
+  requestAvailabilityRefresh(detail = {}) {
+    const requestId = crypto.randomUUID();
+    const promise = new Promise((resolve) => this.availabilityRefreshWaiters.set(requestId, resolve));
+    this.dispatch("refresh-availability", { detail: { ...detail, requestId } });
+    return promise;
+  }
+
+  resolveAvailabilityRefresh(requestId, succeeded) {
+    const resolve = this.availabilityRefreshWaiters.get(requestId);
+    if (!resolve) return;
+    this.availabilityRefreshWaiters.delete(requestId);
+    resolve(succeeded);
   }
 
   clearHoldError() {
@@ -178,136 +292,8 @@ export default class extends Controller {
     });
   }
 
-  renderSeatMap(content, event) {
-    const tableBody = content.querySelector("[data-detail-rows] tbody");
-    const rows = [...event.rows].sort(
-      (left, right) => left.allocation_order - right.allocation_order,
-    );
-    tableBody.replaceChildren(...rows.map((row) => this.renderRow(row)));
-  }
-
-  renderRow(row) {
-    const tableRow = document.createElement("tr");
-    const label = document.createElement("span");
-    label.className = "badge badge-neutral badge-sm whitespace-nowrap px-3";
-    label.textContent = `Row ${row.label}`;
-
-    const rowHeader = document.createElement("th");
-    rowHeader.scope = "row";
-    rowHeader.className = "whitespace-nowrap px-4 py-3";
-    rowHeader.append(label);
-
-    const seats = document.createElement("div");
-    seats.className = "mx-auto flex w-max items-center justify-center gap-1.5";
-    const seatCell = document.createElement("td");
-    seatCell.className = "text-center";
-    const reservedSeats = new Set(row.reserved_seats);
-
-    for (let number = 1; number <= row.seat_count; number += 1) {
-      seats.append(this.renderSeat(row, number, reservedSeats.has(number)));
-    }
-
-    seatCell.append(seats);
-    tableRow.append(rowHeader, seatCell);
-    return tableRow;
-  }
-
-  renderSeat(row, number, unavailable) {
-    const seat = document.createElement("button");
-    const key = this.seatKey(row.row_id, number);
-    const reservationSeat = this.reservationSeat(row.row_id, number);
-    const yours = reservationSeat && ["held", "confirmed"].includes(this.flow.reservation.status);
-    const selected = !unavailable && !yours && this.selectedSeats.has(key);
-    const state = yours ? "yours" : selected ? "selected" : unavailable ? "unavailable" : "open";
-
-    seat.type = "button";
-    seat.className = SEAT_STYLES[state];
-    seat.dataset.seat = number;
-    seat.dataset.row = row.row_id;
-    seat.dataset.rowLabel = row.label;
-    if (yours) seat.dataset.heldSeat = `${row.row_id}:${number}`;
-    seat.dataset.action =
-      "pointerdown->portal--reservation#startSeatDrag pointerenter->portal--reservation#dragAcrossSeat click->portal--reservation#toggleSeat";
-    const reservationActive = ["held", "confirmed"].includes(this.flow.reservation?.status);
-    seat.disabled = unavailable || Boolean(yours) || reservationActive;
-    seat.setAttribute("aria-pressed", String(selected || Boolean(yours)));
-    seat.setAttribute(
-      "aria-label",
-      this.seatLabel(row.label, number, { unavailable, selected, yours }),
-    );
-    if (selected || yours) seat.textContent = String(number);
-    seat.title = this.seatLabel(row.label, number, { unavailable, selected, yours });
-    return seat;
-  }
-
   seatKey(rowId, number) {
     return `${rowId}:${number}`;
-  }
-
-  reservationSeat(rowId, number) {
-    return this.flow.reservation?.seats.find(
-      (seat) => String(seat.rowId) === String(rowId) && seat.number === number,
-    );
-  }
-
-  seatLabel(rowLabel, number, { unavailable, selected, yours }) {
-    const state = yours
-      ? `your seat, ${this.flow.reservation.status}`
-      : selected
-        ? "selected"
-        : unavailable
-          ? "held or reserved"
-          : "open";
-    return `Row ${rowLabel}, seat ${number}, ${state}`;
-  }
-
-  startSeatDrag(event) {
-    if (event.button !== 0 || this.flow.reservation) return;
-    event.preventDefault();
-    this.draggingSeats = true;
-    this.dragSelectSeats = !this.selectedSeats.has(this.seatKeyFrom(event.currentTarget));
-    this.ignoreNextPointerClick = true;
-    this.setSeatSelected(event.currentTarget, this.dragSelectSeats);
-  }
-
-  dragAcrossSeat({ currentTarget }) {
-    if (this.draggingSeats) this.setSeatSelected(currentTarget, this.dragSelectSeats);
-  }
-
-  endSeatDrag() {
-    this.draggingSeats = false;
-  }
-
-  toggleSeat(event) {
-    if (this.flow.reservation) return;
-    if (event.detail > 0 && this.ignoreNextPointerClick) {
-      this.ignoreNextPointerClick = false;
-      return;
-    }
-    const seat = event.currentTarget;
-    this.setSeatSelected(seat, !this.selectedSeats.has(this.seatKeyFrom(seat)));
-  }
-
-  seatKeyFrom(seat) {
-    return this.seatKey(seat.dataset.row, Number(seat.dataset.seat));
-  }
-
-  setSeatSelected(seat, selected) {
-    const key = this.seatKeyFrom(seat);
-    if (selected === this.selectedSeats.has(key)) return;
-    if (selected && this.selectedSeats.size >= 6) {
-      this.announce("You can select up to 6 seats.");
-      return;
-    }
-
-    if (selected) this.selectedSeats.add(key);
-    else this.selectedSeats.delete(key);
-    if (this.flow.request?.status === "failed") this.flow.request.idempotencyKey = null;
-    this.saveFlow();
-    const row = this.event.rows.find((item) => String(item.row_id) === String(seat.dataset.row));
-    seat.replaceWith(this.renderSeat(row, Number(seat.dataset.seat), false));
-    this.updateSelectionSummary();
-    this.renderFlow();
   }
 
   updateSelectionSummary() {
@@ -328,7 +314,7 @@ export default class extends Controller {
     const reservationComplete = held || confirmed;
     reviewButton.textContent = this.flow.step === "email" ? "Edit seats" : "Review seats";
     reviewButton.hidden = reservationComplete;
-    reviewButton.disabled = count === 0 || Boolean(reservation);
+    reviewButton.disabled = count === 0 || reservationComplete;
     reservationStatus.hidden = !reservationComplete;
     reservationStatus.textContent = confirmed ? "Booking confirmed" : "Seats held";
     this.element.querySelector("[data-selection-message]").textContent = "";
@@ -427,7 +413,10 @@ export default class extends Controller {
       this.backToSeats();
       return;
     }
-    if (!this.selectedSeats.size || this.flow.reservation) return;
+    if (
+      !this.selectedSeats.size ||
+      ["held", "confirmed"].includes(this.flow.reservation?.status)
+    ) return;
     this.flow.step = "email";
     this.saveFlow();
     this.renderFlow();
@@ -477,7 +466,8 @@ export default class extends Controller {
   }
 
   retry() {
-    this.loadEvent();
+    if (!this.event) this.beginEventLoad();
+    this.requestAvailabilityRefresh();
   }
 
   async placeHold(event) {
@@ -535,12 +525,13 @@ export default class extends Controller {
           number: firstSeat + index,
         })),
       };
+      this.element.dataset.availabilityDeadline = String(this.flow.reservation.expiresAt);
       this.flow.request.status = "succeeded";
       this.flow.request.responseStatus = 201;
       this.flow.step = "payment";
       this.selectedSeats.clear();
       this.saveFlow();
-      this.renderSeatMap(this.element.querySelector("#event-content"), this.event);
+      this.syncSeatMapState();
       this.renderFlow();
       this.startHoldClock();
       await this.loadCheckout();
@@ -551,211 +542,104 @@ export default class extends Controller {
       const error = this.element.querySelector("[data-hold-error]");
       error.textContent = failure.message || "We couldn’t hold those seats. Please try again.";
       error.hidden = false;
-      if (failure.message?.includes("available")) await this.refreshEventAvailability();
+      if (failure.status === 409) this.requestAvailabilityRefresh();
     } finally {
       button.disabled = false;
     }
   }
 
   async loadCheckout() {
-    const status = this.element.querySelector("[data-payment-status]");
-    const loading = this.element.querySelector("[data-payment-loading]");
-    const payButton = this.element.querySelector("[data-payment-submit]");
-    const error = this.element.querySelector("[data-payment-error]");
-    const retryButton = this.element.querySelector("[data-payment-retry]");
-    if (!this.flow.reservation || this.flow.reservation.status !== "held") return;
+    if (!this.flow.reservation || this.flow.reservation.status !== "held") return false;
+    if (this.checkoutLoadPromise) return this.checkoutLoadPromise;
 
-    this.paymentElement?.unmount?.();
-    this.expressCheckoutElement?.unmount?.();
-    if (retryButton) retryButton.hidden = true;
-    this.checkout = null;
-    this.checkoutActions = null;
-    status.textContent = "Loading payment options…";
-    status.hidden = false;
-    status.classList.remove("text-error");
-    loading.hidden = false;
-    payButton.disabled = true;
-    error.hidden = true;
-
-    try {
-      const organizationResponse = await fetchJson("/api/v1/organizations/development");
-      const provider = organizationResponse.data?.payment_provider;
-      this.paymentConfiguration = provider;
-      if (!provider?.enabled || provider.provider_key !== "stripe" || !provider.publishable_key) {
-        throw new Error(
-          "Online payment is temporarily unavailable. Your seats remain held while you try again.",
-        );
-      }
-      if (
-        this.flow.reservation.status !== "held" ||
-        this.flow.reservation.expiresAt <= Date.now()
-      ) {
-        this.updateCountdown();
-        return;
-      }
-
-      await this.waitForStripe();
-      this.stripe = window.Stripe(provider.publishable_key);
-      if (!this.stripe)
-        throw new Error("Online payment is temporarily unavailable. Please try again shortly.");
-
-      const sessionResponse = await fetchJson(
-        `/api/v1/reservations/${encodeURIComponent(this.flow.reservation.id)}/checkout/session`,
-        { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" },
-      );
-      const session = sessionResponse.data || sessionResponse;
-      if (!session.client_secret)
-        throw new Error("We couldn’t start secure checkout. Your seats remain held.");
-      if (
-        this.flow.reservation.status !== "held" ||
-        this.flow.reservation.expiresAt <= Date.now()
-      ) {
-        this.updateCountdown();
-        return;
-      }
-      this.flow.paymentSession = {
-        session_id: session.session_id,
-        amount: session.amount,
-        currency: session.currency,
-        status: session.status,
-      };
-      this.renderPaymentTotal(session.amount, session.currency);
-      this.saveFlow();
-
-      this.checkout = this.stripe.initCheckoutElementsSdk({
-        clientSecret: session.client_secret,
-        elementsOptions: {
-          appearance: { theme: "stripe", inputs: "condensed", labels: "auto" },
-        },
+    const requestId = crypto.randomUUID();
+    this.checkoutLoadPromise = new Promise((resolve) => {
+      this.checkoutSetupWaiters.set(requestId, resolve);
+      this.dispatchCheckout("checkout-setup", {
+        requestId,
+        reservation: this.flow.reservation,
+        email: this.flow.reservation.email || this.flow.email,
+        paymentSession: this.flow.paymentSession,
       });
-      let actionsTimeout;
-      const actionsResult = await Promise.race([
-        this.checkout.loadActions(),
-        new Promise((_, reject) => {
-          actionsTimeout = window.setTimeout(
-            () => reject(new Error("Secure payment is taking too long to load. Please try again.")),
-            15_000,
-          );
-        }),
-      ]).finally(() => window.clearTimeout(actionsTimeout));
-      if (actionsResult.type !== "success") {
-        throw new Error("Secure payment couldn’t be loaded. Your seats remain held.");
-      }
-      this.checkoutActions = actionsResult.actions;
-      this.mountExpressCheckout();
-      this.mountPaymentElement();
-      this.paymentConfiguration = { ...provider, enabled: true };
-      status.textContent = "Enter your payment details to finish booking.";
-      payButton.disabled = false;
-    } catch (failure) {
-      this.paymentConfiguration = { ...this.paymentConfiguration, enabled: false };
-      this.showPaymentError(
-        failure.message || "Online payment is temporarily unavailable. Your seats remain held.",
-      );
-      status.textContent = "Payment setup didn’t finish. Your seats remain held.";
-      if (retryButton) {
-        retryButton.hidden = false;
-        retryButton.disabled = false;
-      }
-      status.classList.add("text-error");
-    } finally {
-      loading.hidden = true;
+    }).finally(() => {
+      this.checkoutSetupWaiters.delete(requestId);
+      this.checkoutLoadPromise = null;
+    });
+    return this.checkoutLoadPromise;
+  }
+
+  dispatchCheckout(name, detail = {}) {
+    const panel = this.element.querySelector("#checkout-panel");
+    panel?.dispatchEvent(new CustomEvent("portal--reservation:" + name, { bubbles: true, detail }));
+  }
+
+  resolveCheckoutSetupWaiters(value) {
+    this.checkoutSetupWaiters.forEach((resolve) => resolve(value));
+    this.checkoutSetupWaiters.clear();
+    this.checkoutLoadPromise = null;
+  }
+
+  checkoutReady({ detail }) {
+    if (detail.requestId && this.checkoutSetupWaiters.has(detail.requestId)) {
+      this.checkoutSetupWaiters.get(detail.requestId)(true);
+    }
+    this.paymentConfiguration = detail.provider || { enabled: true };
+    if (detail.paymentSession) this.flow.paymentSession = detail.paymentSession;
+    this.saveFlow();
+    this.renderFlow();
+  }
+
+  checkoutFailed({ detail }) {
+    if (detail.requestId && this.checkoutSetupWaiters.has(detail.requestId)) {
+      this.checkoutSetupWaiters.get(detail.requestId)(false);
+    }
+    if (detail.interrupted) {
+      this.paymentConfiguration = null;
+      return;
+    }
+    if (detail.kind === "element_load_error") {
+      this.paymentConfiguration = { ...(this.paymentConfiguration || {}), enabled: false };
+      this.renderFlow();
+      return;
+    }
+    if (detail.requestId) this.paymentConfiguration = { ...(detail.provider || {}), enabled: false };
+    if (detail.result?.status === "failed") {
+      this.flow.payment = null;
+      this.flow.step = "payment";
+      this.saveFlow();
+      this.renderFlow();
+      this.loadCheckout();
+    } else if (this.flow.step === "redirecting") {
+      this.flow.payment = null;
+      this.flow.step = "payment";
+      this.saveFlow();
+      this.renderFlow();
     }
   }
 
-  async waitForStripe() {
-    if (window.Stripe) return;
-    const script = document.querySelector('script[src^="https://js.stripe.com/"]');
-    if (!script) throw new Error("Secure payment couldn’t be loaded. Please try again shortly.");
-    await new Promise((resolve, reject) => {
-      let timeout;
-      const cleanup = () => {
-        window.clearTimeout(timeout);
-        script.removeEventListener("load", onLoad);
-        script.removeEventListener("error", onError);
-      };
-      const onLoad = () => {
-        cleanup();
-        if (window.Stripe) resolve();
-        else reject(new Error("Secure payment couldn’t be loaded. Please try again shortly."));
-      };
-      const onError = () => {
-        cleanup();
-        reject(new Error("Secure payment couldn’t be loaded. Please try again shortly."));
-      };
-
-      script.addEventListener("load", onLoad, { once: true });
-      script.addEventListener("error", onError, { once: true });
-      timeout = window.setTimeout(() => {
-        cleanup();
-        reject(new Error("Secure payment couldn’t be loaded. Please try again shortly."));
-      }, 10_000);
-      if (window.Stripe) {
-        cleanup();
-        resolve();
-      }
-    });
-    if (!window.Stripe)
-      throw new Error("Secure payment couldn’t be loaded. Please try again shortly.");
+  checkoutRedirecting({ detail }) {
+    this.flow.payment = detail.payment || { status: "processing", receivedAt: Date.now() };
+    this.flow.step = "redirecting";
+    this.saveFlow();
+    this.renderFlow();
   }
 
-  mountExpressCheckout() {
-    const region = this.element.querySelector("[data-express-checkout-region]");
-    const target = this.element.querySelector("[data-express-checkout-element]");
-    const fallback = this.element.querySelector("[data-wallet-availability]");
-    this.expressCheckoutElement = this.checkout.createExpressCheckoutElement({
-      buttonType: { applePay: "buy", googlePay: "buy", paypal: "buynow" },
-      paymentMethods: { googlePay: "always" },
-    });
-    this.expressCheckoutElement.on("ready", ({ availablePaymentMethods }) => {
-      const available =
-        availablePaymentMethods && Object.values(availablePaymentMethods).some(Boolean);
-      region.hidden = !available;
-      fallback.hidden = Boolean(available);
-    });
-    this.expressCheckoutElement.on("loaderror", () => this.handlePaymentElementLoadError());
-    this.expressCheckoutElement.on("confirm", (event) => this.confirmPayment(event));
-    this.expressCheckoutElement.mount(target);
+  checkoutConfirmed({ detail }) {
+    const reservation = this.flow.reservation;
+    if (!reservation) return;
+    reservation.status = detail.result?.reservation?.status || "confirmed";
+    this.expiryPending = false;
+    delete this.element.dataset.availabilityDeadline;
+    this.flow.payment = { status: "succeeded", provider: "stripe", completedAt: Date.now() };
+    this.flow.step = "confirmed";
+    this.saveFlow();
+    clearInterval(this.holdTimer);
+    this.renderFlow();
+    this.requestAvailabilityRefresh();
   }
 
-  mountPaymentElement() {
-    const target = this.element.querySelector("[data-payment-element]");
-    target.replaceChildren();
-    this.paymentElement = this.checkout.createPaymentElement({
-      layout: { type: "accordion", defaultCollapsed: true },
-    });
-    this.paymentElement.on("loaderror", () => this.handlePaymentElementLoadError());
-    this.paymentElement.mount(target);
-  }
-
-  handlePaymentElementLoadError() {
-    const payButton = this.element.querySelector("[data-payment-submit]");
-    const retryButton = this.element.querySelector("[data-payment-retry]");
-    const status = this.element.querySelector("[data-payment-status]");
-    this.paymentConfiguration = { ...this.paymentConfiguration, enabled: false };
-    if (payButton) payButton.disabled = true;
-    if (retryButton) {
-      retryButton.hidden = false;
-      retryButton.disabled = false;
-    }
-    if (status) {
-      status.textContent = "Secure payment couldn’t be loaded. Your seats remain held.";
-      status.classList.add("text-error");
-    }
-    this.showPaymentError("Secure payment couldn’t be loaded. Please try again.");
-  }
-
-  renderPaymentTotal(amount, currency) {
-    const total = this.element.querySelector("[data-reservation-total]");
-    if (!total || !Number.isFinite(Number(amount)) || !currency) return;
-    total.textContent = this.formatPaymentAmount(amount, currency);
-  }
-
-  formatPaymentAmount(amount, currency) {
-    return new Intl.NumberFormat(undefined, {
-      style: "currency",
-      currency: currency.toUpperCase(),
-    }).format(Number(amount) / 100);
+  checkoutExpired() {
+    if (this.flow.reservation) this.beginExpiryRefresh(this.flow.reservation.expiresAt);
   }
 
   restoreCheckoutReturn(sessionId) {
@@ -763,9 +647,7 @@ export default class extends Controller {
     if (!this.flow.reservation || String(this.flow.reservation.id) !== String(reservationId)) {
       this.flow.step = "redirecting";
       this.renderFlow();
-      this.showCheckoutReturnStatus(
-        "We couldn’t restore this reservation in your browser. Check your booking email for an update.",
-      );
+      this.dispatchCheckout("checkout-return", { sessionId, reservation: null });
       return;
     }
 
@@ -775,171 +657,26 @@ export default class extends Controller {
     this.flow.step = "redirecting";
     this.saveFlow();
     this.renderFlow();
-    this.pollCheckoutStatus(sessionId);
+    this.dispatchCheckout("checkout-return", {
+      sessionId,
+      reservation: this.flow.reservation,
+      paymentSession: this.flow.paymentSession,
+    });
   }
 
-  async checkPaymentStatus() {
-    const sessionId =
-      new URLSearchParams(window.location.search).get("session_id") ||
-      this.flow.paymentSession?.session_id;
-    if (sessionId) await this.pollCheckoutStatus(sessionId);
+  pollCheckoutStatus(sessionId) {
+    this.dispatchCheckout("checkout-poll", {
+      sessionId,
+      reservation: this.flow.reservation,
+      paymentSession: this.flow.paymentSession,
+    });
   }
 
-  async pollCheckoutStatus(sessionId) {
-    const reservation = this.flow.reservation;
-    if (!reservation) return;
-    const pollingId = Symbol("checkout-status-poll");
-    this.checkoutPollingId = pollingId;
-    // Hold expiry stops new payment attempts, but status lookup must continue:
-    // a webhook may have confirmed the booking before the guest returned.
-    const deadline = Date.now() + 120_000;
-    const retryButton = this.element.querySelector("[data-check-payment-status]");
-    retryButton.hidden = true;
-
-    while (this.checkoutPollingId === pollingId && Date.now() < deadline) {
-      try {
-        const response = await fetchJson(
-          `/api/v1/reservations/${encodeURIComponent(reservation.id)}/checkout?session_id=${encodeURIComponent(sessionId)}`,
-        );
-        const result = response.data || response;
-        if (result.status === "succeeded") {
-          reservation.status = result.reservation?.status || "confirmed";
-          this.flow.payment = { status: "succeeded", provider: "stripe", completedAt: Date.now() };
-          this.flow.step = "confirmed";
-          this.saveFlow();
-          clearInterval(this.holdTimer);
-          await this.refreshEventAvailability();
-          this.renderFlow();
-          this.clearCheckoutReturnParams();
-          return;
-        }
-        if (result.status === "failed") {
-          this.flow.payment = null;
-          this.flow.step = "payment";
-          this.saveFlow();
-          this.renderFlow();
-          this.showPaymentError(
-            "That payment didn’t go through. Your seats are still held; try another payment method.",
-          );
-          this.clearCheckoutReturnParams();
-          await this.loadCheckout();
-          return;
-        }
-        if (result.status === "expired") {
-          reservation.status = "expired";
-          this.flow.payment = null;
-          this.flow.step = "expired";
-          this.saveFlow();
-          clearInterval(this.holdTimer);
-          this.renderSeatMap(this.element.querySelector("#event-content"), this.event);
-          this.renderFlow();
-          await this.refreshEventAvailability();
-          this.clearCheckoutReturnParams();
-          return;
-        }
-        this.showCheckoutReturnStatus(
-          "Your payment is processing. We’re waiting for Stripe to confirm it.",
-        );
-      } catch (_failure) {
-        this.showCheckoutReturnStatus(
-          "We’re having trouble checking the payment status. We’ll keep trying.",
-        );
-      }
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-    }
-
-    if (this.checkoutPollingId === pollingId) {
-      if (reservation.expiresAt <= Date.now()) {
-        this.updateCountdown();
-      } else {
-        this.showCheckoutReturnStatus(
-          "Your payment is still being confirmed. You can check again in a moment.",
-          true,
-        );
-      }
-    }
-  }
-
-  showCheckoutReturnStatus(message, retry = false) {
-    const status = this.element.querySelector("[data-checkout-return-status]");
-    const button = this.element.querySelector("[data-check-payment-status]");
-    status.textContent = message;
-    button.hidden = !retry;
-  }
-
-  clearCheckoutReturnParams() {
-    const url = new URL(window.location.href);
-    url.searchParams.delete("session_id");
-    url.searchParams.delete("reservation_id");
-    window.history.replaceState({}, "", url);
-  }
-
-  showPaymentError(message) {
-    const error = this.element.querySelector("[data-payment-error]");
-    this.element.querySelector("[data-payment-status]").hidden = true;
-    error.textContent = message;
-    error.hidden = false;
-  }
-
-  async completePayment(event) {
-    event.preventDefault();
-    return this.confirmPayment();
-  }
-
-  async retryCheckout(event) {
-    event.currentTarget.disabled = true;
-    await this.loadCheckout();
-  }
-
-  async confirmPayment(expressEvent = null) {
-    const reservation = this.flow.reservation;
-    if (!reservation || reservation.status !== "held" || !this.checkoutActions) return;
-    if (reservation.expiresAt <= Date.now()) {
-      this.updateCountdown();
-      return;
-    }
-
-    const error = this.element.querySelector("[data-payment-error]");
-    error.hidden = true;
-    try {
-      this.flow.payment = { status: "processing", startedAt: Date.now() };
-      this.saveFlow();
-      this.renderFlow();
-      const confirmOptions = { redirect: "if_required" };
-      if (expressEvent) confirmOptions.expressCheckoutConfirmEvent = expressEvent;
-      const result = await this.checkoutActions.confirm(confirmOptions);
-      if (result.type === "error") {
-        this.flow.payment = null;
-        this.flow.step = "payment";
-        this.saveFlow();
-        this.renderFlow();
-        this.showPaymentError(
-          result.error?.message || "Your payment couldn’t be completed. Try another payment method.",
-        );
-        return;
-      }
-
-      // Payment confirmation is authoritative only after the server reconciles the Stripe event.
-      this.flow.step = "redirecting";
-      this.flow.payment = { status: "processing", receivedAt: Date.now() };
-      this.saveFlow();
-      this.renderFlow();
-      if (this.flow.paymentSession?.session_id) {
-        this.pollCheckoutStatus(this.flow.paymentSession.session_id);
-      }
-    } catch (failure) {
-      console.error("Stripe checkout confirmation threw an error", {
-        name: failure?.name,
-        message: failure?.message,
-      });
-      this.flow.payment = null;
-      this.flow.step = "payment";
-      this.saveFlow();
-      this.renderFlow();
-      this.showPaymentError(
-        "We couldn’t confirm that payment. Your hold is still active; please try again.",
-      );
-    }
+  formatPaymentAmount(amount, currency) {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: currency.toUpperCase(),
+    }).format(Number(amount) / 100);
   }
 
   renderFlow() {
@@ -1091,13 +828,27 @@ export default class extends Controller {
             : "Your seats are ready. Continue to payment to hold them for five minutes.";
     }
     this.updateSelectionSummary();
+    this.dispatchCheckout("checkout-stage", {
+      stage: step,
+      reservation: this.flow.reservation,
+      paymentSession: this.flow.paymentSession,
+    });
   }
 
   updateAvailabilityCount() {
     if (!this.event) return;
     const activeReservation = ["held", "confirmed"].includes(this.flow.reservation?.status);
-    const heldSeatCount = activeReservation ? this.flow.reservation.seats.length : 0;
-    const available = Math.max(0, this.event.available_count - heldSeatCount);
+    const unavailableSeats = new Set(
+      this.event.rows.flatMap((row) =>
+        row.reserved_seats.map((number) => this.seatKey(row.row_id, number)),
+      ),
+    );
+    if (activeReservation) {
+      this.flow.reservation.seats.forEach((seat) =>
+        unavailableSeats.add(this.seatKey(seat.rowId, seat.number)),
+      );
+    }
+    const available = Math.max(0, this.event.seat_count - unavailableSeats.size);
     const count = this.element.querySelector("[data-detail-open]");
     if (count) count.textContent = `${available} seats`;
   }
@@ -1148,15 +899,7 @@ export default class extends Controller {
     if (!reservation || reservation.status !== "held") return;
     const remaining = reservation.expiresAt - Date.now();
     if (remaining <= 0) {
-      reservation.status = "expired";
-      this.flow.step = "expired";
-      this.selectedSeats.clear();
-      this.saveFlow();
-      clearInterval(this.holdTimer);
-      this.renderSeatMap(this.element.querySelector("#event-content"), this.event);
-      this.renderFlow();
-      this.updateSelectionSummary();
-      this.refreshEventAvailability();
+      this.beginExpiryRefresh(reservation.expiresAt);
       return;
     }
 
@@ -1166,6 +909,16 @@ export default class extends Controller {
     this.element.querySelectorAll("[data-hold-countdown]").forEach((node) => {
       node.textContent = `${value} remaining`;
     });
+  }
+
+  beginExpiryRefresh(deadline) {
+    if (this.expiryPending) return;
+    this.expiryPending = true;
+    this.reconciliationRequired = true;
+    this.element.dataset.availabilityDeadline = String(deadline);
+    this.setAvailabilityPending(true);
+    clearInterval(this.holdTimer);
+    this.requestAvailabilityRefresh({ deadline });
   }
 
   cancelHold() {
@@ -1210,12 +963,9 @@ export default class extends Controller {
     }
 
     clearInterval(this.holdTimer);
-    this.paymentElement?.unmount?.();
-    this.expressCheckoutElement?.unmount?.();
+    this.resolveCheckoutSetupWaiters(false);
+    this.dispatchCheckout("checkout-reset");
     this.paymentConfiguration = null;
-    this.checkout = null;
-    this.checkoutActions = null;
-    this.stripe = null;
     this.flow.reservation = null;
     this.flow.request = null;
     this.flow.payment = null;
@@ -1225,10 +975,14 @@ export default class extends Controller {
     this.flow.showTimeline = true;
     this.selectedSeats.clear();
     this.releasingHold = false;
+    this.expiryPending = false;
+    this.reconciliationRequired = true;
+    delete this.element.dataset.availabilityDeadline;
     this.saveFlow();
-    await this.refreshEventAvailability();
+    this.setAvailabilityPending(true);
     this.renderFlow();
-    this.updateSelectionSummary();
+    const refreshed = await this.requestAvailabilityRefresh();
+    if (!refreshed) return;
     this.announce("Your hold was released. Choose seats again to change your booking.");
     const seatingTitle = this.element.querySelector("#seating-title");
     seatingTitle?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1237,12 +991,9 @@ export default class extends Controller {
 
   async startAgain() {
     clearInterval(this.holdTimer);
-    this.paymentElement?.unmount?.();
-    this.expressCheckoutElement?.unmount?.();
+    this.resolveCheckoutSetupWaiters(false);
+    this.dispatchCheckout("checkout-reset");
     this.paymentConfiguration = null;
-    this.stripe = null;
-    this.checkout = null;
-    this.checkoutActions = null;
     try {
       sessionStorage.removeItem(this.storageKey);
     } catch (_error) {
@@ -1250,8 +1001,11 @@ export default class extends Controller {
     }
     this.flow = { step: "seats", selectedSeats: [], request: null, reservation: null };
     this.selectedSeats.clear();
-    await this.refreshEventAvailability();
+    this.expiryPending = false;
+    this.reconciliationRequired = true;
+    delete this.element.dataset.availabilityDeadline;
+    this.setAvailabilityPending(true);
     this.renderFlow();
-    this.updateSelectionSummary();
+    await this.requestAvailabilityRefresh();
   }
 }
