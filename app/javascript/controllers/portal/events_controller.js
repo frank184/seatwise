@@ -49,6 +49,8 @@ export default class extends Controller {
 
   renderEvent(event) {
     const card = cloneTemplate(this.element, "#event-card-template");
+    card.dataset.eventId = event.id;
+    card.dataset.controller = "portal--availability";
     if (event.past) card.classList.add("opacity-75", "grayscale");
     card.querySelector("[data-event-link]").href = `/events/${encodeURIComponent(event.id)}`;
     card.querySelector("[data-event-date]").textContent = formatDate(event.starts_at, {
@@ -64,10 +66,32 @@ export default class extends Controller {
     card.querySelector("[data-event-name]").textContent = event.name;
     card.querySelector("[data-event-capacity]").textContent =
       `${event.seat_count} seats in this room`;
-    card.querySelector("[data-event-availability]").textContent =
-      `${event.available_count} seats open`;
+    this.updateAvailabilityPresentation(card, event);
     card.querySelector("[data-event-past]").hidden = !event.past;
     return card;
+  }
+
+  updateAvailabilityPresentation(card, event) {
+    const available = Math.max(0, Number(event.available_count) || 0);
+    const badge = card.querySelector("[data-event-availability-badge]");
+    const label = card.querySelector("[data-event-availability]");
+    const neutralClasses = ["border", "border-base-content/25", "bg-base-100", "text-base-content"];
+
+    label.textContent =
+      available === 0 ? "Sold out" : `${available} ${available === 1 ? "seat" : "seats"} open`;
+    badge.classList.remove(...neutralClasses, "badge-soft", "badge-success");
+    if (available === 0) {
+      badge.classList.add(...neutralClasses);
+    } else {
+      badge.classList.add("badge-soft", "badge-success");
+    }
+  }
+
+  availabilityUpdated({ detail: { event } }) {
+    const card = [...this.element.querySelectorAll("#events-list article")].find(
+      (item) => item.dataset.eventId === String(event.id),
+    );
+    if (card) this.updateAvailabilityPresentation(card, event);
   }
 
   renderPagination(pagination, meta) {
