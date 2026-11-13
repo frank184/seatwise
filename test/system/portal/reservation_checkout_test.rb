@@ -352,6 +352,9 @@ module Portal
       assert_selector "button[data-seat='#{second_seat}'][data-row='1'][aria-pressed='true']",
                       wait: 10
       state = hold_submit_state
+      assert_equal ["1:#{second_seat}"],
+                   state.fetch("selectedSeats"),
+                   "Hold submit state: #{state.inspect}"
       assert_equal false, state.fetch("hidden"), "Hold submit state: #{state.inspect}"
       assert_equal false, state.fetch("disabled"), "Hold submit state: #{state.inspect}"
       assert_selector "[data-hold-submit]:not([disabled])", wait: 10
@@ -459,6 +462,9 @@ module Portal
       assert_selector "button[data-seat='#{second_seat}'][data-row='1'][aria-pressed='true']",
                       wait: 10
       state = hold_submit_state
+      assert_equal ["1:#{second_seat}"],
+                   state.fetch("selectedSeats"),
+                   "Hold submit state: #{state.inspect}"
       assert_equal false, state.fetch("hidden"), "Hold submit state: #{state.inspect}"
       assert_equal false, state.fetch("disabled"), "Hold submit state: #{state.inspect}"
       assert_selector "[data-hold-submit]:not([disabled])", wait: 10
@@ -536,7 +542,7 @@ module Portal
           bubbles: true, button: 0, pointerId: 1, pointerType: "mouse",
         }));
         secondSeat.dispatchEvent(new PointerEvent("pointerenter", {
-          bubbles: true, button: 0, pointerId: 1, pointerType: "mouse",
+          bubbles: true, button: 0, buttons: 1, pointerId: 1, pointerType: "mouse",
         }));
         window.dispatchEvent(new PointerEvent("pointerup", {
           bubbles: true, button: 0, pointerId: 1, pointerType: "mouse",

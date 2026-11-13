@@ -233,8 +233,13 @@ export default class extends Controller {
     this.setSeatSelected(event.currentTarget, this.dragSelectSeats);
   }
 
-  dragAcrossSeat({ currentTarget }) {
-    if (this.draggingSeats) this.setSeatSelected(currentTarget, this.dragSelectSeats);
+  dragAcrossSeat(event) {
+    if (!this.draggingSeats) return;
+    if ((event.buttons & 1) !== 1) {
+      this.endDrag();
+      return;
+    }
+    this.setSeatSelected(event.currentTarget, this.dragSelectSeats);
   }
 
   endDrag() {
