@@ -7,6 +7,7 @@ gem "importmap-rails"
 gem "turbo-rails"
 gem "stimulus-rails"
 gem "jbuilder"
+gem "stripe"
 gem "kaminari", "~> 1.2"
 gem "ransack", "~> 4.4"
 # Build the UI stylesheet with Rails' Tailwind CSS integration.

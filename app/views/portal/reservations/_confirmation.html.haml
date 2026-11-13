@@ -1,0 +1,50 @@
+%section.space-y-5{hidden: "", "data-flow-stage": "confirmed", "aria-labelledby": "confirmed-title"}
+  .mx-auto.w-full.space-y-5{class: "max-w-xl"}
+    .flex.items-start.gap-3.border-l-4.border-success.pl-4{role: "status"}
+      = lucide "circle-check", class: "mt-0.5 size-5 shrink-0 text-success"
+      %div
+        %p.font-semibold Reservation confirmed
+        %p.mt-1.text-sm{class: "text-base-content/65"}
+          Your payment is complete and your seats are booked.
+    %div
+      %h2.reservation-stage-heading.mt-1.w-fit.max-w-full.text-2xl.font-bold#confirmed-title{
+        tabindex: "-1",
+        "data-stage-heading": ""
+      }
+        You’re going to the show
+      %p.mt-2.text-sm{class: "text-base-content/65"}
+        = "We’ve sent your confirmation to "
+        %span.font-semibold.text-base-content{data: { reservation_email: true }} Email pending
+    .w-full.rounded-box.border.border-base-300.bg-base-100.p-4.shadow-sm
+      %dl.grid.gap-3.text-sm{class: "sm:grid-cols-2"}
+        %div
+          %dt.text-xs{class: "text-base-content/55"} Event
+          %dd.mt-1.font-medium{data: { reservation_event: true }} Event name
+        %div
+          %dt.text-xs{class: "text-base-content/55"} Date &amp; time
+          %dd.mt-1.font-medium{data: { reservation_date: true }} Event date
+        %div
+          %dt.text-xs{class: "text-base-content/55"} Venue
+          %dd.mt-1.font-medium{data: { reservation_venue: true }} Venue name
+        %div
+          %dt.text-xs{class: "text-base-content/55"} Booking reference
+          %dd.mt-1.font-mono.font-semibold{data: { reservation_reference: true }} Pending
+      .mt-5.border-t.border-base-300.pt-4{hidden: "", data: { confirmed_invoice: true }}
+        .grid.grid-cols-2.items-start.gap-4
+          %div
+            %p.text-xs{class: "text-base-content/55"} Event tickets
+            %p.mt-1.font-semibold{data: { invoice_seat_summary: true }} Seats pending
+            %p.mt-0.5.whitespace-nowrap.text-xs{
+              class: "text-base-content/60",
+              data: { invoice_ticket_summary: true }
+            }
+              Ticket price pending
+          %p.self-center.text-left.text-lg.font-bold.tabular-nums{data: { invoice_line_total: true }
+          }
+            —
+        .mt-4.grid.grid-cols-2.items-center.gap-4.border-t.border-base-300.pt-4{role: "status"}
+          %p.text-sm{class: "text-base-content/65"}
+            Payment processed by
+            = image_tag "/stripe.png", alt: "Stripe", class: "ml-1 inline-block h-[18px] w-auto align-middle"
+          %span.badge.badge-success.badge-soft Payment complete
+    = button "Start another reservation", variant: :primary, data: { action: "click->portal--reservation#startAgain" }

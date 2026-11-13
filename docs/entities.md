@@ -1,5 +1,65 @@
 # Seatwise: entities and design decisions
 
+## Organizations and staff
+
+An `Organization` is the tenant that owns events and the editable venue layouts used to configure them. Staff access comes from organization membership. Ticket buyers retain their own `Customer` records and reservation ownership.
+
+```text
+Organization
+  id
+  name
+
+  has_many :events
+  has_many :venues
+  has_many :organization_memberships
+  has_one :payment_provider
+
+Staff                          # Maps explicitly to the staff table
+  id
+  email
+  platform_role                  # NULL for ordinary staff; platform_admin is an explicit grant
+
+OrganizationMembership
+  organization_id -> Organization
+  staff_id -> Staff
+  role                           # org_admin or event_manager
+  UNIQUE (organization_id, staff_id)
+
+Venue additions
+  organization_id -> Organization
+
+Event additions
+  organization_id -> Organization
+  published_at                   # NULL while the event is a draft
+```
+
+- An `event_manager` can configure and publish events for their organization. An `org_admin` can also manage the organization's membership and payment settings. Seatwise platform operations check the separate platform role.
+- Staff requests check membership and the requested action against the organization that owns the target resource. Customers can browse published events across organizations and manage their own reservations.
+- An event and its venue must belong to the same organization. Publishing an event copies the venue layout into its `layout_snapshot` and sets `published_at` in the same transaction. Booking uses that snapshot.
+- A person can have both a customer record and a staff record. Staff membership always references `Staff`. An organization can later require workforce sign-in, such as Microsoft Entra ID, while Seatwise continues to enforce its own membership and role checks. See [authentication](auth.md).
+
+## Payment provider configuration
+
+Each organization configures at most one `PaymentProvider`. Its unique `organization_id` enforces the one-to-one relationship in PostgreSQL. Stripe is the initial real provider. Local checkout can use the simulator.
+
+```text
+PaymentProvider
+  id
+  organization_id -> Organization  # NOT NULL, UNIQUE
+  provider_key                     # stripe for real checkout
+  external_account_id              # Provider account reference, where applicable
+  enabled
+
+Payment additions
+  payment_provider_id -> PaymentProvider  # Required for real payments
+  provider_key                            # Provider used at payment initiation
+  external_account_id                     # Account used at payment initiation, where applicable
+```
+
+- Resolve the payment configuration through `Reservation.event.organization`. A real checkout requires an enabled configuration. Each payment records the provider and account used when it starts, so later configuration changes preserve payment history and notification matching.
+- The [Stripe Express Checkout Element](https://docs.stripe.com/elements/express-checkout-element) presents eligible payment methods in the portal. The organization configuration selects the processor and account for the payment. One configuration can support several payment methods.
+- Decide who sells the ticket to the customer before choosing a Stripe Connect charge flow or account onboarding model. See [Stripe's merchant-of-record guide](https://docs.stripe.com/connect/merchant-of-record).
+
 ## Layout and reservations
 
 Use a mutable venue layout as the authoring representation and copy its current layout into an event when the event is published for bookings. Store each layout as structured serialized data (for example, JSON), rather than creating ORM records for every row and seat. The representation may change without changing the booking vocabulary or reservation API.
@@ -22,6 +82,7 @@ Event
   name                           # STRING, NOT NULL
   start_time                     # DATETIME, NOT NULL
   end_time                       # DATETIME, NOT NULL
+  ticket_price_cents             # INTEGER, NOT NULL, positive; same price for every seat in the event
   layout_snapshot                # JSONB, NOT NULL; copy of venue layout at publication; immutable during sale
 
 Reservation

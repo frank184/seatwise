@@ -1,0 +1,24 @@
+.order-2.mx-auto.w-full{class: "lg:order-1"}
+  = card card_class: "border border-primary/15 bg-primary/5 shadow-sm", body_class: "gap-4 p-4 sm:p-6" do
+    %div
+      %p.text-base.font-semibold Pay securely
+      %p.mt-1.text-sm{class: "text-base-content/65"}
+        Your payment details are handled securely by Stripe.
+    .space-y-2{data: { express_checkout_region: true }, hidden: ""}
+      %p.text-sm.font-semibold Express checkout
+      %div{data: { express_checkout_element: true }}
+    %p.text-sm{class: "text-base-content/60", data: { wallet_availability: true }, hidden: ""}
+      No accelerated payment methods are available in this browser. You can still pay by card below.
+    %p.text-sm{class: "text-base-content/60", data: { payment_loading: true }}
+      Loading payment options…
+    %div{data: { payment_element: true }, aria: { label: "Payment details" }}
+    %p.alert.alert-error.alert-soft.py-3.text-sm{
+      role: "alert",
+      data: { payment_error: true },
+      hidden: ""
+    }
+
+    = button "Retry payment setup", type: "button", variant: :outline, data: { action: "click->portal--checkout#retrySetup", payment_retry: true }, hidden: true
+    %p.text-sm.text-info{"aria-live": "polite", data: { payment_status: true }}
+      Loading payment options…
+    = button "Pay securely", type: "button", variant: :primary, size: :lg, class: "w-full", data: { action: "click->portal--checkout#confirmPayment", payment_submit: true }, disabled: true

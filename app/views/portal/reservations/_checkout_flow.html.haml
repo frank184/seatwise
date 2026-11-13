@@ -1,0 +1,44 @@
+.mt-6.scroll-mt-20.hidden#checkout-panel{
+  hidden: "",
+  role: "region",
+  "aria-label": "Reservation",
+  data: {
+    controller: "portal--checkout",
+    action: "portal--reservation:checkout-setup->portal--checkout#setup portal--reservation:checkout-stage->portal--checkout#stageChanged portal--reservation:checkout-reset->portal--checkout#reset portal--reservation:checkout-return->portal--checkout#restore portal--reservation:checkout-poll->portal--checkout#poll"
+  }
+}
+  = card card_class: "border border-base-300 bg-base-100", body_class: "gap-6" do
+    %ul.steps.steps-horizontal.w-full.text-xs.sm:text-sm{"aria-label": "Reservation progress"}
+      %li.step.step-primary{"data-booking-step": "1", "data-content": "1"}
+        %button.cursor-pointer.border-0.bg-transparent.px-1.py-0.font-sans.text-xs.text-inherit.hover:underline.focus-visible:outline-2.focus-visible:outline-offset-2.focus-visible:outline-primary.sm:text-sm.disabled:cursor-not-allowed.disabled:opacity-60{
+          type: "button",
+          data: { action: "click->portal--reservation#navigateToStep", flow_step: "seats" }
+        }
+          Choose seats
+      %li.step{"data-booking-step": "2", "data-content": "2"}
+        %button.cursor-pointer.border-0.bg-transparent.px-1.py-0.font-sans.text-xs.text-inherit.hover:underline.focus-visible:outline-2.focus-visible:outline-offset-2.focus-visible:outline-primary.sm:text-sm.disabled:cursor-not-allowed.disabled:opacity-60{
+          type: "button",
+          data: { action: "click->portal--reservation#navigateToStep", flow_step: "payment" }
+        }
+          Payment
+      %li.step{"data-booking-step": "3", "data-content": "3"} Confirmation
+    .rounded-box.border.border-base-300.bg-base-100.p-4{hidden: "", "data-reservation-request": ""}
+      .flex.flex-wrap.items-center.justify-between.gap-3
+        %div
+          %p.text-sm.font-semibold Your reservation
+          %p.mt-1.text-xs{class: "text-base-content/65", data: { reservation_request_attempt: true }
+          }
+            Your seats are held while you complete checkout.
+        %span.badge.badge-success.badge-soft{data: { reservation_request_status: true }} Hold active
+    = render "portal/customers/form"
+    = render "portal/payments/checkout"
+    = render "portal/payments/processing"
+    = render "portal/reservations/confirmation"
+    %section.space-y-5{hidden: "", "data-flow-stage": "expired", "aria-labelledby": "expired-title"}
+      = status_alert title: "Hold expired", description: "These seats are no longer reserved. Choose seats to begin again.", variant: :warning, icon: "clock-3", soft: true
+      %h2.reservation-stage-heading.w-fit.max-w-full.text-2xl.font-bold#expired-title{
+        tabindex: "-1",
+        "data-stage-heading": ""
+      }
+        Your hold timed out
+      = button "Choose seats again", variant: :primary, data: { action: "click->portal--reservation#startAgain" }

@@ -12,10 +12,10 @@ V1 is a ticket reservation API. These are the behaviors required for the first v
 | Valid seat claims | Use the event's stable `row_id` and inclusive, one-based `seat_start` and `seat_end`. Every seat in the requested range must exist in the event layout. |
 | No double booking | Two active claims for the same event and row cannot overlap, even when requests arrive concurrently. PostgreSQL enforces this rule for held and confirmed reservations. |
 | Temporary holds | A hold claims seats for five minutes. An expired hold cannot be confirmed and its seats must be released for reuse. |
-| Reservation lookup | Let the customer retrieve their reservation, including the assigned seats, current status and hold expiry. |
-| Payment confirmation | Simulate an external payment provider. A successful payment notification can confirm an unexpired hold. Confirmed reservations keep claiming their seats. |
-| Cancellation | Allow cancellation of unconfirmed reservations and release their seats. |
-| Safe retries | Retrying the same reservation request must not create another reservation. Duplicate payment notifications must not apply confirmation twice. |
+| Reservation lookup | Let the customer retrieve their reservation, including the assigned seats, current status and hold expiry. (Customer-authenticated lookup remains future work.) |
+| Payment confirmation | Start a Stripe test-mode Checkout Session. Confirm an unexpired hold only after reconciling a paid session from a signature-verified webhook or server-side return lookup. Confirmed reservations keep claiming their seats. **Implemented for the local development flow.** |
+| Cancellation | Allow cancellation of unconfirmed reservations and release their seats. **Implemented for guest holds in the local prototype.** |
+| Safe retries | Retrying the same reservation request must not create another reservation. Duplicate payment notifications must not apply confirmation twice. **Implemented for reservation creation and Stripe webhook processing.** |
 
 ## Customer-facing access
 
@@ -25,11 +25,11 @@ Customers can place a hold and pay as guests using a checkout email. Seatwise se
 
 | Feature | What it would add |
 | --- | --- |
-| Browser portal | A Rails-rendered seat map and booking flow. See the [browser UI design](ui.md). |
+| Browser portal | A Rails-rendered seat map and guest reservation checkout flow. **Implemented for local development with Stripe test mode; production organization ownership and customer authentication remain future work.** See the [browser UI design](ui.md). |
 | Saved tickets | Save a confirmed ticket ahead of time and verify its signature at the venue without internet. Wallet delivery is optional. See [offline ticket verification](tickets.md). |
 | Manual seat selection | Let the customer submit a specific row and seat range through the same booking rules. |
 | Richer venue layouts | Aisles, gaps, accessible and companion seats, and precise map coordinates. |
-| Pricing and refunds | Multiple price tiers and refunds for confirmed purchases. |
+| Pricing and refunds | Event-specific pricing, multiple price tiers, and refunds for confirmed purchases. The local Stripe flow currently uses a temporary fixed development price. |
 | Layout management | Layout revision history and a workflow for changing published inventory during sales. |
 
 See [entities and design decisions](entities.md) for the data model, enforcement details and open implementation questions.

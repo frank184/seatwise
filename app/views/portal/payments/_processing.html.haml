@@ -1,0 +1,32 @@
+%section.space-y-5{
+  hidden: "",
+  "data-flow-stage": "redirecting",
+  "aria-labelledby": "redirecting-title"
+}
+  .mx-auto.w-full.max-w-xl.space-y-5
+    .alert.flex.items-start.gap-3.bg-base-200.shadow-none{role: "status"}
+      %span.loading.loading-spinner.loading-sm.mt-0.5.shrink-0.text-info{"aria-hidden": "true"}
+      %div
+        %p.font-semibold Payment submitted
+        %p.mt-1.text-sm{class: "text-base-content/65", data: { checkout_return_status: true }}
+          We’re checking your payment with Stripe.
+    %div
+      %h2.reservation-stage-heading.w-fit.max-w-full.text-2xl.font-bold#redirecting-title{
+        tabindex: "-1",
+        "data-stage-heading": "",
+        data: { payment_title: true }
+      }
+        Opening secure checkout…
+      %p.mt-2.text-sm{class: "text-base-content/65", data: { payment_copy: true }}
+        Your seats remain held until your payment is confirmed.
+    = card card_class: "border border-base-300 bg-base-100 shadow-sm", body_class: "gap-4 p-4 sm:p-6" do
+      .flex.items-center.justify-between.gap-3.border-b.border-base-300.pb-4
+        = image_tag "/stripe.png", alt: "Stripe", class: "inline-block h-[18px] w-auto align-middle", data: { payment_brand: true }
+        %span{data: { payment_badge: true }}
+          = badge safe_join([lucide("lock-keyhole", class: "size-3.5"), "Secure payment"]), variant: :success, style: :soft, size: :sm, extra_class: "gap-1.5"
+      = button "Check payment status", variant: :outline, class: "self-start", data: { action: "click->portal--checkout#checkStatus", check_payment_status: true }, hidden: true
+      %div
+        %p.text-sm.font-semibold{"data-seat-summary": ""} No seats selected
+        .mt-3.flex.flex-wrap.items-center.justify-between.gap-2
+          %p.text-sm{class: "text-base-content/65"} Hold time remaining
+          %p.text-lg.font-bold.tabular-nums{"data-hold-countdown": ""} 5:00

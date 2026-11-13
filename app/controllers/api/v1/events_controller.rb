@@ -21,6 +21,7 @@ module Api
       end
 
       def show
+        response.headers["Cache-Control"] = "no-store"
         @event = Event.includes(:venue, :active_reservations).find(params[:id])
         render :show, formats: [:json]
       end

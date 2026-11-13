@@ -21,6 +21,7 @@ module Api
         assert_equal %w[
                        id
                        name
+                       ticket_price_cents
                        starts_at
                        ends_at
                        past
@@ -31,6 +32,7 @@ module Api
                        available_count
                      ].sort,
                      body.dig("data", 0).keys.sort
+        assert_equal 1_000, body.dig("data", 0, "ticket_price_cents")
       end
 
       test "index filters upcoming and past events around the current time" do
@@ -40,6 +42,7 @@ module Api
             name: "At the boundary",
             start_time: Time.current,
             end_time: 1.hour.from_now,
+            ticket_price_cents: 1_000,
             layout_snapshot: venues(:one).layout
           )
 
@@ -60,6 +63,7 @@ module Api
           name: "Riverside Comedy Hour",
           start_time: Time.zone.local(2026, 11, 24, 20),
           end_time: Time.zone.local(2026, 11, 24, 22),
+          ticket_price_cents: 1_000,
           layout_snapshot: venues(:one).layout
         )
 
@@ -110,6 +114,7 @@ module Api
             name: "Pagination case #{index + 1}",
             start_time: Time.current + (index + 1).days,
             end_time: Time.current + (index + 1).days + 1.hour,
+            ticket_price_cents: 1_000,
             layout_snapshot: venues(:one).layout
           )
         end
@@ -160,6 +165,7 @@ module Api
         get api_v1_event_path(event)
 
         assert_response :success
+        assert_equal "no-store", response.headers["Cache-Control"]
         body = response.parsed_body
         assert_equal "v1", body.dig("meta", "api_version")
         assert_equal event.venue.name, body.dig("data", "venue", "name")
@@ -167,6 +173,25 @@ module Api
         assert_equal [1, 2], body.dig("data", "rows", 1, "reserved_seats")
         assert_equal 3, body.dig("data", "reserved_count")
         assert_equal 127, body.dig("data", "available_count")
+      end
+
+      test "show omits a held reservation at its exact expiry time without requiring a status update" do
+        event = events(:one)
+        reservation =
+          Reservation.create!(
+            event: event,
+            customer: customers(:one),
+            row_id: 1,
+            seat_range: 2...3,
+            status: :held,
+            hold_expires_at: Time.current
+          )
+
+        get api_v1_event_path(event)
+
+        assert_response :success
+        assert_equal [1], response.parsed_body.dig("data", "rows", 0, "reserved_seats")
+        assert reservation.reload.held?
       end
 
       test "show returns not found for an unknown event" do

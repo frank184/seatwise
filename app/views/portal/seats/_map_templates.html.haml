@@ -1,0 +1,49 @@
+%template#seat-map-row-template
+  %tr
+    %th{class: "whitespace-nowrap px-4 py-2.5", scope: "row"}
+      %span.badge.badge-neutral.badge-sm.whitespace-nowrap.px-3{data: { row_label: true }}
+    %td.text-center
+      .mx-auto.flex.w-max.items-center.justify-center{
+        class: "gap-1.25",
+        data: { seat_container: true }
+      }
+
+%template#seat-map-open-template
+  %button{
+    type: "button",
+    class: "relative isolate size-6 cursor-pointer touch-none select-none rounded-t-full border-0 bg-transparent p-0 before:absolute before:inset-[1.2px] before:-z-10 before:rounded-t-full before:border before:border-success before:bg-success/70 hover:before:border-primary hover:before:bg-primary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+    data: {
+      seat_state: "open",
+      action: "pointerdown->portal--seat-map#startDrag pointerenter->portal--seat-map#dragAcrossSeat click->portal--seat-map#toggleSeat"
+    }
+  }
+
+%template#seat-map-selected-template
+  %button{
+    type: "button",
+    class: "relative isolate flex size-6 cursor-pointer touch-none select-none items-center justify-center rounded-t-full border-0 bg-transparent p-0 text-[0.625rem] font-semibold tabular-nums text-primary-content before:absolute before:inset-[1.2px] before:-z-10 before:rounded-t-full before:border-2 before:border-primary before:bg-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+    data: {
+      seat_state: "selected",
+      action: "pointerdown->portal--seat-map#startDrag pointerenter->portal--seat-map#dragAcrossSeat click->portal--seat-map#toggleSeat"
+    }
+  }
+
+%template#seat-map-unavailable-template
+  %button{
+    type: "button",
+    class: "relative isolate size-6 cursor-not-allowed rounded-t-full border-0 bg-transparent p-0 before:absolute before:inset-[1.2px] before:-z-10 before:rounded-t-full before:border before:border-dashed before:border-base-content/40 before:bg-base-300",
+    data: {
+      seat_state: "unavailable",
+      action: "pointerdown->portal--seat-map#startDrag pointerenter->portal--seat-map#dragAcrossSeat click->portal--seat-map#toggleSeat"
+    }
+  }
+
+%template#seat-map-yours-template
+  %button{
+    type: "button",
+    class: "relative isolate flex size-6 cursor-default items-center justify-center rounded-t-full border-0 bg-transparent p-0 text-[0.625rem] font-semibold tabular-nums text-primary-content before:absolute before:inset-[1.2px] before:-z-10 before:rounded-t-full before:border-2 before:border-primary before:bg-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+    data: {
+      seat_state: "yours",
+      action: "pointerdown->portal--seat-map#startDrag pointerenter->portal--seat-map#dragAcrossSeat click->portal--seat-map#toggleSeat"
+    }
+  }

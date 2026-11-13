@@ -12,12 +12,25 @@ class Reservation < ApplicationRecord
   belongs_to :event
   belongs_to :customer
   has_many :payments
+
+  after_create_commit :broadcast_inventory_invalidation
+  after_update_commit :broadcast_status_change_invalidation, if: :saved_change_to_status?
+
+  def seat_count = seat_range.end - seat_range.begin
   validates_presence_of :event, :customer, :status
   validates_presence_of :hold_expires_at, if: :held?
   validates :seat_range, presence: true
   validate :seat_range_must_be_valid
 
   private
+
+  def broadcast_inventory_invalidation
+    ActionCable.server.broadcast("event_availability:#{event_id}", { type: "availability_changed" })
+  end
+
+  def broadcast_status_change_invalidation
+    broadcast_inventory_invalidation
+  end
 
   def seat_range_must_be_valid
     return if seat_range.nil?

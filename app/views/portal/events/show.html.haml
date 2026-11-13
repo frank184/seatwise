@@ -1,12 +1,12 @@
 - content_for :title, "Event details · Seatwise"
 .min-h-full{
   class: "bg-base-200/60",
-  "data-action": "pointerup@window->portal--events#endSeatDrag pointercancel@window->portal--events#endSeatDrag",
-  "data-controller": "portal--events",
+  "data-action": "portal--seat-map:selection-changed->portal--reservation#handleSeatMapSelectionChanged portal--seat-map:snapshot-reconciled->portal--reservation#handleSeatMapSnapshotReconciled portal--reservation:confirmation->portal--alert#open portal--alert:confirmed->portal--reservation#handleAlertConfirmed portal--reservation:refresh-availability->portal--availability#refresh portal--availability:refreshing->portal--reservation#availabilityRefreshStarted portal--availability:updated->portal--reservation#applyAvailabilitySnapshot portal--availability:failed->portal--reservation#availabilityRefreshFailed portal--checkout:ready->portal--reservation#checkoutReady portal--checkout:failed->portal--reservation#checkoutFailed portal--checkout:redirecting->portal--reservation#checkoutRedirecting portal--checkout:confirmed->portal--reservation#checkoutConfirmed portal--checkout:expired->portal--reservation#checkoutExpired",
+  "data-controller": "portal--reservation portal--alert portal--availability",
   "data-event-id": "#{@event_id}",
   "data-event-show": ""
 }
-  %main.mx-auto.max-w-7xl.space-y-6.px-4.py-5.sm:px-8.sm:py-8
+  %main.mx-auto.max-w-7xl.space-y-5.px-3.py-4.sm:px-7.sm:py-7
     = link_to root_path, class: "btn btn-ghost btn-sm" do
       = lucide "arrow-left", class: "size-4"
       Back to events
@@ -21,9 +21,9 @@
     #event-error{hidden: ""}
     #event-content{hidden: ""}
       = card card_class: "overflow-hidden border border-base-300 bg-base-100", body_class: "gap-0 p-0" do
-        .grid{class: "lg:grid-cols-[1.1fr_0.9fr]"}
-          .relative.grid.min-h-36.place-items-center.overflow-hidden.bg-gradient-to-br.via-base-200.lg:min-h-48{
-            class: "from-primary/10 to-secondary/15"
+        .grid{class: "min-[900px]:grid-cols-[1.1fr_0.9fr]"}
+          .relative.grid.min-h-36.place-items-center.overflow-hidden.bg-gradient-to-br.via-base-200{
+            class: "from-primary/10 to-secondary/15 min-[900px]:min-h-48"
           }
             %span.grid.size-14.place-items-center.rounded-full.text-primary.shadow-sm{
               "aria-hidden": "true",
@@ -35,12 +35,16 @@
               "data-detail-date": ""
             }
 
-          .flex.flex-col.justify-center.p-6.sm:p-10
+          .flex.flex-col.justify-center.p-5.sm:p-9
             = badge "Event details", variant: :primary, style: :outline, extra_class: "w-fit"
-            %h1.mt-4.text-4xl.font-black.tracking-tight{"data-detail-name": ""}
-            %p.mt-3.text-lg{class: "text-base-content/65", "data-detail-venue": ""}
+            %h1{
+              class: "mt-3 text-[2.025rem] font-black leading-tight tracking-tight",
+              "data-detail-name": ""
+            }
+
+            %p.mt-2.text-base{class: "text-base-content/65", "data-detail-venue": ""}
             .divider
-            %dl.grid.grid-cols-2.gap-5.text-sm
+            %dl.grid.grid-cols-2.gap-4.text-sm
               %div
                 %dt{class: "text-base-content/55"} Doors &amp; show
                 %dd.mt-1.font-semibold{"data-detail-start": ""}
@@ -51,37 +55,54 @@
                 %dt{class: "text-base-content/55"} Room capacity
                 %dd.mt-1.font-semibold{"data-detail-seats": ""}
               %div
-                %dt{class: "text-base-content/55"} Currently open
+                %dt{class: "text-base-content/55"} Available now
                 %dd.mt-1.font-semibold.text-success{"data-detail-open": ""}
-            .mt-7
-              = status_alert title: "Preview only", description: "Seat selection and checkout are not enabled yet. Availability may change.", variant: :info, icon: "info", soft: true
-        %section.border-t.border-base-300.p-6.sm:p-10{"aria-labelledby": "seating-title"}
-          .mb-5.flex.flex-wrap.items-end.justify-between.gap-3
+            .mt-6
+              %div{data: { availability_change_notice: true }}
+                = status_alert title: "Availability can change", description: "Seat availability updates as guests book. Your seat status stays visible as you move through checkout.", variant: :info, icon: "info", soft: true
+              .alert.bg-base-200.flex.items-start.gap-3{
+                hidden: "",
+                role: "status",
+                data: { sold_out_notice: true }
+              }
+                = lucide "armchair", class: "size-5 shrink-0 text-base-content/60"
+                %div
+                  %h4.font-semibold Fully booked
+                  %p.text-sm
+                    There are no seats available right now. Check back later in case availability changes.
+        %section.border-t.border-base-300.p-5.sm:p-9{"aria-labelledby": "seating-title"}
+          .mb-4.flex.flex-wrap.items-end.justify-between.gap-3
             %div
               %p.text-sm.font-semibold.text-primary The room
-              %h2.mt-1.text-2xl.font-bold#seating-title Seating overview
-            %span.text-sm{class: "text-base-content/55"} Availability preview
-          %div{"data-detail-rows": ""}
+              %h2#seating-title{class: "mt-1 scroll-mt-24 text-[1.35rem] font-bold", tabindex: "-1"}
+                Seating overview
+            %span.text-sm{class: "text-base-content/55"} Seat map
+          %div{
+            "data-detail-rows": "",
+            "data-seat-map": "",
+            "data-controller": "portal--seat-map",
+            "data-action": "portal--availability:updated@window->portal--seat-map#availabilityUpdated pointerup@window->portal--seat-map#endDrag pointercancel@window->portal--seat-map#endDrag",
+            "data-portal--seat-map-selected-seats-value": "[]",
+            "data-portal--seat-map-reservation-value": "{}",
+            "data-portal--seat-map-busy-value": "true"
+          }
             = data_table headers: %w[Row Seats], rows: [], size: :sm, wrapper_class: "bg-base-100", table_class: "min-w-max w-full [&_thead]:sr-only"
-          .mt-4.flex.flex-wrap.items-center.gap-2.text-sm{class: "text-base-content/75"}
+            = render "portal/seats/map_templates"
+          .mt-3.flex.flex-wrap.items-center.gap-2.text-sm{class: "text-base-content/75"}
             %span.size-3.rounded-t-full.border.border-success{class: "bg-success/70"}
             Open
-            %span.ml-3.size-3.rounded-t-full.border-2.border-dashed.bg-base-300{
+            %span.ml-3.size-3.rounded-t-full.border.border-dashed.bg-base-300{
               class: "border-base-content/50"
             }
 
             Held or reserved
+            %span.ml-3.size-3.rounded-t-full.border.border-primary.bg-primary
+            %span{"data-seat-legend": ""} Your selection
             %span.sr-only Each seat also has a text label with its status.
-          = card card_class: "mt-6 border border-base-300 bg-base-100", body_class: "gap-3 sm:flex-row sm:items-center sm:justify-between" do
-            %div
-              %h3.font-semibold Your seat preview
-              %p.mt-1.text-sm{class: "text-base-content/60", "data-selection-count": ""}
-                Click or drag across up to 6 open seats.
-              %p.mt-1.text-sm.text-primary{"aria-live": "polite", "data-selection-message": ""}
-            %form{"data-action": "submit->portal--events#reviewSelection"}
-              = button "Review seats", type: "submit", variant: :primary, size: :sm, disabled: true, data: { selection_review: true }
+          = render "portal/reservations/selection_summary"
+          = render "portal/reservations/checkout_flow"
   %template#event-error-template
-    = status_alert title: "Event could not load", description: "Check your connection and try again.", variant: :error, icon: "triangle-alert", action: button("Retry", variant: :error, size: :sm, data: { action: "click->portal--events#retry" })
+    = status_alert title: "Event could not load", description: "Check your connection and try again.", variant: :error, icon: "triangle-alert", action: button("Retry", variant: :error, size: :sm, data: { action: "click->portal--reservation#retry" })
   %template#event-not-found-template
     = card card_class: "border border-base-300 bg-base-100", body_class: "items-center py-14 text-center" do
       = lucide "calendar-x", class: "size-9 text-base-content/35"
@@ -89,3 +110,5 @@
       %p.text-sm{class: "text-base-content/60"}
         This event may have been removed or the link may be incorrect.
       = button "Browse events", variant: :primary, size: :sm, href: root_path
+  = render "portal/reservations/selection_templates"
+  = render "portal/shared/confirmation_dialog", id: "reservation-release-confirmation", title: "Release your held seats?", description: "Your seats will be released and may not be available if you reserve again.", confirm_label: "Release hold and choose seats", cancel_label: "Keep my seats"

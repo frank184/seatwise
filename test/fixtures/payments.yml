@@ -5,63 +5,85 @@ one:
   external_id: payment-one
   status: pending
   amount: 7400
+  provider_key: simulator
+  currency: cad
 
 two:
   reservation: two
   external_id: payment-two
   status: succeeded
   amount: 9600
+  provider_key: simulator
+  currency: cad
 
 three:
   reservation: three
   external_id: payment-three
   status: succeeded
   amount: 14250
+  provider_key: simulator
+  currency: cad
 
 four:
   reservation: four
   external_id: payment-four
   status: succeeded
   amount: 6800
+  provider_key: simulator
+  currency: cad
 
 five:
   reservation: five
   external_id: payment-five
   status: refunded
   amount: 5200
+  provider_key: simulator
+  currency: cad
 
 six:
   reservation: six
   external_id: payment-six
   status: succeeded
   amount: 18750
+  provider_key: simulator
+  currency: cad
 
 seven:
   reservation: seven
   external_id: payment-seven
   status: succeeded
   amount: 22500
+  provider_key: simulator
+  currency: cad
 
 eight:
   reservation: eight
   external_id: payment-eight
   status: failed
   amount: 11700
+  provider_key: simulator
+  currency: cad
 
 nine:
   reservation: nine
   external_id: payment-nine
   status: succeeded
   amount: 17200
+  provider_key: simulator
+  currency: cad
 
 ten:
   reservation: ten
   external_id: payment-ten
   status: pending
   amount: 9100
+  provider_key: simulator
+  currency: cad
 
 eleven:
   reservation: eleven
   external_id: payment-eleven
   status: refunded
   amount: 19800
+  provider_key: simulator
+  currency: cad
