@@ -3,6 +3,7 @@ module Portal
     layout "portal"
 
     def index
+      @venues = Venue.order(:name)
     end
 
     def show

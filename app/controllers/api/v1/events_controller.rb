@@ -4,7 +4,8 @@ module Api
       SORTS = {
         "soonest" => "start_time asc",
         "latest" => "start_time desc",
-        "name" => "name asc"
+        "name" => "name asc",
+        "name_desc" => "name desc"
       }.freeze
       PER_PAGE = 6
 
@@ -36,6 +37,7 @@ module Api
               :name_or_venue_name_cont,
               :name_cont,
               :venue_name_cont,
+              :venue_id_eq,
               :start_time_gteq,
               :start_time_lt
             ).to_h
