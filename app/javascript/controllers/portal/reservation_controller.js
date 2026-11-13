@@ -219,7 +219,8 @@ export default class extends Controller {
     if (
       this.conflictRefreshPending &&
       (!this.conflictRefreshRequestId || !requestIds.includes(this.conflictRefreshRequestId))
-    ) return;
+    )
+      return;
     this.selectionReady = true;
     this.saveFlow();
     this.updateHoldSubmitState();
@@ -544,7 +545,8 @@ export default class extends Controller {
       !this.selectionReady ||
       this.availabilityBusy ||
       this.reconciliationRequired
-    ) return;
+    )
+      return;
     const form = event.currentTarget;
     const email = form.querySelector("[name=email]").value.trim();
     const selectedRange = this.selectedSeatRange();
@@ -893,8 +895,7 @@ export default class extends Controller {
     const paymentCopy = panel.querySelector("[data-payment-copy]");
     if (paymentTitle && paymentCopy && this.flow.payment?.status === "processing") {
       paymentTitle.textContent = "Waiting for payment confirmation";
-      paymentCopy.textContent =
-        "Your seats remain held until your payment is confirmed.";
+      paymentCopy.textContent = "Your seats remain held until your payment is confirmed.";
     }
     const invoice = panel.querySelector("[data-confirmed-invoice]");
     const paymentSession = this.flow.paymentSession;

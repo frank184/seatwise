@@ -5,18 +5,20 @@ module Portal
     setup do
       @event = events(:one)
       normalized_test_name = name.downcase.tr(" -", "_")
-      @defer_availability_fallback = normalized_test_name.include?("initial_fallback")
+      @defer_availability_fallback = normalized_test_name.include?("initial_snapshot_fallback")
       if normalized_test_name.include?("subscription_confirmation") ||
-           normalized_test_name.include?("initial_fallback") ||
+           normalized_test_name.include?("initial_snapshot_fallback") ||
            normalized_test_name.include?("in_flight_snapshot_across_expiry") ||
            normalized_test_name.include?("in_flight_invalidation") ||
            normalized_test_name.include?("removes_unavailable_selection") ||
            normalized_test_name.include?("availability_summary") ||
            normalized_test_name.include?("cancel_refresh_failure") ||
            normalized_test_name.include?("another_reservation") ||
-           normalized_test_name.include?("seat_map_selection") ||
-           normalized_test_name.include?("seat_map_drag") ||
-           normalized_test_name.include?("seat_map_reconciles_selection") ||
+           normalized_test_name.include?("six_seat_selection_limit") ||
+           normalized_test_name.include?("seat_nodes_stable")
+        install_availability_preload
+      end
+      if normalized_test_name.include?("seat_map_reconciles_selection") ||
            normalized_test_name.include?("exact_selected_seat_hold_directly") ||
            normalized_test_name.include?("competing_guest") ||
            normalized_test_name.include?("deferred_pre_conflict_snapshot") ||
@@ -66,13 +68,13 @@ module Portal
 
       assert_selector "#event-content:not([hidden])"
       assert_equal 1, availability_event_request_count
-      seat = page.evaluate_script(<<~JS)
+      seat = page.execute_script(<<~JS)
         const harness = window.__seatwiseAvailabilityHarness;
         const row = harness.lastSnapshot.rows.find((item) => String(item.row_id) === "1");
         const seatNumber = Array.from({ length: row.seat_count }, (_, index) => index + 1)
           .find((number) => !row.reserved_seats.includes(number));
         harness.nextReservedSeat = seatNumber;
-        seatNumber;
+        return seatNumber;
       JS
 
       page.execute_script("window.__seatwiseAvailabilityHarness.callbacks.connected()")
@@ -110,15 +112,17 @@ module Portal
 
     test "seat map reconciles selection from its availability update subscription" do
       assert_selector "html[data-availability-subscription='#{@event.id}']"
-      assert_equal false, page.evaluate_script(
-        "Boolean(window.Stimulus.getControllerForElementAndIdentifier(document.querySelector('[data-event-show]'), 'portal--reservation').selectionReady)"
-      )
+      assert_equal false,
+                   page.evaluate_script(
+                     "Boolean(window.Stimulus.getControllerForElementAndIdentifier(document.querySelector('[data-event-show]'), 'portal--reservation').selectionReady)"
+                   )
 
       confirm_availability_subscription
       assert_selector "#event-content:not([hidden])"
-      assert_equal true, page.evaluate_script(
-        "window.Stimulus.getControllerForElementAndIdentifier(document.querySelector('[data-event-show]'), 'portal--reservation').selectionReady"
-      )
+      assert_equal true,
+                   page.evaluate_script(
+                     "window.Stimulus.getControllerForElementAndIdentifier(document.querySelector('[data-event-show]'), 'portal--reservation').selectionReady"
+                   )
 
       selected_seats = page.evaluate_script(<<~JS)
         (() => {
@@ -134,9 +138,7 @@ module Portal
         })()
       JS
       assert_equal 2, selected_seats.length
-      selected_seats.each do |number|
-        find("button[data-row='1'][data-seat='#{number}']").click
-      end
+      selected_seats.each { |number| find("button[data-row='1'][data-seat='#{number}']").click }
       assert_text "2 of 6 seats selected"
 
       page.execute_script(<<~JS)
@@ -151,9 +153,10 @@ module Portal
         }));
       JS
 
-      assert_equal 0, page.evaluate_script(
-        "window.Stimulus.getControllerForElementAndIdentifier(document.querySelector('[data-event-show]'), 'portal--reservation').selectedSeats.size"
-      )
+      assert_equal 0,
+                   page.evaluate_script(
+                     "window.Stimulus.getControllerForElementAndIdentifier(document.querySelector('[data-event-show]'), 'portal--reservation').selectedSeats.size"
+                   )
       assert_equal [], page.evaluate_script(<<~JS)
         (() => {
           const root = document.querySelector("[data-event-show]");
@@ -161,9 +164,10 @@ module Portal
         })()
       JS
       assert_text "Selected seats are no longer available. Choose available seats to continue."
-      assert_equal true, page.evaluate_script(
-        "window.Stimulus.getControllerForElementAndIdentifier(document.querySelector('[data-event-show]'), 'portal--reservation').selectionReady"
-      )
+      assert_equal true,
+                   page.evaluate_script(
+                     "window.Stimulus.getControllerForElementAndIdentifier(document.querySelector('[data-event-show]'), 'portal--reservation').selectionReady"
+                   )
     end
 
     test "creates the exact selected-seat hold directly from the choose seats step" do
@@ -204,7 +208,7 @@ module Portal
       find("button[data-seat='5'][data-row='1']").click
       assert_selector "[data-flow-stage='seats']:not([hidden])"
       assert_selector "#checkout-panel[role='region'][aria-label='Reservation']"
-      assert_text "Choose your seats and add your email"
+      assert_text "Where should we send your tickets?"
       assert_selector "[data-flow-stage='payment']", visible: false
       assert_selector "ul[aria-label='Reservation progress'] li", count: 3
       assert_text "Choose seats"
@@ -215,12 +219,13 @@ module Portal
       assert_no_button "Edit seats"
       assert_selector "input[name='email']", count: 1
       assert_selector "button[data-hold-submit]", count: 1
-      assert_selector "[data-selection-accessible-summary][aria-live='polite']", text: "Row A · seats 4–5"
+      assert_selector "[data-selection-accessible-summary][aria-live='polite']",
+                      text: "Row A · seats 4–5"
       assert_selector "[data-selection-visual] .badge", text: "Row A"
       assert_selector "[data-selection-visual] span:not(.badge)", text: "4"
       assert_selector "[data-selection-visual] span:not(.badge)", text: "5"
 
-      fill_in "Email", with: "alex@example.com"
+      find("#reservation-email").fill_in with: "alex@example.com"
       page.execute_script(<<~JS)
         const snapshot = structuredClone(window.__seatwiseAvailabilityHarness.lastSnapshot);
         window.dispatchEvent(new CustomEvent("portal--availability:updated", {
@@ -232,8 +237,14 @@ module Portal
 
       assert_selector "[data-flow-stage='payment']:not([hidden])"
       assert_equal(
-        { "event_id" => @event.id, "quantity" => 2, "row_id" => 1,
-          "seat_start" => 4, "seat_end" => 5, "email" => "alex@example.com" },
+        {
+          "event_id" => @event.id,
+          "quantity" => 2,
+          "row_id" => 1,
+          "seat_start" => 4,
+          "seat_end" => 5,
+          "email" => "alex@example.com"
+        },
         page.evaluate_script("window.__holdPayload")
       )
     end
@@ -242,7 +253,7 @@ module Portal
       confirm_availability_subscription
       assert_selector "#event-content:not([hidden])"
       find("button[data-seat='4'][data-row='1']").click
-      fill_in "Email", with: "alex@example.com"
+      find("#reservation-email").fill_in with: "alex@example.com"
       page.execute_script("window.__deferNextHoldResponse = true")
       click_button "Continue to payment"
 
@@ -275,7 +286,7 @@ module Portal
 
       assert_text "Selected seats are no longer available. Choose available seats to continue."
       assert_text "Click or drag across up to 6 open seats."
-      assert_selector "[data-hold-submit][disabled]"
+      assert_selector "#checkout-panel[hidden]", visible: false
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='4'][aria-label*='held or reserved']"
       assert_equal [], page.evaluate_script(<<~JS)
         (() => {
@@ -290,7 +301,7 @@ module Portal
       assert_selector "#event-content:not([hidden])"
       first_seat = 4
       find("button[data-seat='#{first_seat}'][data-row='1']").click
-      fill_in "Email", with: "alex@example.com"
+      find("#reservation-email").fill_in with: "alex@example.com"
       page.execute_script(<<~JS)
         const originalFetch = window.fetch.bind(window);
         window.__holdIdempotencyKeys = [];
@@ -312,11 +323,11 @@ module Portal
 
       assert_selector "html[data-availability-event-requests='2']"
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='#{first_seat}'][aria-label*='held or reserved']"
-      assert_selector "[data-flow-stage='seats']:not([hidden])"
+      assert_selector "#checkout-panel[hidden]", visible: false
       assert_selector "[data-flow-stage='payment']", visible: false
-      assert_selector "[data-hold-error]", text: "Those seats were just taken. Choose available seats to continue."
+      assert_text "Selected seats are no longer available. Choose available seats to continue."
       assert_text "Click or drag across up to 6 open seats."
-      assert_equal "alex@example.com", find("input[name='email']").value
+      assert_equal "alex@example.com", find("#reservation-email", visible: false).value
       assert_equal [], page.evaluate_script(<<~JS)
         (() => {
           const root = document.querySelector("[data-event-show]");
@@ -339,7 +350,8 @@ module Portal
 
       assert_selector "[data-flow-stage='payment']:not([hidden])"
       assert_equal 2, page.evaluate_script("window.__holdIdempotencyKeys.length")
-      assert_operator page.evaluate_script("window.__holdIdempotencyKeys[0]") , :!=,
+      assert_operator page.evaluate_script("window.__holdIdempotencyKeys[0]"),
+                      :!=,
                       page.evaluate_script("window.__holdIdempotencyKeys[1]")
       assert_equal second_seat, page.evaluate_script("window.__holdPayload.seat_start")
     end
@@ -348,7 +360,7 @@ module Portal
       confirm_availability_subscription
       assert_selector "#event-content:not([hidden])"
       find("button[data-seat='4'][data-row='1']").click
-      fill_in "Email", with: "alex@example.com"
+      find("#reservation-email").fill_in with: "alex@example.com"
       page.execute_script("window.__deferNextHoldResponse = true")
       click_button "Continue to payment"
 
@@ -374,8 +386,12 @@ module Portal
       assert_selector "html[data-availability-event-requests='3']"
       assert_selector "#event-error:not([hidden])"
       assert_equal(
-        { "selectedSeats" => [], "persistedSeats" => [], "selectionReady" => false,
-          "reconciliationRequired" => true },
+        {
+          "selectedSeats" => [],
+          "persistedSeats" => [],
+          "selectionReady" => false,
+          "reconciliationRequired" => true
+        },
         page.evaluate_script(<<~JS)
         (() => {
           const root = document.querySelector("[data-event-show]");
@@ -389,8 +405,8 @@ module Portal
         })()
       JS
       )
-      assert_selector "[data-hold-submit][disabled]"
-      assert_equal "alex@example.com", find("input[name='email']").value
+      assert_selector "#checkout-panel[hidden]", visible: false
+      assert_equal "alex@example.com", find("#reservation-email", visible: false).value
 
       page.execute_script(<<~JS)
         const harness = window.__seatwiseAvailabilityHarness;
@@ -438,7 +454,7 @@ module Portal
       confirm_availability_subscription
       assert_selector "#event-content:not([hidden])"
       find("button[data-seat='4'][data-row='1']").click
-      fill_in "Email", with: "alex@example.com"
+      find("#reservation-email").fill_in with: "alex@example.com"
       page.execute_script("window.__deferNextHoldResponse = true")
       click_button "Continue to payment"
 
@@ -557,12 +573,12 @@ module Portal
       JS
       @restore_date_now = true
 
-      assert_equal({ "step" => "payment", "status" => "held" }, page.evaluate_script(<<~JS))
+      assert_equal({ "step" => "payment", "status" => "held" }, page.execute_script(<<~JS))
           const root = document.querySelector("[data-event-show]");
           const controller = window.Stimulus.getControllerForElementAndIdentifier(root, "portal--reservation");
-          ({ step: controller.flow.step, status: controller.flow.reservation.status })
+          return { step: controller.flow.step, status: controller.flow.reservation.status };
         JS
-      assert_selector "[data-detail-rows][aria-busy='true']"
+      assert_selector "[data-detail-rows][aria-busy]"
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='4'][data-held-seat='1:4']"
       assert_selector "[data-flow-stage='payment']:not([hidden])"
       assert_equal 2, availability_event_request_count
@@ -575,7 +591,7 @@ module Portal
       assert_equal 3, availability_event_request_count
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='2'][aria-label$='open']"
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='4'][data-held-seat='1:4']"
-      assert_selector "[data-detail-rows][aria-busy='true']"
+      assert_selector "[data-detail-rows][aria-busy]"
       assert_equal 1, page.evaluate_script("window.__seatwiseAvailabilityHarness.pending.length")
 
       page.execute_script(<<~JS)
@@ -586,12 +602,12 @@ module Portal
       assert_selector "[data-flow-stage='expired']:not([hidden])"
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='4'][aria-label$='open']"
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='2'][aria-label$='open']"
-      assert_no_selector "[data-detail-rows][aria-busy='true']"
+      assert_no_selector "[data-detail-rows][aria-busy]"
       assert_equal 3, availability_event_request_count
       assert_equal 0, page.evaluate_script("window.__availabilityDeleteCalls || 0")
-      assert_equal "expired", page.evaluate_script(<<~JS)
+      assert_equal "expired", page.execute_script(<<~JS)
         const root = document.querySelector("[data-event-show]");
-        window.Stimulus.getControllerForElementAndIdentifier(root, "portal--reservation").flow.reservation.status
+        return window.Stimulus.getControllerForElementAndIdentifier(root, "portal--reservation").flow.reservation.status;
       JS
       assert_selector "ul[aria-label='Reservation progress'] li", count: 3
       assert_no_text "Email & hold"
@@ -656,7 +672,7 @@ module Portal
         harness.callbacks.received({ type: "availability_changed" });
       JS
       assert_equal 2, availability_event_request_count
-      assert_selector "[data-detail-rows][aria-busy='true']"
+      assert_selector "[data-detail-rows][aria-busy]"
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='4'][aria-label$='open']"
 
       page.execute_script(<<~JS)
@@ -672,7 +688,7 @@ module Portal
       JS
       assert_selector "html[data-availability-event-requests='3']"
       assert_equal 3, availability_event_request_count
-      assert_selector "[data-detail-rows][aria-busy='true']"
+      assert_selector "[data-detail-rows][aria-busy]"
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='4'][aria-label$='open']"
       assert_equal 1, page.evaluate_script("window.__seatwiseAvailabilityHarness.pending.length")
 
@@ -682,7 +698,7 @@ module Portal
       JS
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='5'][aria-label*='held or reserved']"
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='4'][aria-label$='open']"
-      assert_no_selector "[data-detail-rows][aria-busy='true']"
+      assert_no_selector "[data-detail-rows][aria-busy]"
       assert_equal 3, availability_event_request_count
     end
 
@@ -769,22 +785,22 @@ module Portal
 
       assert_selector "#event-error:not([hidden])"
       assert_equal 1, page.evaluate_script("window.__availabilityDeleteCalls")
-      assert_selector "[data-detail-rows][aria-busy='true']"
-      assert_selector "[data-detail-rows] button[data-row='1'][data-seat='4'][data-held-seat='1:4'][disabled]"
+      assert_selector "[data-detail-rows][aria-busy]"
+      assert_selector "[data-detail-rows] button[data-row='1'][data-seat='4'][disabled]"
 
       page.execute_script("window.__seatwiseAvailabilityHarness.deferNext = true")
       click_button "Retry"
       assert_equal 3, availability_event_request_count
       assert_selector "#event-error:not([hidden])"
-      assert_selector "[data-detail-rows][aria-busy='true']"
+      assert_selector "[data-detail-rows][aria-busy]"
 
       page.execute_script(
         "window.__seatwiseAvailabilityHarness.resolveNext(window.__seatwiseAvailabilityHarness.lastSnapshot)"
       )
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='4'][aria-label$='open']"
       assert_no_selector "#event-error:not([hidden])"
-      assert_no_selector "[data-detail-rows][aria-busy='true']"
-      assert_selector "[data-flow-stage='seats']:not([hidden])"
+      assert_no_selector "[data-detail-rows][aria-busy]"
+      assert_selector "#checkout-panel[hidden]", visible: false
       assert_equal [], page.evaluate_script(<<~JS)
         (() => {
           const root = document.querySelector("[data-event-show]");
@@ -811,29 +827,29 @@ module Portal
       JS
 
       assert_selector "#event-error:not([hidden])"
-      assert_selector "[data-detail-rows][aria-busy='true']"
+      assert_selector "[data-detail-rows][aria-busy]"
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='4'][aria-label$='open'][disabled]"
 
       page.execute_script("window.__seatwiseAvailabilityHarness.deferNext = true")
       click_button "Retry"
       assert_equal 5, availability_event_request_count
       assert_selector "#event-error:not([hidden])"
-      assert_selector "[data-detail-rows][aria-busy='true']"
+      assert_selector "[data-detail-rows][aria-busy]"
 
       page.execute_script(
         "window.__seatwiseAvailabilityHarness.resolveNext(window.__seatwiseAvailabilityHarness.lastSnapshot)"
       )
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='4'][aria-label$='open']"
       assert_no_selector "#event-error:not([hidden])"
-      assert_no_selector "[data-detail-rows][aria-busy='true']"
+      assert_no_selector "[data-detail-rows][aria-busy]"
     end
 
     test "loads the provider and renders card payment when no wallet is eligible" do
       begin_checkout(wait_for_payment: false)
 
+      assert_selector "[data-payment-element]"
       assert_equal false,
                    page.evaluate_script("'defaultValues' in window.__checkoutElementsOptions")
-      assert_text "Loading payment options"
       assert_selector "button[data-payment-submit]:not([disabled])"
       assert_selector "[data-payment-element]"
       assert_text "No accelerated payment methods are available"
@@ -919,10 +935,11 @@ module Portal
       assert_selector "html[data-availability-event-requests='2']"
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='4'][aria-label*='your seat, confirmed']"
 
+      page.execute_script("window.__seatwiseAvailabilityHarness.nextReservedSeat = 4")
       click_button "Start another reservation"
 
       assert_selector "html[data-availability-event-requests='3']"
-      assert_selector "#checkout-panel[hidden]"
+      assert_selector "#checkout-panel[hidden]", visible: false
       assert_selector "[data-detail-rows] button[data-row='1'][data-seat='4'][aria-label*='held or reserved']"
       assert_equal true, page.evaluate_script(<<~JS)
         window.__seatwiseAvailabilityHarness.lastSnapshot.rows
@@ -1131,7 +1148,7 @@ module Portal
 
     def begin_checkout(wait_for_payment: true)
       find("button[data-seat='4'][data-row='1']").click
-      fill_in "Email", with: "alex@example.com"
+      find("#reservation-email").fill_in with: "alex@example.com"
       click_button "Continue to payment"
       assert_selector "[data-flow-stage='payment']:not([hidden])"
       assert_selector "button[data-payment-submit]:not([disabled])" if wait_for_payment

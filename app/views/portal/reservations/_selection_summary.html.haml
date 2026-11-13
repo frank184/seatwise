@@ -8,7 +8,11 @@
       %p.whitespace-nowrap.text-sm{class: "text-base-content/60", data: { selection_count: true }}
         Click or drag across up to 6 open seats in one row.
       %p.mt-1.text-sm.text-primary{"aria-live": "polite", "data-selection-message": ""}
-      %span.sr-only{aria: { atomic: true, live: "polite" }, data: { selection_accessible_summary: true }}
+      %span.sr-only{
+        aria: { atomic: true, live: "polite" },
+        data: { selection_accessible_summary: true }
+      }
+
   .flex.min-w-0.flex-wrap.items-center.gap-4.sm:flex-1.sm:justify-end
     .flex.flex-wrap.items-center.gap-3{
       hidden: "",

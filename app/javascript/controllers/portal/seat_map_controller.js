@@ -83,7 +83,9 @@ export default class extends Controller {
 
     if (this.holdPendingValue) {
       this.pendingSnapshotReconciliation = true;
-      this.pendingSnapshotRequestIds = [...new Set([...this.pendingSnapshotRequestIds, ...requestIds])];
+      this.pendingSnapshotRequestIds = [
+        ...new Set([...this.pendingSnapshotRequestIds, ...requestIds]),
+      ];
       return;
     }
 
