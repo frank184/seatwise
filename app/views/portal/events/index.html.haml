@@ -1,5 +1,10 @@
 - content_for :title, "Discover events · Seatwise"
-.min-h-full{class: "bg-base-200/60", "data-controller": "portal--events", "data-events-index": ""}
+.min-h-full{
+  class: "bg-base-200/60",
+  "data-controller": "portal--events",
+  "data-action": "portal--availability:updated->portal--events#availabilityUpdated",
+  "data-events-index": ""
+}
   %main.mx-auto.max-w-7xl.space-y-9.px-4.py-5.sm:px-8.sm:py-8
     %section.relative.isolate.overflow-hidden.rounded-box.bg-neutral.text-neutral-content.shadow-xl
       .absolute.-right-16.-top-24.-z-10.size-96.rounded-full.blur-3xl{
@@ -76,14 +81,19 @@
             hidden: ""
           }
             Past event
-          %span.badge.badge-neutral.absolute.bottom-4.left-4{"data-event-availability": ""}
+          %span.badge.absolute.bottom-4.left-4{
+            class: "border border-base-content/25 bg-base-100 text-base-content",
+            data: { event_availability_badge: "" }
+          }
+            = lucide "armchair", class: "size-3.5"
+            %span{"data-event-availability": ""}
         = card_body body_class: "gap-3" do
           .flex.items-center.gap-2.text-sm.font-medium{class: "text-base-content/55"}
             %span{"data-event-time": ""}
             %span{"aria-hidden": "true"} ·
             %span{"data-event-venue": ""}
           %h3.card-title.text-xl{"data-event-name": ""}
-          .mt-2.flex.items-center.justify-between.border-t.border-base-200.pt-4
+          .flex.items-center.justify-between.border-t.border-base-200.pt-3
             %span.text-sm{class: "text-base-content/60", "data-event-capacity": ""}
             %span.btn.btn-sm.btn-primary
               = "Explore #{lucide "arrow-up-right", class: "size-4"}"
