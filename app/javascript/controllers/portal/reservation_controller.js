@@ -47,6 +47,14 @@ export default class extends Controller {
           }
         }
         if (flow.step === "payment") flow.furthestStep = Math.min(flow.furthestStep || 2, 2);
+        if (
+          flow.step === "seats" &&
+          flow.selectedSeats.length === 0 &&
+          !["held", "confirmed"].includes(flow.reservation?.status)
+        ) {
+          flow.showTimeline = false;
+          flow.furthestStep = STEP_NUMBERS.seats;
+        }
         flow.furthestStep = Math.max(
           flow.furthestStep || 1,
           STEP_NUMBERS[flow.step] || STEP_NUMBERS.seats,
@@ -262,6 +270,10 @@ export default class extends Controller {
       this.flow.paymentSession = null;
     }
     this.selectedSeats = requestedSeats;
+    if (this.flow.step === "seats" && requestedSeats.size === 0) {
+      this.flow.showTimeline = false;
+      this.flow.furthestStep = STEP_NUMBERS.seats;
+    }
     if (this.flow.request?.status === "failed") this.flow.request.idempotencyKey = null;
     this.saveFlow();
     this.updateSelectionSummary();
@@ -314,7 +326,22 @@ export default class extends Controller {
       minute: "2-digit",
     });
     content.querySelector("[data-detail-seats]").textContent = `${event.seat_count} seats`;
-    content.querySelector("[data-detail-open]").textContent = `${event.available_count} seats`;
+    this.updateAvailabilityPresentation(event.available_count);
+  }
+
+  updateAvailabilityPresentation(available) {
+    const count = this.element.querySelector("[data-detail-open]");
+    const availabilityNotice = this.element.querySelector("[data-availability-change-notice]");
+    const soldOutNotice = this.element.querySelector("[data-sold-out-notice]");
+    const isSoldOut = Number(available) === 0;
+
+    if (count) {
+      count.textContent = `${available} seats`;
+      count.classList.toggle("text-success", !isSoldOut);
+      count.classList.toggle("text-base-content/55", isSoldOut);
+    }
+    if (availabilityNotice) availabilityNotice.hidden = isSoldOut;
+    if (soldOutNotice) soldOutNotice.hidden = !isSoldOut;
   }
 
   renderReservationEventDetails(event) {
@@ -867,7 +894,7 @@ export default class extends Controller {
     if (paymentTitle && paymentCopy && this.flow.payment?.status === "processing") {
       paymentTitle.textContent = "Waiting for payment confirmation";
       paymentCopy.textContent =
-        "Your payment was submitted securely. We’ll confirm your booking as soon as Stripe verifies it.";
+        "Your seats remain held until your payment is confirmed.";
     }
     const invoice = panel.querySelector("[data-confirmed-invoice]");
     const paymentSession = this.flow.paymentSession;
@@ -929,8 +956,7 @@ export default class extends Controller {
       );
     }
     const available = Math.max(0, this.event.seat_count - unavailableSeats.size);
-    const count = this.element.querySelector("[data-detail-open]");
-    if (count) count.textContent = `${available} seats`;
+    this.updateAvailabilityPresentation(available);
   }
 
   updateHoldDetails() {
@@ -1053,7 +1079,7 @@ export default class extends Controller {
     this.flow.paymentSession = null;
     this.flow.step = "seats";
     this.flow.furthestStep = 1;
-    this.flow.showTimeline = true;
+    this.flow.showTimeline = false;
     this.selectedSeats.clear();
     this.releasingHold = false;
     this.expiryPending = false;

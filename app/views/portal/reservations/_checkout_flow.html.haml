@@ -30,37 +30,38 @@
           }
             Your seats are held while you complete checkout.
         %span.badge.badge-success.badge-soft{data: { reservation_request_status: true }} Hold active
-    %section.space-y-5{"data-flow-stage": "seats", "aria-labelledby": "email-title"}
-      %div
-        %h2.reservation-stage-heading.mt-1.w-fit.max-w-full.text-2xl.font-bold#email-title{
-          tabindex: "-1",
-          "data-stage-heading": ""
+    %section{class: "space-y-2.5", "data-flow-stage": "seats", "aria-labelledby": "email-title"}
+      .mx-auto.w-full.max-w-xl.space-y-5
+        %div
+          %h2.reservation-stage-heading.mt-1.w-fit.max-w-full.text-2xl.font-bold#email-title{
+            tabindex: "-1",
+            "data-stage-heading": ""
+          }
+            Where should we send your tickets?
+          %p.mt-2.text-sm{class: "text-base-content/65"}
+            We’ll hold your seats for five minutes when you continue to payment.
+        %form.space-y-4{
+          "data-action": "submit->portal--reservation#placeHold",
+          "data-checkout-form": ""
         }
-          Choose your seats and add your email
-        %p.mt-2.text-sm{class: "text-base-content/65"}
-          We’ll hold your seats for five minutes when you continue to payment.
-      %form.max-w-xl.space-y-4{
-        "data-action": "submit->portal--reservation#placeHold",
-        "data-checkout-form": ""
-      }
-        %fieldset.fieldset
-          %label.fieldset-legend.px-0{for: "reservation-email"} Email
-          %input.input.w-full#reservation-email{
-            type: "email",
-            name: "email",
-            autocomplete: "email",
-            placeholder: "you@example.com",
-            required: true,
-            "data-action": "input->portal--reservation#saveEmail"
-          }/
+          %div
+            %input.input.w-full#reservation-email{
+              type: "email",
+              name: "email",
+              autocomplete: "email",
+              "aria-label": "Email",
+              placeholder: "name@domain.com",
+              required: true,
+              "data-action": "input->portal--reservation#saveEmail"
+            }/
 
-          %p.label.px-0{data: { email_help: true }}
-            We’ll send your tickets and booking details here.
-        %p.text-sm.text-info{"aria-live": "polite", "data-request-status": ""}
-          Your seats are ready to reserve. Continue to place your five-minute hold.
-        %p.text-sm.text-error{"aria-live": "polite", data: { hold_error: true }, hidden: ""}
-        .flex.flex-wrap.items-center.gap-2
-          = button "Continue to payment", type: "submit", variant: :primary, data: { hold_submit: true }
+            %p.mt-1.5.text-sm{class: "text-base-content/65", data: { email_help: true }}
+              We’ll send your tickets and booking details here.
+          %p.text-sm.text-info{"aria-live": "polite", "data-request-status": ""}
+            Your seats are ready to reserve. Continue to place your five-minute hold.
+          %p.text-sm.text-error{"aria-live": "polite", data: { hold_error: true }, hidden: ""}
+          .flex.flex-wrap.items-center.gap-2
+            = button "Continue to payment", type: "submit", variant: :primary, data: { hold_submit: true }
     %section.space-y-6{hidden: "", "data-flow-stage": "payment", "aria-labelledby": "checkout-title"
     }
       %div
@@ -139,92 +140,90 @@
     %section.space-y-5{
       hidden: "",
       "data-flow-stage": "redirecting",
-      "aria-labelledby": "redirecting-title",
-      "aria-live": "polite"
+      "aria-labelledby": "redirecting-title"
     }
       .mx-auto.w-full.max-w-xl.space-y-5
-        .flex.items-center.justify-between.gap-3
-          %span.text-lg.font-bold{data: { payment_brand: true }} Stripe
-          %span.badge.badge-outline{data: { payment_badge: true }} Secure payment
-        %div{class: "rounded-box border border-base-300 bg-base-100 p-6 text-center sm:p-8"}
-          .loading.loading-spinner.loading-lg.mx-auto.text-primary{
-            role: "status",
-            aria: { label: "Waiting for payment confirmation" }
-          }
-
-          %h2.reservation-stage-heading.mt-5.w-fit.max-w-full.text-2xl.font-bold#redirecting-title{
+        .alert.flex.items-start.gap-3.bg-base-200{role: "status"}
+          %span.loading.loading-spinner.loading-sm.mt-0.5.shrink-0.text-info{"aria-hidden": "true"}
+          %div
+            %p.font-semibold Payment submitted
+            %p.mt-1.text-sm{class: "text-base-content/65", data: { checkout_return_status: true }}
+              We’re checking your payment with Stripe.
+        %div
+          %h2.reservation-stage-heading.w-fit.max-w-full.text-2xl.font-bold#redirecting-title{
             tabindex: "-1",
             "data-stage-heading": "",
             data: { payment_title: true }
           }
             Opening secure checkout…
           %p.mt-2.text-sm{class: "text-base-content/65", data: { payment_copy: true }}
-            Waiting for payment confirmation. Your seats remain held.
-          %p.mt-3.text-sm{
-            class: "text-base-content/65",
-            aria: { live: "polite" },
-            data: { checkout_return_status: true }
-          }
-            We’re checking your payment with Stripe.
-          = button "Check payment status", variant: :outline, class: "mt-4", data: { action: "click->portal--checkout#checkStatus", check_payment_status: true }, hidden: true
-          .mt-6.text-left{class: "rounded-box bg-base-200/60 p-4"}
+            Your seats remain held until your payment is confirmed.
+        = card card_class: "border border-base-300 bg-base-100 shadow-sm", body_class: "gap-4 p-4 sm:p-6" do
+          .flex.items-center.justify-between.gap-3.border-b.border-base-300.pb-4
+            = image_tag "/stripe.png", alt: "Stripe", class: "inline-block h-[18px] w-auto align-middle", data: { payment_brand: true }
+            %span{data: { payment_badge: true }}
+              = badge safe_join([lucide("lock-keyhole", class: "size-3.5"), "Secure payment"]), variant: :success, style: :soft, size: :sm, extra_class: "gap-1.5"
+          = button "Check payment status", variant: :outline, class: "self-start", data: { action: "click->portal--checkout#checkStatus", check_payment_status: true }, hidden: true
+          %div
             %p.text-sm.font-semibold{"data-seat-summary": ""} No seats selected
-            %p.mt-1.text-xs{class: "text-base-content/60"} Hold time remaining
-            %p.mt-1.text-lg.font-bold.tabular-nums{"data-hold-countdown": ""} 5:00
+            .mt-3.flex.flex-wrap.items-center.justify-between.gap-2
+              %p.text-sm{class: "text-base-content/65"} Hold time remaining
+              %p.text-lg.font-bold.tabular-nums{"data-hold-countdown": ""} 5:00
     %section.space-y-5{
       hidden: "",
       "data-flow-stage": "confirmed",
       "aria-labelledby": "confirmed-title"
     }
-      .flex.items-start.gap-3.border-l-4.border-success.pl-4{role: "status"}
-        = lucide "circle-check", class: "mt-0.5 size-5 shrink-0 text-success"
+      .mx-auto.w-full.space-y-5{class: "max-w-xl"}
+        .flex.items-start.gap-3.border-l-4.border-success.pl-4{role: "status"}
+          = lucide "circle-check", class: "mt-0.5 size-5 shrink-0 text-success"
+          %div
+            %p.font-semibold Reservation confirmed
+            %p.mt-1.text-sm{class: "text-base-content/65"}
+              Your payment is complete and your seats are booked.
         %div
-          %p.font-semibold Reservation confirmed
-          %p.mt-1.text-sm{class: "text-base-content/65"}
-            Your payment is complete and your seats are booked.
-      %div
-        %h2.reservation-stage-heading.mt-1.w-fit.max-w-full.text-2xl.font-bold#confirmed-title{
-          tabindex: "-1",
-          "data-stage-heading": ""
-        }
-          You’re going to the show
-        %p.mt-2.text-sm{class: "text-base-content/65"}
-          = "We’ve sent your confirmation to "
-          %span.font-semibold.text-base-content{data: { reservation_email: true }} Email pending
-      .w-full{class: "max-w-xl rounded-box border border-base-300 bg-base-100 p-4 shadow-sm"}
-        %dl.grid.gap-3.text-sm{class: "sm:grid-cols-2"}
-          %div
-            %dt.text-xs{class: "text-base-content/55"} Event
-            %dd.mt-1.font-medium{data: { reservation_event: true }} Event name
-          %div
-            %dt.text-xs{class: "text-base-content/55"} Date &amp; time
-            %dd.mt-1.font-medium{data: { reservation_date: true }} Event date
-          %div
-            %dt.text-xs{class: "text-base-content/55"} Venue
-            %dd.mt-1.font-medium{data: { reservation_venue: true }} Venue name
-          %div
-            %dt.text-xs{class: "text-base-content/55"} Booking reference
-            %dd.mt-1.font-mono.font-semibold{data: { reservation_reference: true }} Pending
-        .mt-5.border-t.border-base-300.pt-4{hidden: "", data: { confirmed_invoice: true }}
-          .grid.grid-cols-2.items-start.gap-4
+          %h2.reservation-stage-heading.mt-1.w-fit.max-w-full.text-2xl.font-bold#confirmed-title{
+            tabindex: "-1",
+            "data-stage-heading": ""
+          }
+            You’re going to the show
+          %p.mt-2.text-sm{class: "text-base-content/65"}
+            = "We’ve sent your confirmation to "
+            %span.font-semibold.text-base-content{data: { reservation_email: true }} Email pending
+        .w-full.rounded-box.border.border-base-300.bg-base-100.p-4.shadow-sm
+          %dl.grid.gap-3.text-sm{class: "sm:grid-cols-2"}
             %div
-              %p.text-xs{class: "text-base-content/55"} Event tickets
-              %p.mt-1.font-semibold{data: { invoice_seat_summary: true }} Seats pending
-              %p.mt-0.5.whitespace-nowrap.text-xs{
-                class: "text-base-content/60",
-                data: { invoice_ticket_summary: true }
+              %dt.text-xs{class: "text-base-content/55"} Event
+              %dd.mt-1.font-medium{data: { reservation_event: true }} Event name
+            %div
+              %dt.text-xs{class: "text-base-content/55"} Date &amp; time
+              %dd.mt-1.font-medium{data: { reservation_date: true }} Event date
+            %div
+              %dt.text-xs{class: "text-base-content/55"} Venue
+              %dd.mt-1.font-medium{data: { reservation_venue: true }} Venue name
+            %div
+              %dt.text-xs{class: "text-base-content/55"} Booking reference
+              %dd.mt-1.font-mono.font-semibold{data: { reservation_reference: true }} Pending
+          .mt-5.border-t.border-base-300.pt-4{hidden: "", data: { confirmed_invoice: true }}
+            .grid.grid-cols-2.items-start.gap-4
+              %div
+                %p.text-xs{class: "text-base-content/55"} Event tickets
+                %p.mt-1.font-semibold{data: { invoice_seat_summary: true }} Seats pending
+                %p.mt-0.5.whitespace-nowrap.text-xs{
+                  class: "text-base-content/60",
+                  data: { invoice_ticket_summary: true }
+                }
+                  Ticket price pending
+              %p.self-center.text-left.text-lg.font-bold.tabular-nums{
+                data: { invoice_line_total: true }
               }
-                Ticket price pending
-            %p.self-center.text-left.text-lg.font-bold.tabular-nums{
-              data: { invoice_line_total: true }
-            }
-              —
-          .mt-4.grid.grid-cols-2.items-center.gap-4.border-t.border-base-300.pt-4{role: "status"}
-            %p.text-sm{class: "text-base-content/65"}
-              Payment processed by
-              = image_tag "/stripe.png", alt: "Stripe", class: "ml-1 inline-block h-[18px] w-auto align-middle"
-            %span.badge.badge-success.badge-soft Payment complete
-      = button "Start another reservation", variant: :primary, data: { action: "click->portal--reservation#startAgain" }
+                —
+            .mt-4.grid.grid-cols-2.items-center.gap-4.border-t.border-base-300.pt-4{role: "status"}
+              %p.text-sm{class: "text-base-content/65"}
+                Payment processed by
+                = image_tag "/stripe.png", alt: "Stripe", class: "ml-1 inline-block h-[18px] w-auto align-middle"
+              %span.badge.badge-success.badge-soft Payment complete
+        = button "Start another reservation", variant: :primary, data: { action: "click->portal--reservation#startAgain" }
     %section.space-y-5{hidden: "", "data-flow-stage": "expired", "aria-labelledby": "expired-title"}
       = status_alert title: "Hold expired", description: "These seats are no longer reserved. Choose seats to begin again.", variant: :warning, icon: "clock-3", soft: true
       %h2.reservation-stage-heading.w-fit.max-w-full.text-2xl.font-bold#expired-title{

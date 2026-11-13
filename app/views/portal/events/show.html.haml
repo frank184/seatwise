@@ -58,7 +58,13 @@
                 %dt{class: "text-base-content/55"} Available now
                 %dd.mt-1.font-semibold.text-success{"data-detail-open": ""}
             .mt-6
-              = status_alert title: "Availability can change", description: "Seat availability updates as guests book. Your seat status stays visible as you move through checkout.", variant: :info, icon: "info", soft: true
+              %div{data: { availability_change_notice: true }}
+                = status_alert title: "Availability can change", description: "Seat availability updates as guests book. Your seat status stays visible as you move through checkout.", variant: :info, icon: "info", soft: true
+              .alert.bg-base-200.flex.items-start.gap-3{hidden: "", role: "status", data: { sold_out_notice: true }}
+                = lucide "armchair", class: "size-5 shrink-0 text-base-content/60"
+                %div
+                  %h4.font-semibold Fully booked
+                  %p.text-sm There are no seats available right now. Check back later in case availability changes.
         %section.border-t.border-base-300.p-5.sm:p-9{"aria-labelledby": "seating-title"}
           .mb-4.flex.flex-wrap.items-end.justify-between.gap-3
             %div
