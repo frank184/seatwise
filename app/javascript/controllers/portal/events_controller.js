@@ -45,7 +45,13 @@ export default class extends Controller {
     const url = new URL("/api/v1/events", window.location.origin);
     const params = new URLSearchParams(window.location.search);
     for (const [key, value] of params.entries()) {
-      if (key === "q" || key.startsWith("q[") || key === "when" || key === "sort" || key === "page") {
+      if (
+        key === "q" ||
+        key.startsWith("q[") ||
+        key === "when" ||
+        key === "sort" ||
+        key === "page"
+      ) {
         url.searchParams.set(key, value);
       }
     }
@@ -239,14 +245,26 @@ export default class extends Controller {
       const selected = button.dataset.sortKey === sortKey;
       button.classList.toggle("btn-primary", selected);
       button.setAttribute("aria-pressed", selected);
-      form.querySelector(`[data-sort-indicator="${button.dataset.sortKey}"]`).classList.toggle("invisible", !selected);
+      form
+        .querySelector(`[data-sort-indicator="${button.dataset.sortKey}"]`)
+        .classList.toggle("invisible", !selected);
       button.querySelector('[data-sort-direction="ascending"]').hidden = descending;
       button.querySelector('[data-sort-direction="descending"]').hidden = !descending;
       if (button.dataset.sortKey === "date") {
-        button.setAttribute("aria-label", selected ? (descending ? "Date, latest first" : "Date, soonest first") : "Sort by date, soonest first");
+        button.setAttribute(
+          "aria-label",
+          selected
+            ? descending
+              ? "Date, latest first"
+              : "Date, soonest first"
+            : "Sort by date, soonest first",
+        );
         button.title = descending && selected ? "Date: latest first" : "Date: soonest first";
       } else {
-        button.setAttribute("aria-label", selected ? (descending ? "Name, Z to A" : "Name, A to Z") : "Sort by name, A to Z");
+        button.setAttribute(
+          "aria-label",
+          selected ? (descending ? "Name, Z to A" : "Name, A to Z") : "Sort by name, A to Z",
+        );
         button.title = descending && selected ? "Name: Z to A" : "Name: A to Z";
       }
     });

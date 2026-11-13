@@ -65,8 +65,23 @@
               %button.btn.btn-sm.join-item{
                 type: "button",
                 class: ("btn-primary" unless sort_by_name),
-                aria: { pressed: !sort_by_name, label: (sort_by_name ? "Sort by date, soonest first" : (sort_descending ? "Date, latest first" : "Date, soonest first")) },
-                title: (!sort_by_name && sort_descending ? "Date: latest first" : "Date: soonest first"),
+                aria: {
+                  pressed: !sort_by_name,
+                  label: (
+      if sort_by_name
+        "Sort by date, soonest first"
+      else
+        (sort_descending ? "Date, latest first" : "Date, soonest first")
+      end
+    )
+                },
+                title: (
+    if !sort_by_name && sort_descending
+      "Date: latest first"
+    else
+      "Date: soonest first"
+    end
+  ),
                 data: { action: "click->portal--events#selectSort", sort_key: "date" }
               }
                 Date
@@ -75,12 +90,23 @@
                   aria: { hidden: "true" },
                   data: { sort_indicator: "date" }
                 }
-                  %span{hidden: !sort_descending, data: { sort_direction: "descending" }}= lucide "arrow-down-wide-narrow", class: "size-4"
-                  %span{hidden: sort_descending, data: { sort_direction: "ascending" }}= lucide "arrow-up-wide-narrow", class: "size-4"
+                  %span{hidden: !sort_descending, data: { sort_direction: "descending" }}
+                    = lucide "arrow-down-wide-narrow", class: "size-4"
+                  %span{hidden: sort_descending, data: { sort_direction: "ascending" }}
+                    = lucide "arrow-up-wide-narrow", class: "size-4"
               %button.btn.btn-sm.join-item{
                 type: "button",
                 class: ("btn-primary" if sort_by_name),
-                aria: { pressed: sort_by_name, label: (sort_by_name ? (sort_descending ? "Name, Z to A" : "Name, A to Z") : "Sort by name, A to Z") },
+                aria: {
+                  pressed: sort_by_name,
+                  label: (
+      if sort_by_name
+        (sort_descending ? "Name, Z to A" : "Name, A to Z")
+      else
+        "Sort by name, A to Z"
+      end
+    )
+                },
                 title: (sort_by_name && sort_descending ? "Name: Z to A" : "Name: A to Z"),
                 data: { action: "click->portal--events#selectSort", sort_key: "name" }
               }
@@ -90,8 +116,10 @@
                   aria: { hidden: "true" },
                   data: { sort_indicator: "name" }
                 }
-                  %span{hidden: !sort_descending, data: { sort_direction: "descending" }}= lucide "arrow-down-wide-narrow", class: "size-4"
-                  %span{hidden: sort_descending, data: { sort_direction: "ascending" }}= lucide "arrow-up-wide-narrow", class: "size-4"
+                  %span{hidden: !sort_descending, data: { sort_direction: "descending" }}
+                    = lucide "arrow-down-wide-narrow", class: "size-4"
+                  %span{hidden: sort_descending, data: { sort_direction: "ascending" }}
+                    = lucide "arrow-up-wide-narrow", class: "size-4"
             = button "Search", type: "submit", variant: :neutral, class: "w-24 shrink-0"
       .hidden.grid.gap-5.md:grid-cols-2.xl:grid-cols-3#events-loading{
         "aria-live": "polite",
