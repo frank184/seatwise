@@ -14,6 +14,7 @@
       try { if (localStorage.getItem("seatwise-theme") === "dark") document.documentElement.dataset.theme = "dark"; } catch (_) {}
     %script{src: "https://js.stripe.com/dahlia/stripe.js", async: true}
     %link{href: "/icon.svg", rel: "icon", type: "image/svg+xml"}/
+    %link{as: "image", fetchpriority: "low", href: "/text-dark.png", rel: "preload"}/
     = stylesheet_link_tag :app, "data-turbo-track": "reload"
     = stylesheet_link_tag "tailwind", "data-turbo-track": "reload"
     = javascript_importmap_tags
