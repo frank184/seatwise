@@ -1,5 +1,5 @@
 !!!
-%html{"data-theme": "light", lang: "en"}
+%html{"data-controller": "portal--theme", "data-theme": "light", lang: "en"}
   %head
     %meta{content: "text/html; charset=UTF-8", "http-equiv": "Content-Type"}/
     %title= content_for(:title) || "Seatwise"
@@ -10,6 +10,8 @@
     = csrf_meta_tags
     = csp_meta_tag
     = yield :head
+    = javascript_tag nonce: true do
+      try { if (localStorage.getItem("seatwise-theme") === "dark") document.documentElement.dataset.theme = "dark"; } catch (_) {}
     %script{src: "https://js.stripe.com/dahlia/stripe.js", async: true}
     %link{href: "/icon.svg", rel: "icon", type: "image/svg+xml"}/
     = stylesheet_link_tag :app, "data-turbo-track": "reload"
@@ -26,9 +28,21 @@
           }
             = image_tag "/logo.png", alt: "", class: "absolute left-1/2 top-1/2 size-11 max-w-none -translate-x-1/2 -translate-y-1/2 object-contain", aria: { hidden: "true" }
           %span{class: "flex flex-col items-start"}
-            = image_tag "/text-light.png", alt: "Seatwise", class: "block h-7 w-auto object-contain object-left"
+            = image_tag "/text-light.png", alt: "Seatwise", class: "block h-7 w-auto object-contain object-left", data: { "portal--theme-target": "wordmark", light_src: "/text-light.png", dark_src: "/text-dark.png" }
             %span{class: "-mt-2 ml-1.5 text-xs leading-none text-base-content/55"} Find your place
-      .navbar-end.gap-2
+      .navbar-end.gap-1.sm:gap-2
+        %label.swap.swap-rotate.btn.btn-ghost.btn-circle{
+          title: "Toggle dark mode",
+          aria: { label: "Toggle dark mode" }
+        }
+          %input.theme-controller{
+            type: "checkbox",
+            value: "dark",
+            data: { "portal--theme-target": "control", action: "change->portal--theme#change" }
+          }/
+
+          = lucide "moon", class: "swap-on size-5", aria: { hidden: "true" }
+          = lucide "sun", class: "swap-off size-5", aria: { hidden: "true" }
         = link_to root_path, class: "btn btn-primary btn-sm gap-2" do
           Browse events
           = lucide "arrow-right", class: "size-4"

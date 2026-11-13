@@ -1,5 +1,5 @@
 !!!
-%html{"data-theme": "light", lang: "en"}
+%html{"data-controller": "portal--theme", "data-theme": "light", lang: "en"}
   %head
     %meta{content: "text/html; charset=UTF-8", "http-equiv": "Content-Type"}/
     %title= content_for(:title) || "Seatwise"
@@ -10,6 +10,8 @@
     = csrf_meta_tags
     = csp_meta_tag
     = yield :head
+    = javascript_tag nonce: true do
+      try { if (localStorage.getItem("seatwise-theme") === "dark") document.documentElement.dataset.theme = "dark"; } catch (_) {}
     %link{href: "/icon.svg", rel: "icon", type: "image/svg+xml"}/
     = stylesheet_link_tag :app, "data-turbo-track": "reload"
     = stylesheet_link_tag "tailwind", "data-turbo-track": "reload"

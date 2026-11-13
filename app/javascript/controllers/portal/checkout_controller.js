@@ -91,7 +91,13 @@ export default class extends Controller {
       this.renderPaymentTotal(session.amount, session.currency);
       this.checkout = stripe.initCheckoutElementsSdk({
         clientSecret: session.client_secret,
-        elementsOptions: { appearance: { theme: "stripe", inputs: "condensed", labels: "auto" } },
+        elementsOptions: {
+          appearance: {
+            theme: document.documentElement.dataset.theme === "dark" ? "night" : "stripe",
+            inputs: "condensed",
+            labels: "auto",
+          },
+        },
       });
       let actionsTimeout;
       const actionsResult = await Promise.race([

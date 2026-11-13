@@ -8,3 +8,20 @@
 @plugin "./daisyui-theme.mjs" {
   themes: light --default, dark --prefersdark;
 }
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --color-base-100: oklch(19% 0.006 255);
+  --color-base-200: oklch(16% 0.005 255);
+  --color-base-300: oklch(13.5% 0.004 255);
+  --color-base-content: oklch(92% 0.008 255);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .theme-switching,
+  .theme-switching * {
+    transition-property: color, background-color, border-color, fill, stroke;
+    transition-duration: 180ms;
+    transition-timing-function: ease-out;
+  }
+}
