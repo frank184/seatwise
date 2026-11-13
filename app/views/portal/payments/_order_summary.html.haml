@@ -1,0 +1,31 @@
+= card card_class: "order-1 border border-base-300 bg-base-200/70 shadow-sm lg:sticky lg:top-6 lg:order-2", body_class: "gap-4 p-4 sm:p-5" do
+  .alert.alert-warning.alert-soft.flex.flex-wrap.items-center.justify-between.gap-3{role: "status"}
+    .flex.items-center.gap-3
+      = lucide "clock-3", class: "size-5 shrink-0"
+      %div
+        %p.font-semibold Seats held
+        = button "Cancel hold", variant: :ghost, class: "mt-1 h-auto min-h-0 justify-start px-0 py-0 text-sm font-medium text-base-content/80 hover:bg-transparent hover:border-transparent hover:shadow-none hover:text-error", data: { action: "click->portal--reservation#cancelHold" }
+    .text-right
+      %p.text-2xl.font-black.tabular-nums{"aria-live": "off", "data-hold-countdown": ""}
+        5:00
+      %p.text-xs{data: { hold_deadline: true }} Pending
+  %p.text-sm.text-error{"aria-live": "polite", data: { cancel_error: true }, hidden: ""}
+  %div
+    %p.text-sm.font-semibold Order summary
+    %p.mt-1.text-lg.font-bold{data: { reservation_event: true }} Event name
+  %dl.space-y-3.text-sm
+    %div
+      %dt.text-xs{class: "text-base-content/55"} Date &amp; time
+      %dd.mt-1.font-medium{data: { reservation_date: true }} Event date
+    %div
+      %dt.text-xs{class: "text-base-content/55"} Venue
+      %dd.mt-1.font-medium{data: { reservation_venue: true }} Venue name
+    %div
+      %dt.text-xs{class: "text-base-content/55"} Seats
+      %dd.mt-1.font-medium{"data-seat-summary": ""} No seats selected
+    %div
+      %dt.text-xs{class: "text-base-content/55"} Booking email
+      %dd.mt-1.font-medium{data: { reservation_email: true }} Email pending
+    .border-t.border-base-300.pt-3
+      %dt.text-xs{class: "text-base-content/55"} Total
+      %dd.mt-1.text-lg.font-bold{data: { reservation_total: true }} —

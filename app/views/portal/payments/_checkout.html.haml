@@ -1,0 +1,15 @@
+%section.space-y-6{hidden: "", "data-flow-stage": "payment", "aria-labelledby": "checkout-title"}
+  %div
+    .flex.flex-wrap.items-baseline.gap-3
+      %h2.reservation-stage-heading.w-fit.max-w-full.text-2xl.font-bold#checkout-title{
+        tabindex: "-1",
+        "data-stage-heading": ""
+      }
+        Payment
+      = badge safe_join([lucide("circle-check", class: "size-3.5"), "Hold created"]), variant: :success, style: :soft, size: :sm, extra_class: "gap-1.5 text-green-800"
+    %p.mt-2.text-sm{class: "text-base-content/65"}
+      Your seats are held while you finish checkout.
+  .mx-auto.w-full.space-y-5{class: "max-w-6xl"}
+    .grid.items-start.gap-5{class: "lg:grid-cols-2"}
+      = render "portal/payments/order_summary"
+      = render "portal/payments/form"

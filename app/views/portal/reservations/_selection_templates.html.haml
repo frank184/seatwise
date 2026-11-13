@@ -1,0 +1,8 @@
+%template#selection-group-template
+  .flex.items-center.gap-1
+    %span.badge.badge-neutral.badge-sm.whitespace-nowrap.px-3{data: { selection_row_label: true }}
+    .flex.items-center.gap-1{data: { selection_seats: true }}
+%template#selected-seat-template
+  %span{
+    class: "flex size-6 items-center justify-center rounded-t-full border border-primary bg-primary text-[0.625rem] font-semibold tabular-nums text-primary-content"
+  }

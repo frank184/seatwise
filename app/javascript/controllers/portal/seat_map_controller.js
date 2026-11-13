@@ -1,14 +1,5 @@
 import { Controller } from "@hotwired/stimulus";
-
-const SEAT_STYLES = {
-  open: "relative isolate size-6 cursor-pointer touch-none select-none rounded-t-full border-0 bg-transparent p-0 before:absolute before:inset-[1.2px] before:-z-10 before:rounded-t-full before:border before:border-success before:bg-success/70 hover:before:border-primary hover:before:bg-primary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-  selected:
-    "relative isolate flex size-6 cursor-pointer touch-none select-none items-center justify-center rounded-t-full border-0 bg-transparent p-0 text-[0.625rem] font-semibold tabular-nums text-primary-content before:absolute before:inset-[1.2px] before:-z-10 before:rounded-t-full before:border-2 before:border-primary before:bg-primary",
-  unavailable:
-    "relative isolate size-6 cursor-not-allowed rounded-t-full border-0 bg-transparent p-0 before:absolute before:inset-[1.2px] before:-z-10 before:rounded-t-full before:border before:border-dashed before:border-base-content/40 before:bg-base-300",
-  yours:
-    "relative isolate flex size-6 cursor-default items-center justify-center rounded-t-full border-0 bg-transparent p-0 text-[0.625rem] font-semibold tabular-nums text-primary-content before:absolute before:inset-[1.2px] before:-z-10 before:rounded-t-full before:border-2 before:border-primary before:bg-primary",
-};
+import { cloneTemplate } from "controllers/portal/view_helpers";
 
 export default class extends Controller {
   static values = {
@@ -124,33 +115,20 @@ export default class extends Controller {
   }
 
   renderRow(row) {
-    const tableRow = document.createElement("tr");
-    const label = document.createElement("span");
-    label.className = "badge badge-neutral badge-sm whitespace-nowrap px-3";
+    const tableRow = cloneTemplate(this.element, "#seat-map-row-template");
+    const label = tableRow.querySelector("[data-row-label]");
     label.textContent = `Row ${row.label}`;
-
-    const rowHeader = document.createElement("th");
-    rowHeader.scope = "row";
-    rowHeader.className = "whitespace-nowrap px-4 py-2.5";
-    rowHeader.append(label);
-
-    const seats = document.createElement("div");
-    seats.className = "mx-auto flex w-max items-center justify-center gap-1.25";
-    const seatCell = document.createElement("td");
-    seatCell.className = "text-center";
+    const seats = tableRow.querySelector("[data-seat-container]");
     const reservedSeats = new Set(row.reserved_seats);
 
     for (let number = 1; number <= row.seat_count; number += 1) {
       seats.append(this.renderSeat(row, number, reservedSeats.has(number)));
     }
 
-    seatCell.append(seats);
-    tableRow.append(rowHeader, seatCell);
     return tableRow;
   }
 
   renderSeat(row, number, unavailable) {
-    const seat = document.createElement("button");
     const key = this.seatKey(row.row_id, number);
     const reservation = this.reservationValue;
     const reservationSeat = reservation.seats?.find(
@@ -159,15 +137,11 @@ export default class extends Controller {
     const yours = reservationSeat && ["held", "confirmed"].includes(reservation.status);
     const selected = !unavailable && !yours && this.selectedSeatsValue.includes(key);
     const state = yours ? "yours" : selected ? "selected" : unavailable ? "unavailable" : "open";
-
-    seat.type = "button";
-    seat.className = SEAT_STYLES[state];
+    const seat = cloneTemplate(this.element, `#seat-map-${state}-template`);
     seat.dataset.seat = number;
     seat.dataset.row = row.row_id;
     seat.dataset.rowLabel = row.label;
     if (yours) seat.dataset.heldSeat = `${row.row_id}:${number}`;
-    seat.dataset.action =
-      "pointerdown->portal--seat-map#startDrag pointerenter->portal--seat-map#dragAcrossSeat click->portal--seat-map#toggleSeat";
     const reservationActive = this.isReservationActive();
     seat.disabled = this.busyValue || unavailable || Boolean(yours) || reservationActive;
     seat.setAttribute("aria-pressed", String(selected || Boolean(yours)));
@@ -187,7 +161,7 @@ export default class extends Controller {
   updateSeatButtons() {
     this.element.querySelectorAll("button[data-seat]").forEach((seat) => {
       const key = this.seatKeyFrom(seat);
-      const unavailable = seat.getAttribute("aria-label").endsWith(", held or reserved");
+      const unavailable = seat.dataset.seatState === "unavailable";
       const yours = seat.hasAttribute("data-held-seat");
       const selected = !unavailable && !yours && this.selectedSeatsValue.includes(key);
       const state = yours ? "yours" : selected ? "selected" : unavailable ? "unavailable" : "open";
@@ -200,7 +174,10 @@ export default class extends Controller {
         reservation: this.reservationValue,
       });
 
-      seat.className = SEAT_STYLES[state];
+      seat.dataset.seatState = state;
+      seat.className = this.element.querySelector(
+        `#seat-map-${state}-template`,
+      ).content.firstElementChild.className;
       seat.disabled = this.busyValue || unavailable || Boolean(yours) || this.isReservationActive();
       seat.setAttribute("aria-pressed", String(selected || Boolean(yours)));
       seat.setAttribute("aria-label", label);

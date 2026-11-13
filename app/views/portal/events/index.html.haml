@@ -94,3 +94,9 @@
       %p.text-sm{class: "text-base-content/60"} Try another search or switch the date filter.
   %template#event-error-template
     = status_alert title: "Events could not load", description: "Check your connection and try again.", variant: :error, icon: "triangle-alert", action: button("Retry", variant: :error, size: :sm, data: { action: "click->portal--events#retry" })
+  %template#event-page-number-template
+    %button.btn.btn-sm.join-item{
+      type: "button",
+      data: { action: "click->portal--events#goToPage", page_number: true },
+      aria: { label: "Page" }
+    }

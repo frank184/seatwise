@@ -79,13 +79,12 @@ export default class extends Controller {
     pagination.querySelectorAll("[data-page-number]").forEach((button) => button.remove());
 
     for (let page = 1; page <= meta.total_pages; page += 1) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `btn btn-sm join-item${page === meta.page ? " btn-primary btn-active" : ""}`;
+      const button = cloneTemplate(this.element, "#event-page-number-template");
       button.dataset.pageNumber = page;
-      button.dataset.action = "click->portal--events#goToPage";
       button.textContent = page;
       button.setAttribute("aria-label", `Page ${page}`);
+      button.classList.toggle("btn-primary", page === meta.page);
+      button.classList.toggle("btn-active", page === meta.page);
       if (page === meta.page) button.setAttribute("aria-current", "page");
       next.before(button);
     }

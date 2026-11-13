@@ -87,6 +87,7 @@
             "data-portal--seat-map-busy-value": "true"
           }
             = data_table headers: %w[Row Seats], rows: [], size: :sm, wrapper_class: "bg-base-100", table_class: "min-w-max w-full [&_thead]:sr-only"
+            = render "portal/seats/map_templates"
           .mt-3.flex.flex-wrap.items-center.gap-2.text-sm{class: "text-base-content/75"}
             %span.size-3.rounded-t-full.border.border-success{class: "bg-success/70"}
             Open
@@ -109,4 +110,5 @@
       %p.text-sm{class: "text-base-content/60"}
         This event may have been removed or the link may be incorrect.
       = button "Browse events", variant: :primary, size: :sm, href: root_path
+  = render "portal/reservations/selection_templates"
   = render "portal/shared/confirmation_dialog", id: "reservation-release-confirmation", title: "Release your held seats?", description: "Your seats will be released and may not be available if you reserve again.", confirm_label: "Release hold and choose seats", cancel_label: "Keep my seats"

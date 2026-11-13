@@ -415,22 +415,16 @@ export default class extends Controller {
 
     rows.forEach((numbers, rowId) => {
       const row = this.event.rows.find((item) => String(item.row_id) === rowId);
-      const group = document.createElement("div");
-      group.className = "flex items-center gap-1";
-
-      const label = document.createElement("span");
-      label.className = "badge badge-neutral badge-sm whitespace-nowrap px-3";
-      label.textContent = `Row ${row?.label || rowId}`;
-      group.append(label);
+      const group = cloneTemplate(this.element, "#selection-group-template");
+      group.querySelector("[data-selection-row-label]").textContent = `Row ${row?.label || rowId}`;
+      const selectedSeats = group.querySelector("[data-selection-seats]");
 
       numbers
         .sort((left, right) => left - right)
         .forEach((number) => {
-          const seat = document.createElement("span");
-          seat.className =
-            "flex size-6 items-center justify-center rounded-t-full border border-primary bg-primary text-[0.625rem] font-semibold tabular-nums text-primary-content";
+          const seat = cloneTemplate(this.element, "#selected-seat-template");
           seat.textContent = String(number);
-          group.append(seat);
+          selectedSeats.append(seat);
         });
 
       preview.append(group);

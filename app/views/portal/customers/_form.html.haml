@@ -1,0 +1,30 @@
+%section{class: "space-y-2.5", "data-flow-stage": "seats", "aria-labelledby": "email-title"}
+  .mx-auto.w-full.max-w-xl.space-y-5
+    %div
+      %h2.reservation-stage-heading.mt-1.w-fit.max-w-full.text-2xl.font-bold#email-title{
+        tabindex: "-1",
+        "data-stage-heading": ""
+      }
+        Where should we send your tickets?
+      %p.mt-2.text-sm{class: "text-base-content/65"}
+        We’ll hold your seats for five minutes when you continue to payment.
+    %form.space-y-4{"data-action": "submit->portal--reservation#placeHold", "data-checkout-form": ""
+    }
+      %div
+        %input.input.w-full#reservation-email{
+          type: "email",
+          name: "email",
+          autocomplete: "email",
+          "aria-label": "Email",
+          placeholder: "name@domain.com",
+          required: true,
+          "data-action": "input->portal--reservation#saveEmail"
+        }/
+
+        %p.mt-1.5.text-sm{class: "text-base-content/65", data: { email_help: true }}
+          We’ll send your tickets and booking details here.
+      %p.text-sm.text-info{"aria-live": "polite", "data-request-status": ""}
+        Your seats are ready to reserve. Continue to place your five-minute hold.
+      %p.text-sm.text-error{"aria-live": "polite", data: { hold_error: true }, hidden: ""}
+      .flex.flex-wrap.items-center.gap-2
+        = button "Continue to payment", type: "submit", variant: :primary, data: { hold_submit: true }
