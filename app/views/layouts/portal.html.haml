@@ -21,7 +21,9 @@
     }
       .navbar-start
         = link_to root_path, class: "flex items-center gap-0 text-base-content no-underline" do
-          %span{class: "relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-base-200"}
+          %span{
+            class: "relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-base-200"
+          }
             = image_tag "/logo.png", alt: "", class: "absolute left-1/2 top-1/2 size-11 max-w-none -translate-x-1/2 -translate-y-1/2 object-contain", aria: { hidden: "true" }
           %span{class: "flex flex-col items-start"}
             = image_tag "/text-light.png", alt: "Seatwise", class: "block h-7 w-auto object-contain object-left"
