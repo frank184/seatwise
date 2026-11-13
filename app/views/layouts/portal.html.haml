@@ -20,11 +20,12 @@
       class: "bg-base-100/95"
     }
       .navbar-start
-        = link_to root_path, class: "flex items-center gap-2.5 text-base-content no-underline" do
-          = image_tag "/logo.png", alt: "", class: "size-8 shrink-0 object-contain", aria: { hidden: "true" }
-          %span
-            = image_tag "/text-light.png", alt: "Seatwise", class: "h-4 w-auto object-contain object-left"
-            %span{class: "block text-[0.7rem] leading-tight text-base-content/55"} Find your place
+        = link_to root_path, class: "flex items-center gap-0 text-base-content no-underline" do
+          %span{class: "relative grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-base-200"}
+            = image_tag "/logo.png", alt: "", class: "absolute left-1/2 top-1/2 size-11 max-w-none -translate-x-1/2 -translate-y-1/2 object-contain", aria: { hidden: "true" }
+          %span{class: "flex flex-col items-start"}
+            = image_tag "/text-light.png", alt: "Seatwise", class: "block h-7 w-auto object-contain object-left"
+            %span{class: "-mt-2 ml-1.5 text-xs leading-none text-base-content/55"} Find your place
       .navbar-end.gap-2
         = link_to root_path, class: "btn btn-primary btn-sm gap-2" do
           Browse events
