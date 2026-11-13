@@ -345,8 +345,13 @@ module Portal
         })()
       JS
       assert second_seat
-      find("button[data-seat='#{second_seat}'][data-row='1']").click
-      assert_selector "[data-hold-submit]:not([disabled])"
+      find(
+        "button[data-seat='#{second_seat}'][data-row='1'][aria-label$='open']:not([disabled])",
+        wait: 10
+      ).click
+      assert_selector "button[data-seat='#{second_seat}'][data-row='1'][aria-pressed='true']",
+                      wait: 10
+      assert_selector "[data-hold-submit]:not([disabled])", wait: 10
       click_button "Continue to payment"
 
       assert_selector "[data-flow-stage='payment']:not([hidden])"
@@ -444,8 +449,13 @@ module Portal
             .find((number) => number !== 4 && !row.reserved_seats.includes(number));
         })()
       JS
-      find("button[data-seat='#{second_seat}'][data-row='1']").click
-      assert_selector "[data-hold-submit]:not([disabled])"
+      find(
+        "button[data-seat='#{second_seat}'][data-row='1'][aria-label$='open']:not([disabled])",
+        wait: 10
+      ).click
+      assert_selector "button[data-seat='#{second_seat}'][data-row='1'][aria-pressed='true']",
+                      wait: 10
+      assert_selector "[data-hold-submit]:not([disabled])", wait: 10
       click_button "Continue to payment"
 
       assert_selector "[data-flow-stage='payment']:not([hidden])"
