@@ -16,10 +16,11 @@ export default class extends Controller {
   applyTheme(theme) {
     const normalizedTheme = theme === "dark" ? "dark" : "light";
     const root = document.documentElement;
-    root.dataset.theme = normalizedTheme;
     root.classList.add("theme-switching");
-    window.clearTimeout(this.transitionTimeout);
-    this.transitionTimeout = window.setTimeout(() => root.classList.remove("theme-switching"), 220);
+    root.dataset.theme = normalizedTheme;
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => root.classList.remove("theme-switching"));
+    });
 
     try {
       window.localStorage.setItem(STORAGE_KEY, normalizedTheme);
