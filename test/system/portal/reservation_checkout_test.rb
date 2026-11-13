@@ -351,6 +351,9 @@ module Portal
       ).click
       assert_selector "button[data-seat='#{second_seat}'][data-row='1'][aria-pressed='true']",
                       wait: 10
+      state = hold_submit_state
+      assert_equal false, state.fetch("hidden"), "Hold submit state: #{state.inspect}"
+      assert_equal false, state.fetch("disabled"), "Hold submit state: #{state.inspect}"
       assert_selector "[data-hold-submit]:not([disabled])", wait: 10
       click_button "Continue to payment"
 
@@ -455,6 +458,9 @@ module Portal
       ).click
       assert_selector "button[data-seat='#{second_seat}'][data-row='1'][aria-pressed='true']",
                       wait: 10
+      state = hold_submit_state
+      assert_equal false, state.fetch("hidden"), "Hold submit state: #{state.inspect}"
+      assert_equal false, state.fetch("disabled"), "Hold submit state: #{state.inspect}"
       assert_selector "[data-hold-submit]:not([disabled])", wait: 10
       click_button "Continue to payment"
 
@@ -1030,6 +1036,31 @@ module Portal
     end
 
     private
+
+    def hold_submit_state
+      page.evaluate_script(<<~JS)
+        (() => {
+          const root = document.querySelector("[data-event-show]");
+          const controller = window.Stimulus.getControllerForElementAndIdentifier(root, "portal--reservation");
+          const button = root.querySelector("[data-hold-submit]");
+          const email = root.querySelector("[name=email]");
+          const seatMap = root.querySelector("[data-seat-map]");
+          return {
+            hidden: button.hidden,
+            disabled: button.disabled,
+            selectionReady: controller.selectionReady,
+            availabilityBusy: controller.availabilityBusy,
+            reconciliationRequired: controller.reconciliationRequired,
+            requestStatus: controller.flow.request?.status,
+            selectedSeats: [...controller.selectedSeats],
+            selectedSeatRange: controller.selectedSeatRange(),
+            emailValid: email.validity.valid,
+            reservationStatus: controller.flow.reservation?.status,
+            seatMapBusy: seatMap.hasAttribute("aria-busy"),
+          };
+        })()
+      JS
+    end
 
     def install_availability_preload
       source = <<~JS
