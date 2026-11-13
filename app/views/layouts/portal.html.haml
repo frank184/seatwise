@@ -21,12 +21,9 @@
     }
       .navbar-start
         = link_to root_path, class: "flex items-center gap-2.5 text-base-content no-underline" do
-          %span.grid.size-8.shrink-0.place-items-center.rounded-xl.bg-primary.font-black.leading-none.text-primary-content{
-            aria: { hidden: "true" }
-          }
-            S
+          = image_tag "/logo.png", alt: "", class: "size-8 shrink-0 object-contain", aria: { hidden: "true" }
           %span
-            %span.block.text-sm.font-bold.tracking-tight seatwise
+            = image_tag "/text-light.png", alt: "Seatwise", class: "h-4 w-auto object-contain object-left"
             %span{class: "block text-[0.7rem] leading-tight text-base-content/55"} Find your place
       .navbar-end.gap-2
         = link_to root_path, class: "btn btn-primary btn-sm gap-2" do
