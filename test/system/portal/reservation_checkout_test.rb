@@ -346,6 +346,7 @@ module Portal
       JS
       assert second_seat
       find("button[data-seat='#{second_seat}'][data-row='1']").click
+      assert_selector "[data-hold-submit]:not([disabled])"
       click_button "Continue to payment"
 
       assert_selector "[data-flow-stage='payment']:not([hidden])"
@@ -444,6 +445,7 @@ module Portal
         })()
       JS
       find("button[data-seat='#{second_seat}'][data-row='1']").click
+      assert_selector "[data-hold-submit]:not([disabled])"
       click_button "Continue to payment"
 
       assert_selector "[data-flow-stage='payment']:not([hidden])"
