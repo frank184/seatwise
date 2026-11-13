@@ -9,6 +9,30 @@
   themes: light --default, dark --prefersdark;
 }
 
+@property --color-base-100 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: oklch(100% 0 0);
+}
+
+@property --color-base-200 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: oklch(97% 0 0);
+}
+
+@property --color-base-300 {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: oklch(92% 0 0);
+}
+
+@property --color-base-content {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: oklch(20% 0 0);
+}
+
 [data-theme="dark"] {
   color-scheme: dark;
   --color-base-100: oklch(19% 0.006 255);
@@ -18,10 +42,17 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .theme-switching,
+  .theme-switching {
+    transition-property: color, background-color, border-color, --color-base-100, --color-base-200, --color-base-300, --color-base-content;
+    transition-duration: 180ms;
+    transition-timing-function: ease-out;
+    transition-delay: 0ms;
+  }
+
   .theme-switching * {
     transition-property: color, background-color, border-color, fill, stroke;
     transition-duration: 180ms;
     transition-timing-function: ease-out;
+    transition-delay: 0ms;
   }
 }
