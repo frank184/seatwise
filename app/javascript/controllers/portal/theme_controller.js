@@ -32,5 +32,6 @@ export default class extends Controller {
     if (this.hasWordmarkTarget) {
       this.wordmarkTarget.src = this.wordmarkTarget.dataset[`${normalizedTheme}Src`];
     }
+    root.dataset.themeReady = "true";
   }
 }
