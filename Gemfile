@@ -9,7 +9,7 @@ gem "stimulus-rails"
 gem "jbuilder"
 gem "stripe"
 gem "kaminari", "~> 1.2"
-gem "ransack", "~> 4.4"
+gem "ransack", "~> 6.1"
 # Build the UI stylesheet with Rails' Tailwind CSS integration.
 gem "tailwindcss-rails"
 # Use postgresql as the database for Active Record
