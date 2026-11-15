@@ -18,7 +18,8 @@
         .max-w-3xl
           %p.mb-3.text-xs.font-bold.uppercase.text-primary{class: "tracking-[0.24em]"}
             Live experiences, thoughtfully seated
-          %h1.text-3xl.font-black.tracking-tight.sm:text-5xl A good night starts with a seat.
+          %h1.text-3xl.font-black.tracking-tight.sm:text-5xl
+            A good night starts with a seat.
           %p.mt-3.max-w-2xl.text-sm.leading-6.sm:text-base{class: "text-neutral-content/70"}
             Find a performance worth leaving home for. Then find a seat that feels like yours.
         .flex.flex-wrap.gap-2.lg:justify-end
@@ -135,6 +136,7 @@
       #events-error{hidden: ""}
       #events-empty{hidden: ""}
       .grid.gap-5.md:grid-cols-2.xl:grid-cols-3#events-list{"aria-live": "polite", hidden: ""}
+
       %nav.flex.items-center.justify-center.gap-4#events-pagination{
         "aria-label": "Event pages",
         hidden: ""
@@ -170,10 +172,11 @@
           }
             = lucide "armchair", class: "size-3.5"
             %span{"data-event-availability": ""}
-          %time.badge.absolute.bottom-4.right-4{
+          %time.badge.absolute.right-4.top-4{
             class: "border border-base-100/70 bg-base-100/90 text-primary",
             "data-event-relative-time": ""
           }
+
         = card_body body_class: "gap-3" do
           .flex.items-center.gap-2.text-sm.font-medium{class: "text-base-content/55"}
             %span{"data-event-time": ""}
@@ -182,13 +185,15 @@
           %h3.card-title.text-xl{"data-event-name": ""}
           .flex.items-center.justify-between.border-t.border-base-200.pt-3
             %span.text-sm{class: "text-base-content/60", "data-event-capacity": ""}
+
             %span.btn.btn-sm.btn-primary
               = "Explore #{lucide "arrow-up-right", class: "size-4"}"
   %template#event-empty-template
     = card card_class: "border border-base-300 bg-base-100", body_class: "items-center py-14 text-center" do
       = lucide "calendar-search", class: "size-9 text-base-content/35"
       = card_title "No events found"
-      %p.text-sm{class: "text-base-content/60"} Try another search or switch the date filter.
+      %p.text-sm{class: "text-base-content/60"}
+        Try another search or switch the date filter.
   %template#event-error-template
     = status_alert title: "Events could not load", description: "Check your connection and try again.", variant: :error, icon: "triangle-alert", action: button("Retry", variant: :error, size: :sm, data: { action: "click->portal--events#retry" })
   %template#event-page-number-template

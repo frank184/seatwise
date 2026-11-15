@@ -10,6 +10,7 @@
         5:00
       %p.text-xs{data: { hold_deadline: true }} Pending
   %p.text-sm.text-error{"aria-live": "polite", data: { cancel_error: true }, hidden: ""}
+
   %div
     %p.text-sm.font-semibold Order summary
     %p.mt-1.text-lg.font-bold{data: { reservation_event: true }} Event name
@@ -18,7 +19,10 @@
       %dt.text-xs{class: "text-base-content/55"} Date &amp; time
       .flex.flex-wrap.items-baseline.justify-between.gap-x-3.gap-y-1
         %dd.mt-1.font-medium{data: { reservation_date: true }} Event date
-        %dd.mt-1.whitespace-nowrap.text-right.text-xs.font-medium.text-primary{data: { reservation_relative_time: true }}
+        %dd.mt-1.whitespace-nowrap.text-right.text-xs.font-medium.text-primary{
+          data: { reservation_relative_time: true }
+        }
+
     %div
       %dt.text-xs{class: "text-base-content/55"} Venue
       %dd.mt-1.font-medium{data: { reservation_venue: true }} Venue name
