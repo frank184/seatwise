@@ -17,6 +17,10 @@
   --color-base-content: oklch(92% 0.008 255);
 }
 
+html:not([data-theme-ready="true"]) .theme-toggle {
+  visibility: hidden;
+}
+
 .theme-switching,
 .theme-switching *,
 .theme-switching *::before,

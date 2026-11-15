@@ -236,6 +236,9 @@ module Portal
       click_button "Continue to payment"
 
       assert_selector "[data-flow-stage='payment']:not([hidden])"
+      assert_selector "[data-flow-stage='payment'] [data-reservation-relative-time]",
+                      text: /\A(?:Starts|Started) /
+      assert_selector "[data-flow-stage='payment'] [data-reservation-date]", text: /.+/
       assert_equal(
         {
           "event_id" => @event.id,
@@ -926,6 +929,7 @@ module Portal
     end
 
     test "card payment confirms with Stripe without submitting card details to Seatwise" do
+      @event.update!(start_time: 2.hours.from_now, end_time: 4.hours.from_now)
       begin_checkout
       click_button "Pay securely"
 
@@ -935,6 +939,9 @@ module Portal
       page.execute_script("window.__checkoutStatus = 'succeeded'")
       assert_selector "[data-flow-stage='confirmed']:not([hidden])"
       assert_selector "[data-booking-step='3'].step-success"
+      assert_selector "[data-flow-stage='confirmed'] [data-reservation-relative-time]",
+                      text: /\AStarts in /
+      assert_selector "[data-flow-stage='confirmed'] [data-reservation-date]", text: /.+/
       assert_selector "[data-held-seat='1:4']"
       assert_selector "[data-confirmed-invoice]:not([hidden])"
       assert_text "SW-987"

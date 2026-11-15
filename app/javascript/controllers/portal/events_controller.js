@@ -1,5 +1,10 @@
 import { Controller } from "@hotwired/stimulus";
-import { cloneTemplate, fetchJson, formatDate } from "controllers/portal/view_helpers";
+import {
+  cloneTemplate,
+  fetchJson,
+  formatDate,
+  formatRelativeTime,
+} from "controllers/portal/view_helpers";
 
 export default class extends Controller {
   connect() {
@@ -96,6 +101,13 @@ export default class extends Controller {
       hour: "numeric",
       minute: "2-digit",
     });
+    const relativeTime = card.querySelector("[data-event-relative-time]");
+    relativeTime.dateTime = event.starts_at;
+    const relativeLabel = formatRelativeTime(event.starts_at);
+    relativeTime.textContent = relativeLabel
+      ? `${event.past ? "Started" : "Starts"} ${relativeLabel}`
+      : "";
+    relativeTime.hidden = !relativeLabel;
     card.querySelector("[data-event-venue]").textContent = event.venue.name;
     card.querySelector("[data-event-name]").textContent = event.name;
     card.querySelector("[data-event-capacity]").textContent =

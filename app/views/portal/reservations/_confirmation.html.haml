@@ -14,7 +14,8 @@
         You’re going to the show
       %p.mt-2.text-sm{class: "text-base-content/65"}
         = "We’ve sent your confirmation to "
-        %span.font-semibold.text-base-content{data: { reservation_email: true }} Email pending
+        %span.font-semibold.text-base-content{data: { reservation_email: true }}
+          Email pending
     .w-full.rounded-box.border.border-base-300.bg-base-100.p-4.shadow-sm
       %dl.grid.gap-3.text-sm{class: "sm:grid-cols-2"}
         %div
@@ -22,18 +23,25 @@
           %dd.mt-1.font-medium{data: { reservation_event: true }} Event name
         %div
           %dt.text-xs{class: "text-base-content/55"} Date &amp; time
-          %dd.mt-1.font-medium{data: { reservation_date: true }} Event date
+          .flex.flex-wrap.items-baseline.justify-between.gap-x-3.gap-y-1
+            %dd.mt-1.font-medium{data: { reservation_date: true }} Event date
+            %dd.mt-1.whitespace-nowrap.text-right.text-xs.font-medium.text-primary{
+              data: { reservation_relative_time: true }
+            }
+
         %div
           %dt.text-xs{class: "text-base-content/55"} Venue
           %dd.mt-1.font-medium{data: { reservation_venue: true }} Venue name
         %div
           %dt.text-xs{class: "text-base-content/55"} Booking reference
-          %dd.mt-1.font-mono.font-semibold{data: { reservation_reference: true }} Pending
+          %dd.mt-1.font-mono.font-semibold{data: { reservation_reference: true }}
+            Pending
       .mt-5.border-t.border-base-300.pt-4{hidden: "", data: { confirmed_invoice: true }}
         .grid.grid-cols-2.items-start.gap-4
           %div
             %p.text-xs{class: "text-base-content/55"} Event tickets
-            %p.mt-1.font-semibold{data: { invoice_seat_summary: true }} Seats pending
+            %p.mt-1.font-semibold{data: { invoice_seat_summary: true }}
+              Seats pending
             %p.mt-0.5.whitespace-nowrap.text-xs{
               class: "text-base-content/60",
               data: { invoice_ticket_summary: true }

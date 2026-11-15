@@ -1,5 +1,10 @@
 import { Controller } from "@hotwired/stimulus";
-import { cloneTemplate, fetchJson, formatDate } from "controllers/portal/view_helpers";
+import {
+  cloneTemplate,
+  fetchJson,
+  formatDate,
+  formatRelativeTime,
+} from "controllers/portal/view_helpers";
 
 const STEP_NUMBERS = { seats: 1, payment: 2, redirecting: 2, confirmed: 3, expired: 1 };
 
@@ -316,6 +321,13 @@ export default class extends Controller {
       month: "long",
       day: "numeric",
     });
+    const relativeTime = content.querySelector("[data-detail-relative-time]");
+    relativeTime.dateTime = event.starts_at;
+    const relativeLabel = formatRelativeTime(event.starts_at);
+    relativeTime.textContent = relativeLabel
+      ? `${event.past ? "Started" : "Starts"} ${relativeLabel}`
+      : "";
+    relativeTime.hidden = !relativeLabel;
     content.querySelector("[data-detail-name]").textContent = event.name;
     content.querySelector("[data-detail-venue]").textContent = event.venue.name;
     content.querySelector("[data-detail-start]").textContent = formatDate(event.starts_at, {
@@ -353,11 +365,18 @@ export default class extends Controller {
       hour: "numeric",
       minute: "2-digit",
     });
+    const relativeLabel = formatRelativeTime(event.starts_at);
     this.element.querySelectorAll("[data-reservation-event]").forEach((node) => {
       node.textContent = event.name;
     });
     this.element.querySelectorAll("[data-reservation-date]").forEach((node) => {
       node.textContent = date;
+    });
+    this.element.querySelectorAll("[data-reservation-relative-time]").forEach((node) => {
+      node.textContent = relativeLabel
+        ? `${event.past ? "Started" : "Starts"} ${relativeLabel}`
+        : "";
+      node.hidden = !relativeLabel;
     });
     this.element.querySelectorAll("[data-reservation-venue]").forEach((node) => {
       node.textContent = event.venue.name;

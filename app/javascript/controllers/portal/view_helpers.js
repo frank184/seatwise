@@ -1,3 +1,8 @@
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+
+dayjs.extend(relativeTime);
+
 export async function fetchJson(url, options = {}) {
   const response = await fetch(url, {
     headers: { Accept: "application/json", ...options.headers },
@@ -19,4 +24,11 @@ export function cloneTemplate(root, selector) {
 
 export function formatDate(value, options) {
   return new Intl.DateTimeFormat(undefined, options).format(new Date(value));
+}
+
+export function formatRelativeTime(value) {
+  if (value == null || value === "") return "";
+
+  const date = dayjs(value);
+  return date.isValid() ? date.fromNow() : "";
 }
