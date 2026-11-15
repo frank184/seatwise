@@ -170,12 +170,15 @@
           }
             = lucide "armchair", class: "size-3.5"
             %span{"data-event-availability": ""}
+          %time.badge.absolute.bottom-4.right-4{
+            class: "border border-base-100/70 bg-base-100/90 text-primary",
+            "data-event-relative-time": ""
+          }
         = card_body body_class: "gap-3" do
           .flex.items-center.gap-2.text-sm.font-medium{class: "text-base-content/55"}
             %span{"data-event-time": ""}
             %span{"aria-hidden": "true"} ·
             %span{"data-event-venue": ""}
-          %time.text-sm.text-primary{"data-event-relative-time": ""}
           %h3.card-title.text-xl{"data-event-name": ""}
           .flex.items-center.justify-between.border-t.border-base-200.pt-3
             %span.text-sm{class: "text-base-content/60", "data-event-capacity": ""}
