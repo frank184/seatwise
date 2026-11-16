@@ -30,7 +30,8 @@ class DoorkeeperApplicationTest < ActiveSupport::TestCase
     assert_equal 2, first_run.size
     assert_equal first_run.map(&:id), second_run.map(&:id)
     assert_equal first_run.map(&:uid), second_run.map(&:uid)
-    assert_equal ["Seatwise Development OAuth Client", "Seatwise Portal"], first_run.map(&:name).sort
+    assert_equal ["Seatwise Development OAuth Client", "Seatwise Portal"],
+                 first_run.map(&:name).sort
     assert first_run.all? { |application| !application.confidential? && application.secret.nil? }
     assert_equal 2, Doorkeeper::Application.count
   end

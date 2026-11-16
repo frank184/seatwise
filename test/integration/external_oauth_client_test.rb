@@ -13,13 +13,14 @@ class ExternalOauthClientTest < ActionDispatch::IntegrationTest
       confidential: false,
       secret: nil
     )
-    @client = Doorkeeper::Application.create!(
-      name: "External integration fixture",
-      redirect_uri: CALLBACK,
-      scopes: "reservations:read reservations:manage",
-      confidential: false,
-      secret: nil
-    )
+    @client =
+      Doorkeeper::Application.create!(
+        name: "External integration fixture",
+        redirect_uri: CALLBACK,
+        scopes: "reservations:read reservations:manage",
+        confidential: false,
+        secret: nil
+      )
     sign_in_customer("external-oauth@example.test")
   end
 
@@ -27,12 +28,14 @@ class ExternalOauthClientTest < ActionDispatch::IntegrationTest
     get oauth_start_path, params: { return_to: "/account/reservations?filter=current" }
     assert_response :success
     assert_select "button[data-controller='portal--oauth']"
-    assert_select "button[data-client-id=?]", Doorkeeper::Application.find_by!(name: "Seatwise Portal").uid
+    assert_select "button[data-client-id=?]",
+                  Doorkeeper::Application.find_by!(name: "Seatwise Portal").uid
     assert_select "button[data-redirect-uri=?]", "http://www.example.com/oauth/callback"
 
     get account_reservations_path
     assert_response :success
-    assert_select "main[data-client-id=?]", Doorkeeper::Application.find_by!(name: "Seatwise Portal").uid
+    assert_select "main[data-client-id=?]",
+                  Doorkeeper::Application.find_by!(name: "Seatwise Portal").uid
     assert_select "main[data-redirect-uri=?]", "http://www.example.com/oauth/callback"
   end
 
@@ -42,7 +45,8 @@ class ExternalOauthClientTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "#oauth-client-status[data-controller='portal--oauth']"
     assert_select "#oauth-client-status[data-code='callback-code'][data-state='callback-state']"
-    assert_select "#oauth-client-status[data-client-id=?]", Doorkeeper::Application.find_by!(name: "Seatwise Portal").uid
+    assert_select "#oauth-client-status[data-client-id=?]",
+                  Doorkeeper::Application.find_by!(name: "Seatwise Portal").uid
     assert_select "#oauth-client-status[data-redirect-uri='http://www.example.com/oauth/callback']"
   end
 
@@ -74,7 +78,9 @@ class ExternalOauthClientTest < ActionDispatch::IntegrationTest
            code:,
            code_verifier: VERIFIER
          },
-         headers: { "CONTENT_TYPE" => "application/x-www-form-urlencoded" }
+         headers: {
+           "CONTENT_TYPE" => "application/x-www-form-urlencoded"
+         }
     assert_response :bad_request
 
     post oauth_token_path,

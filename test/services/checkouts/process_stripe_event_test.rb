@@ -42,7 +42,8 @@ module Checkouts
     test "payment processing creates no ticket delivery" do
       assert_no_enqueued_jobs only: DeliverTicketEmailJob do
         ProcessStripeEvent.call(
-          event: event("evt_processing", "checkout.session.completed", session(payment_status: "unpaid"))
+          event:
+            event("evt_processing", "checkout.session.completed", session(payment_status: "unpaid"))
         )
       end
 
@@ -52,7 +53,12 @@ module Checkouts
     test "payment failure creates no ticket delivery" do
       assert_no_enqueued_jobs only: DeliverTicketEmailJob do
         ProcessStripeEvent.call(
-          event: event("evt_async_failed", "checkout.session.async_payment_failed", session(payment_status: "unpaid"))
+          event:
+            event(
+              "evt_async_failed",
+              "checkout.session.async_payment_failed",
+              session(payment_status: "unpaid")
+            )
         )
       end
 

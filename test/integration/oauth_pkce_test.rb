@@ -17,12 +17,19 @@ class OauthPkceTest < ActionDispatch::IntegrationTest
     original_authorization_path = request.fullpath
 
     assert_equal original_authorization_path,
-                 Rack::Utils.parse_nested_query(URI.parse(response.location).query).fetch("return_to")
+                 Rack::Utils.parse_nested_query(URI.parse(response.location).query).fetch(
+                   "return_to"
+                 )
     follow_redirect!
     assert_response :success
 
     post sign_in_code_path,
-         params: { sign_in: { email: "buyer@example.test" }, return_to: original_authorization_path }
+         params: {
+           sign_in: {
+             email: "buyer@example.test"
+           },
+           return_to: original_authorization_path
+         }
     assert_redirected_to sign_in_verify_path
     follow_redirect!
 
@@ -51,30 +58,46 @@ class OauthPkceTest < ActionDispatch::IntegrationTest
     assert_equal pkce_challenge(VERIFIER), grant.code_challenge
 
     post oauth_token_path,
-         params: token_params(@external_client, callback_params.fetch("code"), code_verifier: VERIFIER),
-         headers: { "CONTENT_TYPE" => "application/x-www-form-urlencoded" }
+         params:
+           token_params(@external_client, callback_params.fetch("code"), code_verifier: VERIFIER),
+         headers: {
+           "CONTENT_TYPE" => "application/x-www-form-urlencoded"
+         }
     assert_response :bad_request
 
     post oauth_token_path,
-         params: token_params(
-           @portal_client,
-           callback_params.fetch("code"),
-           code_verifier: VERIFIER,
-           redirect_uri: EXTERNAL_CALLBACK
-         ),
-         headers: { "CONTENT_TYPE" => "application/x-www-form-urlencoded" }
+         params:
+           token_params(
+             @portal_client,
+             callback_params.fetch("code"),
+             code_verifier: VERIFIER,
+             redirect_uri: EXTERNAL_CALLBACK
+           ),
+         headers: {
+           "CONTENT_TYPE" => "application/x-www-form-urlencoded"
+         }
     assert_response :bad_request
 
     post oauth_token_path,
-         params: token_params(@portal_client, callback_params.fetch("code"), code_verifier: "wrong-verifier"),
-         headers: { "CONTENT_TYPE" => "application/x-www-form-urlencoded" }
+         params:
+           token_params(
+             @portal_client,
+             callback_params.fetch("code"),
+             code_verifier: "wrong-verifier"
+           ),
+         headers: {
+           "CONTENT_TYPE" => "application/x-www-form-urlencoded"
+         }
 
     assert_response :bad_request
     assert_equal "invalid_grant", response.parsed_body.fetch("error")
 
     post oauth_token_path,
-         params: token_params(@portal_client, callback_params.fetch("code"), code_verifier: VERIFIER),
-         headers: { "CONTENT_TYPE" => "application/x-www-form-urlencoded" }
+         params:
+           token_params(@portal_client, callback_params.fetch("code"), code_verifier: VERIFIER),
+         headers: {
+           "CONTENT_TYPE" => "application/x-www-form-urlencoded"
+         }
 
     assert_response :success
     token_response = response.parsed_body
@@ -92,18 +115,26 @@ class OauthPkceTest < ActionDispatch::IntegrationTest
     assert_equal Customer.find_by!(email: "buyer@example.test"), token.resource_owner
 
     post oauth_token_path,
-         params: token_params(@portal_client, callback_params.fetch("code"), code_verifier: VERIFIER),
-         headers: { "CONTENT_TYPE" => "application/x-www-form-urlencoded" }
+         params:
+           token_params(@portal_client, callback_params.fetch("code"), code_verifier: VERIFIER),
+         headers: {
+           "CONTENT_TYPE" => "application/x-www-form-urlencoded"
+         }
     assert_response :bad_request
 
-    post oauth_revoke_path, params: { client_id: @portal_client.uid, token: token_response.fetch("access_token") }
+    post oauth_revoke_path,
+         params: {
+           client_id: @portal_client.uid,
+           token: token_response.fetch("access_token")
+         }
     assert_response :success
     assert token.reload.revoked?
   end
 
   test "malformed client and unregistered callback are rejected before the login redirect" do
     valid_params = authorization_params(@portal_client, state: "untrusted-state")
-    get oauth_authorization_path, params: valid_params.merge(redirect_uri: "https://attacker.example.test/callback")
+    get oauth_authorization_path,
+        params: valid_params.merge(redirect_uri: "https://attacker.example.test/callback")
 
     assert_response :bad_request
     assert_nil response.location
@@ -117,17 +148,22 @@ class OauthPkceTest < ActionDispatch::IntegrationTest
   end
 
   test "confidential clients still require an S256 challenge before login" do
-    confidential_client = Doorkeeper::Application.create!(
-      name: "Confidential OAuth Client",
-      redirect_uri: EXTERNAL_CALLBACK,
-      scopes: "reservations:read",
-      confidential: true,
-      secret: SecureRandom.hex(32)
-    )
+    confidential_client =
+      Doorkeeper::Application.create!(
+        name: "Confidential OAuth Client",
+        redirect_uri: EXTERNAL_CALLBACK,
+        scopes: "reservations:read",
+        confidential: true,
+        secret: SecureRandom.hex(32)
+      )
 
     [
-      authorization_params(confidential_client, state: "missing-challenge-state").except(:code_challenge),
-      authorization_params(confidential_client, state: "missing-method-state").except(:code_challenge_method)
+      authorization_params(confidential_client, state: "missing-challenge-state").except(
+        :code_challenge
+      ),
+      authorization_params(confidential_client, state: "missing-method-state").except(
+        :code_challenge_method
+      )
     ].each do |params|
       get oauth_authorization_path, params: params
 
@@ -138,13 +174,12 @@ class OauthPkceTest < ActionDispatch::IntegrationTest
   end
 
   test "loopback callback port must exactly match the registered URI before login" do
-    loopback_client = create_public_client(
-      "Seatwise Portal",
-      "http://localhost:3000/oauth/callback"
-    )
-    params = authorization_params(loopback_client, state: "loopback-state").merge(
-      redirect_uri: "http://localhost:3001/oauth/callback"
-    )
+    loopback_client =
+      create_public_client("Seatwise Portal", "http://localhost:3000/oauth/callback")
+    params =
+      authorization_params(loopback_client, state: "loopback-state").merge(
+        redirect_uri: "http://localhost:3001/oauth/callback"
+      )
 
     get oauth_authorization_path, params: params
 
@@ -155,16 +190,18 @@ class OauthPkceTest < ActionDispatch::IntegrationTest
 
   test "S256 is mandatory and unconfigured scopes are rejected" do
     sign_in_customer("scope-test@example.test")
-    plain_params = authorization_params(@portal_client, state: "plain-state").merge(
-      code_challenge: VERIFIER,
-      code_challenge_method: "plain"
-    )
+    plain_params =
+      authorization_params(@portal_client, state: "plain-state").merge(
+        code_challenge: VERIFIER,
+        code_challenge_method: "plain"
+      )
 
     get oauth_authorization_path, params: plain_params
     assert_response :bad_request
     assert_no_match(/plain-state/, response.body)
 
-    invalid_scope_params = authorization_params(@portal_client, state: "scope-state").merge(scope: "admin")
+    invalid_scope_params =
+      authorization_params(@portal_client, state: "scope-state").merge(scope: "admin")
     get oauth_authorization_path, params: invalid_scope_params
     assert_response :bad_request
     assert_no_match(/scope-state/, response.body)
@@ -192,7 +229,9 @@ class OauthPkceTest < ActionDispatch::IntegrationTest
 
     post oauth_token_path,
          params: token_params(@portal_client, code),
-         headers: { "CONTENT_TYPE" => "application/x-www-form-urlencoded" }
+         headers: {
+           "CONTENT_TYPE" => "application/x-www-form-urlencoded"
+         }
 
     assert_response :bad_request
     assert_equal "invalid_request", response.parsed_body.fetch("error")
@@ -208,7 +247,9 @@ class OauthPkceTest < ActionDispatch::IntegrationTest
 
     post oauth_token_path,
          params: token_params(@portal_client, code, code_verifier: VERIFIER),
-         headers: { "CONTENT_TYPE" => "application/x-www-form-urlencoded" }
+         headers: {
+           "CONTENT_TYPE" => "application/x-www-form-urlencoded"
+         }
 
     assert_response :bad_request
     assert_equal "invalid_grant", response.parsed_body.fetch("error")

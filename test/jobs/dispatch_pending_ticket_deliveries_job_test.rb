@@ -4,11 +4,7 @@ class DispatchPendingTicketDeliveriesJobTest < ActiveJob::TestCase
   test "recurring dispatcher recovers a pending row when initial enqueue failed" do
     reservation = reservations(:three)
 
-    assert_raises(IOError) do
-      with_ticket_enqueue_failure do
-        TicketDelivery.create!(reservation:)
-      end
-    end
+    assert_raises(IOError) { with_ticket_enqueue_failure { TicketDelivery.create!(reservation:) } }
 
     delivery = TicketDelivery.find_by!(reservation:)
     assert_nil delivery.delivered_at
@@ -33,7 +29,9 @@ class DispatchPendingTicketDeliveriesJobTest < ActiveJob::TestCase
 
   def with_ticket_enqueue_failure
     original_perform_later = DeliverTicketEmailJob.method(:perform_later)
-    DeliverTicketEmailJob.define_singleton_method(:perform_later) { |*| raise IOError, "queue unavailable" }
+    DeliverTicketEmailJob.define_singleton_method(:perform_later) do |*|
+      raise IOError, "queue unavailable"
+    end
     yield
   ensure
     DeliverTicketEmailJob.define_singleton_method(:perform_later, original_perform_later)

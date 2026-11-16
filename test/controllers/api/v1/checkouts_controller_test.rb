@@ -5,8 +5,12 @@ module Api
     class CheckoutsControllerTest < ActionDispatch::IntegrationTest
       setup do
         post api_v1_guest_sessions_path,
-             params: { transport: "cookie" },
-             headers: { "Origin" => portal_origin },
+             params: {
+               transport: "cookie"
+             },
+             headers: {
+               "Origin" => portal_origin
+             },
              as: :json
         assert_response :created
         @guest_cart = GuestCart.resolve(cookies[:guest_cart])
@@ -113,7 +117,9 @@ module Api
         with_method_stub(Stripe::Checkout::Session, :retrieve, session) do
           with_method_stub(PaymentProviders::DevelopmentStripe, :configuration, config) do
             post api_v1_checkout_reconcile_path(reservation),
-                 params: { session_id: payment.external_id }
+                 params: {
+                   session_id: payment.external_id
+                 }
           end
         end
 
@@ -195,11 +201,11 @@ module Api
 
         with_method_stub(Stripe::Checkout::Session, :retrieve, paid_session) do
           with_method_stub(PaymentProviders::DevelopmentStripe, :configuration, config) do
-            get api_v1_checkout_status_path(
-                  reservation,
-                  session_id: payment.external_id
-                ),
-                headers: { "Origin" => "https://attacker.example", "Sec-Fetch-Site" => "cross-site" }
+            get api_v1_checkout_status_path(reservation, session_id: payment.external_id),
+                headers: {
+                  "Origin" => "https://attacker.example",
+                  "Sec-Fetch-Site" => "cross-site"
+                }
           end
         end
 
@@ -241,11 +247,16 @@ module Api
         with_method_stub(
           Stripe::Checkout::Session,
           :retrieve,
-          replacement: ->(*) { stripe_retrieved = true; raise "unexpected Stripe retrieve" }
+          replacement: ->(*) do
+            stripe_retrieved = true
+            raise "unexpected Stripe retrieve"
+          end
         ) do
           with_method_stub(PaymentProviders::DevelopmentStripe, :configuration, config) do
             post api_v1_checkout_reconcile_path(reservation),
-                 params: { session_id: payment.external_id },
+                 params: {
+                   session_id: payment.external_id
+                 },
                  headers: {
                    "Origin" => "https://attacker.example",
                    "Sec-Fetch-Site" => "cross-site"
@@ -274,7 +285,9 @@ module Api
         other_secret = response.parsed_body.fetch("secret")
 
         post api_v1_checkout_session_path(reservation),
-             headers: { "Authorization" => "Guest #{other_secret}" }
+             headers: {
+               "Authorization" => "Guest #{other_secret}"
+             }
 
         assert_response :not_found
         assert_empty reservation.payments
@@ -297,17 +310,19 @@ module Api
         with_method_stub(
           Stripe::Checkout::Session,
           :create,
-          replacement: ->(*) { stripe_called = true; raise "unexpected Stripe create" }
-        ) do
-          post api_v1_checkout_session_path(reservation), headers: bearer(token)
-        end
+          replacement: ->(*) do
+            stripe_called = true
+            raise "unexpected Stripe create"
+          end
+        ) { post api_v1_checkout_session_path(reservation), headers: bearer(token) }
 
         assert_response :not_found
         assert_not stripe_called
         assert_empty reservation.payments
         assert reservation.reload.held?
 
-        get api_v1_checkout_status_path(reservation, session_id: "unknown-session"), headers: bearer(token)
+        get api_v1_checkout_status_path(reservation, session_id: "unknown-session"),
+            headers: bearer(token)
 
         assert_response :not_found
         assert_empty reservation.payments
@@ -373,13 +388,14 @@ module Api
 
       def customer_token(customer, scopes:)
         Doorkeeper::AccessToken.create!(
-          application: Doorkeeper::Application.create!(
-            name: "Checkout API client #{SecureRandom.hex(4)}",
-            redirect_uri: "https://client.example.test/callback",
-            scopes: "reservations:read reservations:manage",
-            confidential: false,
-            secret: nil
-          ),
+          application:
+            Doorkeeper::Application.create!(
+              name: "Checkout API client #{SecureRandom.hex(4)}",
+              redirect_uri: "https://client.example.test/callback",
+              scopes: "reservations:read reservations:manage",
+              confidential: false,
+              secret: nil
+            ),
           resource_owner: customer,
           scopes:,
           expires_in: 15.minutes.to_i

@@ -2,25 +2,22 @@ require "application_system_test_case"
 
 module Portal
   class CustomerReservationAccessTest < ApplicationSystemTestCase
-    setup do
-      @previous_portal_origin = Rails.application.config.x.portal_origin
-    end
+    setup { @previous_portal_origin = Rails.application.config.x.portal_origin }
 
-    teardown do
-      Rails.application.config.x.portal_origin = @previous_portal_origin
-    end
+    teardown { Rails.application.config.x.portal_origin = @previous_portal_origin }
 
     test "customer verifies a delivered OTP before accessing their reservation" do
       visit root_path
       portal_origin = URI.parse(page.current_url).origin
       Rails.application.config.x.portal_origin = portal_origin
-      oauth_client = Doorkeeper::Application.create!(
-        name: "Seatwise Portal",
-        redirect_uri: "#{portal_origin}/oauth/callback",
-        scopes: "reservations:read reservations:manage",
-        confidential: false,
-        secret: nil
-      )
+      oauth_client =
+        Doorkeeper::Application.create!(
+          name: "Seatwise Portal",
+          redirect_uri: "#{portal_origin}/oauth/callback",
+          scopes: "reservations:read reservations:manage",
+          confidential: false,
+          secret: nil
+        )
 
       reservation = reservations(:two)
       Portal::SignInsController::RATE_LIMIT_STORE.clear

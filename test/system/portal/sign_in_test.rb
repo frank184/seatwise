@@ -20,7 +20,8 @@ module Portal
       click_button "Verify and continue"
 
       assert_current_path root_path
-      assert_equal "system-buyer@example.test", Customer.find_by!(email: "system-buyer@example.test").email
+      assert_equal "system-buyer@example.test",
+                   Customer.find_by!(email: "system-buyer@example.test").email
     end
   end
 end

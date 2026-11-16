@@ -5,8 +5,12 @@ module Api
     class GuestSessionsControllerTest < ActionDispatch::IntegrationTest
       test "cookie transport sets a host-only http-only guest cookie without returning its secret" do
         post api_v1_guest_sessions_path,
-             params: { transport: "cookie" },
-             headers: { "Origin" => portal_origin },
+             params: {
+               transport: "cookie"
+             },
+             headers: {
+               "Origin" => portal_origin
+             },
              as: :json
 
         assert_response :created
@@ -35,8 +39,12 @@ module Api
         assert_response :forbidden
 
         post api_v1_guest_sessions_path,
-             params: { transport: "cookie" },
-             headers: { "Origin" => "https://attacker.example" },
+             params: {
+               transport: "cookie"
+             },
+             headers: {
+               "Origin" => "https://attacker.example"
+             },
              as: :json
         assert_response :forbidden
         assert_empty GuestCart.all
@@ -44,8 +52,13 @@ module Api
 
       test "cookie bootstrap rejects cross-site fetch metadata" do
         post api_v1_guest_sessions_path,
-             params: { transport: "cookie" },
-             headers: { "Origin" => portal_origin, "Sec-Fetch-Site" => "cross-site" },
+             params: {
+               transport: "cookie"
+             },
+             headers: {
+               "Origin" => portal_origin,
+               "Sec-Fetch-Site" => "cross-site"
+             },
              as: :json
 
         assert_response :forbidden

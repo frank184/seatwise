@@ -4,13 +4,14 @@ module Api
   module V1
     class PrivateReservationsControllerTest < ActionDispatch::IntegrationTest
       setup do
-        @client = Doorkeeper::Application.create!(
-          name: "Private reservation API client",
-          redirect_uri: "https://client.example.test/callback",
-          scopes: "reservations:read reservations:manage",
-          confidential: false,
-          secret: nil
-        )
+        @client =
+          Doorkeeper::Application.create!(
+            name: "Private reservation API client",
+            redirect_uri: "https://client.example.test/callback",
+            scopes: "reservations:read reservations:manage",
+            confidential: false,
+            secret: nil
+          )
         @event = create_event
         @owned_reservation = create_reservation(customer: customers(:one))
         @other_reservation = create_reservation(customer: customers(:two), row_id: 2)
@@ -115,8 +116,13 @@ module Api
         existing_reservations_count = @event.reservations.count
 
         post api_v1_reservations_path,
-             params: { event_id: @event.id, quantity: 1, email: customers(:one).email },
-             headers: bearer(access_token).merge("Idempotency-Key" => "customer-create-no-manage-1"),
+             params: {
+               event_id: @event.id,
+               quantity: 1,
+               email: customers(:one).email
+             },
+             headers:
+               bearer(access_token).merge("Idempotency-Key" => "customer-create-no-manage-1"),
              as: :json
 
         assert_response :forbidden
@@ -127,7 +133,11 @@ module Api
         post api_v1_guest_sessions_path, params: { transport: "body" }, as: :json
         guest_secret = response.parsed_body.fetch("secret")
         post api_v1_reservations_path,
-             params: { event_id: @event.id, quantity: 1, email: customers(:one).email },
+             params: {
+               event_id: @event.id,
+               quantity: 1,
+               email: customers(:one).email
+             },
              headers: {
                "Authorization" => "Guest #{guest_secret}",
                "Idempotency-Key" => "guest-existing-customer-email-1"
@@ -139,7 +149,9 @@ module Api
         assert_not_equal @owned_reservation.guest_cart_id, guest_reservation.guest_cart_id
 
         delete api_v1_reservation_path(@owned_reservation),
-               headers: { "Authorization" => "Guest #{guest_secret}" }
+               headers: {
+                 "Authorization" => "Guest #{guest_secret}"
+               }
 
         assert_response :not_found
         assert @owned_reservation.reload.held?
@@ -170,7 +182,9 @@ module Api
           start_time: 1.day.from_now,
           end_time: 1.day.from_now + 2.hours,
           ticket_price_cents: 1_000,
-          layout_snapshot: { "rows" => [{ "row_id" => 1, "seat_count" => 20 }] }
+          layout_snapshot: {
+            "rows" => [{ "row_id" => 1, "seat_count" => 20 }]
+          }
         )
       end
 

@@ -8,7 +8,8 @@ module Customers
 
         assert_equal "new.customer@example.test", customer.email
         assert_match(/\A\d{6}\z/, code)
-        assert_equal OpenSSL::HMAC.hexdigest("SHA256", Rails.application.secret_key_base, code), customer.sign_in_code_digest
+        assert_equal OpenSSL::HMAC.hexdigest("SHA256", Rails.application.secret_key_base, code),
+                     customer.sign_in_code_digest
         assert_not_equal Digest::SHA256.hexdigest(code), customer.sign_in_code_digest
         assert_not_equal code, customer.sign_in_code_digest
         assert_equal 10.minutes.from_now, customer.sign_in_code_expires_at

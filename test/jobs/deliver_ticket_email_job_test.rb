@@ -26,6 +26,8 @@ class DeliverTicketEmailJobTest < ActiveJob::TestCase
 
     assert_nil delivery.reload.delivered_at
   ensure
-    TicketMailer.define_singleton_method(:confirmation, original_confirmation) if original_confirmation
+    if original_confirmation
+      TicketMailer.define_singleton_method(:confirmation, original_confirmation)
+    end
   end
 end

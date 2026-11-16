@@ -8,8 +8,12 @@ module Api
       setup do
         travel_to Time.zone.local(2026, 11, 9, 12)
         post api_v1_guest_sessions_path,
-             params: { transport: "cookie" },
-             headers: { "Origin" => portal_origin },
+             params: {
+               transport: "cookie"
+             },
+             headers: {
+               "Origin" => portal_origin
+             },
              as: :json
         assert_response :created
         @guest_cart = GuestCart.resolve(cookies[:guest_cart])
@@ -60,8 +64,14 @@ module Api
         reset!
 
         post api_v1_reservations_path,
-             params: { event_id: @event.id, quantity: 1, email: "buyer@example.com" },
-             headers: { "Idempotency-Key" => "reservation-no-guest-1" },
+             params: {
+               event_id: @event.id,
+               quantity: 1,
+               email: "buyer@example.com"
+             },
+             headers: {
+               "Idempotency-Key" => "reservation-no-guest-1"
+             },
              as: :json
 
         assert_response :unauthorized
@@ -70,7 +80,11 @@ module Api
 
       test "rejects cross-origin mutation even when the guest cookie is valid" do
         post api_v1_reservations_path,
-             params: { event_id: @event.id, quantity: 1, email: "buyer@example.com" },
+             params: {
+               event_id: @event.id,
+               quantity: 1,
+               email: "buyer@example.com"
+             },
              headers: {
                "Origin" => "https://attacker.example",
                "Idempotency-Key" => "reservation-cross-origin-1"
@@ -83,7 +97,11 @@ module Api
 
       test "does not fall back to the guest cookie when an unsupported Authorization scheme is present" do
         post api_v1_reservations_path,
-             params: { event_id: @event.id, quantity: 1, email: "buyer@example.com" },
+             params: {
+               event_id: @event.id,
+               quantity: 1,
+               email: "buyer@example.com"
+             },
              headers: {
                "Authorization" => "Bearer invalid-token",
                "Idempotency-Key" => "reservation-invalid-bearer-1"
@@ -109,21 +127,33 @@ module Api
              as: :json
 
         assert_response :conflict
-        assert_equal original_id, @event.reservations.find_by!(idempotency_key: headers.fetch("Idempotency-Key")).id
+        assert_equal original_id,
+                     @event
+                       .reservations
+                       .find_by!(idempotency_key: headers.fetch("Idempotency-Key"))
+                       .id
         assert_equal 1, @event.reservations.count
       end
 
       test "another cart cannot cancel this cart's hold" do
         post api_v1_reservations_path,
-             params: { event_id: @event.id, quantity: 1, email: "buyer@example.com" },
-             headers: { "Idempotency-Key" => "reservation-other-cart-cancel-1" },
+             params: {
+               event_id: @event.id,
+               quantity: 1,
+               email: "buyer@example.com"
+             },
+             headers: {
+               "Idempotency-Key" => "reservation-other-cart-cancel-1"
+             },
              as: :json
         reservation = Reservation.find(response.parsed_body.fetch("id"))
         post api_v1_guest_sessions_path, params: { transport: "body" }, as: :json
         other_secret = response.parsed_body.fetch("secret")
 
         delete api_v1_reservation_path(reservation),
-               headers: { "Authorization" => "Guest #{other_secret}" }
+               headers: {
+                 "Authorization" => "Guest #{other_secret}"
+               }
 
         assert_response :not_found
         assert reservation.reload.held?

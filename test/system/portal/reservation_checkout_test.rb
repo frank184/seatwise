@@ -951,6 +951,10 @@ module Portal
       assert_text "Payment complete"
       assert_selector "[data-confirmed-invoice] img[src='/stripe.png'][alt='Stripe']"
       assert_equal 1, page.evaluate_script("window.__stripeConfirmCalls")
+      assert_equal true, page.evaluate_script(<<~JS)
+        window.__checkoutReconcileSessionIds.length > 0 &&
+          window.__checkoutReconcileSessionIds.every((sessionId) => sessionId === "cs_test_987")
+      JS
       assert_no_selector "input[name='card_number']"
     end
 
@@ -1250,6 +1254,19 @@ module Portal
               { status: 201, headers: { "Content-Type": "application/json" } });
           }
           if (url.pathname === "/api/v1/reservations/987/checkout") {
+            const status = window.__checkoutStatus;
+            return new Response(JSON.stringify({ status, reservation: { id: 987,
+              status: status === "succeeded" ? "confirmed" : "held" } }),
+              { status: 200, headers: { "Content-Type": "application/json" } });
+          }
+          if (url.pathname === "/api/v1/reservations/987/checkout/reconcile" && init.method === "POST") {
+            const payload = JSON.parse(init.body);
+            window.__checkoutReconcileSessionIds ||= [];
+            window.__checkoutReconcileSessionIds.push(payload.session_id);
+            if (payload.session_id !== "cs_test_987") {
+              return new Response(JSON.stringify({ error: { code: "not_found", message: "Reservation not found" } }),
+                { status: 404, headers: { "Content-Type": "application/json" } });
+            }
             const status = window.__checkoutStatus;
             return new Response(JSON.stringify({ status, reservation: { id: 987,
               status: status === "succeeded" ? "confirmed" : "held" } }),

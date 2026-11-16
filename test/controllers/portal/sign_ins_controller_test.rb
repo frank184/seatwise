@@ -2,9 +2,7 @@ require "test_helper"
 
 module Portal
   class SignInsControllerTest < ActionDispatch::IntegrationTest
-    setup do
-      Portal::SignInsController::RATE_LIMIT_STORE.clear
-    end
+    setup { Portal::SignInsController::RATE_LIMIT_STORE.clear }
 
     test "sign-in form includes a CSRF token" do
       old_forgery_protection = Portal::SignInsController.allow_forgery_protection
@@ -31,17 +29,20 @@ module Portal
     end
 
     test "known and unknown email requests return the same generic response shape" do
-      responses = [customers(:one).email, "first.booking@example.test"].map do |email|
-        post sign_in_code_path, params: { sign_in: { email: } }
-        assert_redirected_to sign_in_verify_path
-        follow_redirect!
-        assert_response :success
-        assert_select ".alert p", text: "If that email can sign in, a one-time code will arrive shortly."
-        "If that email can sign in, a one-time code will arrive shortly."
-      end
+      responses =
+        [customers(:one).email, "first.booking@example.test"].map do |email|
+          post sign_in_code_path, params: { sign_in: { email: } }
+          assert_redirected_to sign_in_verify_path
+          follow_redirect!
+          assert_response :success
+          assert_select ".alert p",
+                        text: "If that email can sign in, a one-time code will arrive shortly."
+          "If that email can sign in, a one-time code will arrive shortly."
+        end
 
       assert_equal responses.first, responses.second
-      assert_equal "first.booking@example.test", Customer.find_by!(email: "first.booking@example.test").email
+      assert_equal "first.booking@example.test",
+                   Customer.find_by!(email: "first.booking@example.test").email
       assert_nil Customer.find_by!(email: "first.booking@example.test").email_verified_at
     end
 
@@ -63,8 +64,7 @@ module Portal
       code = delivered_code
       old_session_cookie = cookies["_seatwise_session"]
 
-      post sign_in_verify_path,
-           params: { sign_in: { code:, customer_id: customers(:two).id } }
+      post sign_in_verify_path, params: { sign_in: { code:, customer_id: customers(:two).id } }
 
       assert_redirected_to root_path
       assert_equal pending_customer.id, session[:customer_id]
@@ -74,7 +74,10 @@ module Portal
     end
 
     test "preserves a local OAuth return path and rejects an external return path" do
-      request_code_for(customers(:one).email, return_to: "/oauth/authorize?client_id=portal&state=abc")
+      request_code_for(
+        customers(:one).email,
+        return_to: "/oauth/authorize?client_id=portal&state=abc"
+      )
       post sign_in_verify_path, params: { sign_in: { code: delivered_code } }
 
       assert_redirected_to "/oauth/authorize?client_id=portal&state=abc"
@@ -98,7 +101,12 @@ module Portal
     test "verification customer comes only from the pre-auth session" do
       request_code_for(customers(:one).email)
       post sign_in_verify_path,
-           params: { sign_in: { code: delivered_code, customer_id: customers(:two).id } }
+           params: {
+             sign_in: {
+               code: delivered_code,
+               customer_id: customers(:two).id
+             }
+           }
 
       assert_equal customers(:one).id, session[:customer_id]
       assert_not_equal customers(:two).id, session[:customer_id]
@@ -150,24 +158,48 @@ module Portal
     test "rate limits code requests by normalized email and remote IP" do
       5.times do
         post sign_in_code_path,
-             params: { sign_in: { email: "  limit@example.test " } },
-             headers: { "REMOTE_ADDR" => "192.0.2.98" }
+             params: {
+               sign_in: {
+                 email: "  limit@example.test "
+               }
+             },
+             headers: {
+               "REMOTE_ADDR" => "192.0.2.98"
+             }
         assert_redirected_to sign_in_verify_path
       end
       post sign_in_code_path,
-           params: { sign_in: { email: "LIMIT@example.test" } },
-           headers: { "REMOTE_ADDR" => "192.0.2.98" }
+           params: {
+             sign_in: {
+               email: "LIMIT@example.test"
+             }
+           },
+           headers: {
+             "REMOTE_ADDR" => "192.0.2.98"
+           }
       assert_response :too_many_requests
 
       reset!
       20.times do |index|
         post sign_in_code_path,
-             params: { sign_in: { email: "limit-#{index}@example.test" } },
-             headers: { "REMOTE_ADDR" => "192.0.2.99" }
+             params: {
+               sign_in: {
+                 email: "limit-#{index}@example.test"
+               }
+             },
+             headers: {
+               "REMOTE_ADDR" => "192.0.2.99"
+             }
       end
       post sign_in_code_path,
-           params: { sign_in: { email: "another-limit@example.test" } },
-           headers: { "REMOTE_ADDR" => "192.0.2.99" }
+           params: {
+             sign_in: {
+               email: "another-limit@example.test"
+             }
+           },
+           headers: {
+             "REMOTE_ADDR" => "192.0.2.99"
+           }
       assert_response :too_many_requests
     end
 
@@ -187,8 +219,12 @@ module Portal
 
     def bootstrap_guest_cart
       post api_v1_guest_sessions_path,
-           params: { transport: "cookie" },
-           headers: { "Origin" => Rails.application.config.x.portal_origin },
+           params: {
+             transport: "cookie"
+           },
+           headers: {
+             "Origin" => Rails.application.config.x.portal_origin
+           },
            as: :json
       assert_response :created
     end

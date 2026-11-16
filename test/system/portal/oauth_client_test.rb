@@ -2,13 +2,9 @@ require "application_system_test_case"
 
 module Portal
   class OauthClientTest < ApplicationSystemTestCase
-    setup do
-      @previous_portal_origin = Rails.application.config.x.portal_origin
-    end
+    setup { @previous_portal_origin = Rails.application.config.x.portal_origin }
 
-    teardown do
-      Rails.application.config.x.portal_origin = @previous_portal_origin
-    end
+    teardown { Rails.application.config.x.portal_origin = @previous_portal_origin }
 
     test "Portal completes PKCE sign-in and calls the private reservations API" do
       create_portal_client
@@ -48,19 +44,25 @@ module Portal
             .catch((error) => done({ error: error.message }))
         );
       JS
-      assert_nil helper_result["error"], "Portal API helper should return the authenticated reservation list"
-      assert helper_result["ids"].present?, "Portal API helper should return at least one reservation ID"
+      assert_nil helper_result["error"],
+                 "Portal API helper should return the authenticated reservation list"
+      assert helper_result["ids"].present?,
+             "Portal API helper should return at least one reservation ID"
       assert_includes helper_result.fetch("ids"), reservations(:one).id
 
       expired_token = JSON.parse(token_json)
       expired_token["expires_at"] = 1
-      page.execute_script("sessionStorage.setItem('seatwise.oauth.token', arguments[0])", JSON.generate(expired_token))
+      page.execute_script(
+        "sessionStorage.setItem('seatwise.oauth.token', arguments[0])",
+        JSON.generate(expired_token)
+      )
       delivered_email_count = ActionMailer::Base.deliveries.size
       visit account_reservations_path
       assert_oauth_navigation_to(account_reservations_path)
       assert_text "Reservation #{reservations(:one).id}", wait: 10
       assert_equal delivered_email_count, ActionMailer::Base.deliveries.size
-      renewed_token = JSON.parse(page.evaluate_script("sessionStorage.getItem('seatwise.oauth.token')"))
+      renewed_token =
+        JSON.parse(page.evaluate_script("sessionStorage.getItem('seatwise.oauth.token')"))
       assert_operator renewed_token.fetch("expires_at"), :>, (Time.current.to_f * 1000).to_i
       access_token = renewed_token.fetch("access_token")
 
@@ -71,7 +73,10 @@ module Portal
 
       # Sign-out revokes the token currently stored by this authorization, which
       # is distinct from the earlier token renewed after expiry.
-      access_token = JSON.parse(page.evaluate_script("sessionStorage.getItem('seatwise.oauth.token')")).fetch("access_token")
+      access_token =
+        JSON.parse(page.evaluate_script("sessionStorage.getItem('seatwise.oauth.token')")).fetch(
+          "access_token"
+        )
       page.execute_script(<<~JS)
         const originalFetch = window.fetch.bind(window);
         window.fetch = async (...args) => {
@@ -88,8 +93,11 @@ module Portal
       assert_current_path root_path, wait: 10
       assert_nil page.evaluate_script("sessionStorage.getItem('seatwise.oauth.token')")
       revoke_status = page.evaluate_script("sessionStorage.getItem('seatwise.oauth.revoke_status')")
-      assert_equal "200", revoke_status, "Sign-out should successfully call Doorkeeper's OAuth revocation endpoint"
-      persisted_token = Doorkeeper::AccessToken.find_by!(token: Digest::SHA256.hexdigest(access_token))
+      assert_equal "200",
+                   revoke_status,
+                   "Sign-out should successfully call Doorkeeper's OAuth revocation endpoint"
+      persisted_token =
+        Doorkeeper::AccessToken.find_by!(token: Digest::SHA256.hexdigest(access_token))
       assert persisted_token.revoked?, "Sign-out should revoke the current tab's access token"
     end
 
@@ -125,7 +133,14 @@ module Portal
     def assert_oauth_navigation_to(expected_path)
       assert_current_path expected_path, wait: 20
     rescue Minitest::Assertion => assertion
-      status = page.has_css?("#oauth-client-status", wait: 1) ? page.find("#oauth-client-status").text : nil
+      status =
+        (
+          if page.has_css?("#oauth-client-status", wait: 1)
+            page.find("#oauth-client-status").text
+          else
+            nil
+          end
+        )
       body_excerpt = page.body.to_s.gsub(/\s+/, " ").first(1_000)
       browser_errors =
         begin
@@ -135,9 +150,9 @@ module Portal
         end
       flunk(
         "Expected OAuth navigation to #{expected_path.inspect}; current URL=#{page.current_url.inspect}; " \
-        "callback status=#{status.inspect}; page body=#{body_excerpt.inspect}; " \
-        "browser console=#{browser_errors.inspect}; " \
-        "path assertion=#{assertion.message}"
+          "callback status=#{status.inspect}; page body=#{body_excerpt.inspect}; " \
+          "browser console=#{browser_errors.inspect}; " \
+          "path assertion=#{assertion.message}"
       )
     end
   end
