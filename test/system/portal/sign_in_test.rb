@@ -2,6 +2,11 @@ require "application_system_test_case"
 
 module Portal
   class SignInTest < ApplicationSystemTestCase
+    setup do
+      Portal::SignInsController::RATE_LIMIT_STORE.clear
+      ActionMailer::Base.deliveries.clear
+    end
+
     test "requests a code, verifies the delivered value, and reaches the Portal" do
       visit sign_in_path
       fill_in "Email address", with: "system-buyer@example.test"
@@ -11,7 +16,7 @@ module Portal
       code = ActionMailer::Base.deliveries.last.text_part.body.to_s[/\b\d{6}\b/]
       assert code.present?
 
-      fill_in "Six-digit verification code", with: code
+      find("input[aria-label='Six-digit verification code']").set(code)
       click_button "Verify and continue"
 
       assert_current_path root_path
