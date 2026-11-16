@@ -27,6 +27,11 @@ Rails.application.routes.draw do
   scope module: :portal do
     root "events#index"
     resources :events, only: %i[index show]
+    get "sign-in", to: "sign_ins#new", as: :sign_in
+    post "sign-in/code", to: "sign_ins#create", as: :sign_in_code
+    get "sign-in/verify", to: "sign_ins#verify", as: :sign_in_verify
+    post "sign-in/verify", to: "sign_ins#verify_code", as: :verify_sign_in_code
+    post "sign-out", to: "sign_ins#destroy", as: :sign_out
     get "design", to: "design_system#show", as: :design_system
     get "status", to: "status#show", as: :status
   end

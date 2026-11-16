@@ -1,0 +1,11 @@
+- content_for :title, "Sign in · Seatwise"
+%main.mx-auto.w-full.max-w-xl.px-4.py-10.sm:px-6.sm:py-16
+  = card title: "Sign in to Seatwise", description: "Use your email to receive a one-time sign-in code.", body_class: "gap-6 p-6 sm:p-8" do
+    - if flash[:notice].present?
+      = status_alert title: "Check your email", description: flash[:notice], variant: :info, soft: true, role: "status"
+    = form_with url: sign_in_code_path, scope: :sign_in, method: :post, class: "space-y-5" do |form|
+      = hidden_field_tag :return_to, @return_to if @return_to.present?
+      = field label: "Email address", name: "sign_in[email]", type: "email", value: params.dig(:sign_in, :email), placeholder: "you@example.com", required: true, id: "sign-in-email"
+      = button "Email me a code", type: :submit, variant: :primary, size: :lg, class: "w-full"
+    %p.text-sm.leading-6{class: "text-base-content/60"}
+      New to Seatwise? You can create your customer account now; you do not need a reservation first.

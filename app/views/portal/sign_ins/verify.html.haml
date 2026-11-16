@@ -1,0 +1,26 @@
+- content_for :title, "Verify your email · Seatwise"
+%main.mx-auto.w-full.max-w-xl.px-4.py-10.sm:px-6.sm:py-16
+  = card title: "Enter your sign-in code", description: "Check your inbox for the six-digit code.", body_class: "gap-6 p-6 sm:p-8" do
+    - if @verification_error
+      = status_alert title: "That code did not work", description: "Check the code and try again, or request a new one.", variant: :error, soft: true
+    - elsif flash[:notice].present?
+      = status_alert title: "Check your email", description: flash[:notice], variant: :info, soft: true, role: "status"
+    %p.text-sm{class: "text-base-content/70"}
+      Enter the code sent to
+      %span.font-semibold= "#{@customer.email}."
+    = form_with url: verify_sign_in_code_path, scope: :sign_in, method: :post, class: "space-y-6" do |form|
+      = hidden_field_tag :return_to, @return_to if @return_to.present?
+      %fieldset.space-y-3
+        %legend.text-sm.font-semibold Six-digit verification code
+        %label.otp.otp-joined.otp-lg
+          - 6.times do
+            %span
+          = form.text_field :code, maxlength: 6, pattern: "[0-9]{6}", required: true, autocomplete: "one-time-code", inputmode: "numeric", aria: { label: "Six-digit verification code" }, autofocus: true
+        %p.text-sm{class: "text-base-content/55"} The code expires in 10 minutes and can only be used once.
+      = button "Verify and continue", type: :submit, variant: :primary, size: :lg, class: "w-full"
+    .flex.flex-wrap.items-center.justify-between.gap-3
+      = link_to "Use a different email", sign_in_path(return_to: @return_to), class: "link link-hover text-sm"
+      = form_with url: sign_in_code_path, scope: :sign_in, method: :post do |form|
+        = hidden_field_tag :return_to, @return_to if @return_to.present?
+        = form.hidden_field :email, value: @customer.email
+        = button "Send a new code", type: :submit, variant: :ghost, size: :sm
