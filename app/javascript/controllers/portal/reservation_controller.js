@@ -584,6 +584,12 @@ export default class extends Controller {
     this.clearHoldError();
 
     try {
+      await fetchJson("/api/v1/guest_sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transport: "cookie" }),
+        credentials: "same-origin",
+      });
       const reservation = await fetchJson("/api/v1/reservations", {
         method: "POST",
         headers: {

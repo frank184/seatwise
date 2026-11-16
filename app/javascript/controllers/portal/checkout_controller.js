@@ -307,7 +307,12 @@ export default class extends Controller {
     while (this.pollingId === pollingId && Date.now() < deadline) {
       try {
         const response = await fetchJson(
-          `/api/v1/reservations/${encodeURIComponent(reservation.id)}/checkout?session_id=${encodeURIComponent(sessionId)}`,
+          `/api/v1/reservations/${encodeURIComponent(reservation.id)}/checkout/reconcile`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ session_id: sessionId }),
+          },
         );
         if (this.pollingId !== pollingId) return;
         const result = response.data || response;

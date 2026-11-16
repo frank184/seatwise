@@ -1,6 +1,7 @@
 require "active_support/core_ext/integer/time"
 
 Rails.application.configure do
+  config.x.portal_origin = ENV.fetch("PORTAL_ORIGIN")
   # Settings specified here will take precedence over those in config/application.rb.
 
   # Code is not reloaded between requests.

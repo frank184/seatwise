@@ -2,9 +2,15 @@ module Api
   module V1
     class CheckoutsController < BaseController
       def create
+        return unless require_guest_cookie_origin!
+        return unless require_guest_or_customer!
+
+        reservation = Reservation.find(params[:reservation_id])
+        return unless authorize_guest_cart_reservation(reservation)
+
         result =
           Checkouts::CreateStripeSession.call(
-            reservation: Reservation.find(params[:reservation_id])
+            reservation:
           )
         response.headers["Cache-Control"] = "no-store"
         render json: {
@@ -57,10 +63,28 @@ module Api
       end
 
       def show
+        return unless require_guest_or_customer!
+
+        reservation = Reservation.find(params[:reservation_id])
+        return unless authorize_guest_cart_reservation(reservation)
+
+        payment =
+          reservation.payments.find_by!(provider_key: "stripe", external_id: params[:session_id])
+        render_checkout_status(reservation, payment)
+      rescue ActiveRecord::RecordNotFound
+        render_checkout_not_found
+      end
+
+      def reconcile
+        return unless require_guest_cookie_origin!
+        return unless require_guest_or_customer!
+
         config = PaymentProviders::DevelopmentStripe.configuration
         raise Checkouts::CreateStripeSession::ProviderUnavailable unless config.enabled?
 
         reservation = Reservation.find(params[:reservation_id])
+        return unless authorize_guest_cart_reservation(reservation)
+
         payment =
           reservation.payments.find_by!(provider_key: "stripe", external_id: params[:session_id])
         session =
@@ -72,6 +96,23 @@ module Api
         )
         reservation.reload
         payment.reload
+        render_checkout_status(reservation, payment)
+      rescue ActiveRecord::RecordNotFound
+        render_checkout_not_found
+      rescue Checkouts::CreateStripeSession::ProviderUnavailable
+        render json: {
+                 error: {
+                   code: "payment_unavailable",
+                   message: "Payment status is temporarily unavailable"
+                 }
+               },
+               status: :service_unavailable
+      end
+
+      private
+
+      def render_checkout_status(reservation, payment)
+        response.headers["Cache-Control"] = "no-store"
         render json: {
                  status:
                    reservation.confirmed? ?
@@ -84,7 +125,9 @@ module Api
                    status: reservation.status
                  }
                }
-      rescue ActiveRecord::RecordNotFound
+      end
+
+      def render_checkout_not_found
         render json: {
                  error: {
                    code: "not_found",
@@ -92,14 +135,6 @@ module Api
                  }
                },
                status: :not_found
-      rescue Checkouts::CreateStripeSession::ProviderUnavailable
-        render json: {
-                 error: {
-                   code: "payment_unavailable",
-                   message: "Payment status is temporarily unavailable"
-                 }
-               },
-               status: :service_unavailable
       end
     end
   end

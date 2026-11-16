@@ -3,11 +3,21 @@ require "test_helper"
 module Api
   module V1
     class CheckoutsControllerTest < ActionDispatch::IntegrationTest
+      setup do
+        post api_v1_guest_sessions_path,
+             params: { transport: "cookie" },
+             headers: { "Origin" => portal_origin },
+             as: :json
+        assert_response :created
+        @guest_cart = GuestCart.resolve(cookies[:guest_cart])
+      end
+
       test "returns session details without returning provider secrets" do
         reservation =
           Reservation.create!(
             event: events(:indie_folk),
             customer: customers(:one),
+            guest_cart: @guest_cart,
             row_id: 9,
             seat_range: 1...3,
             status: :held,
@@ -43,6 +53,7 @@ module Api
           Reservation.create!(
             event: events(:indie_folk),
             customer: customers(:one),
+            guest_cart: @guest_cart,
             row_id: 9,
             seat_range: 1...3,
             status: :held,
@@ -63,11 +74,12 @@ module Api
         assert reservation.reload.expired?
       end
 
-      test "return reconciliation confirms only the matching server-side Checkout Session" do
+      test "reconcile confirms only the matching server-side Checkout Session" do
         reservation =
           Reservation.create!(
             event: events(:indie_folk),
             customer: customers(:one),
+            guest_cart: @guest_cart,
             row_id: 19,
             seat_range: 1...3,
             status: :held,
@@ -100,7 +112,8 @@ module Api
 
         with_method_stub(Stripe::Checkout::Session, :retrieve, session) do
           with_method_stub(PaymentProviders::DevelopmentStripe, :configuration, config) do
-            get api_v1_checkout_status_path(reservation, session_id: payment.external_id)
+            post api_v1_checkout_reconcile_path(reservation),
+                 params: { session_id: payment.external_id }
           end
         end
 
@@ -114,6 +127,7 @@ module Api
           Reservation.create!(
             event: events(:indie_folk),
             customer: customers(:one),
+            guest_cart: @guest_cart,
             row_id: 9,
             seat_range: 1...3,
             status: :held,
@@ -143,11 +157,143 @@ module Api
         assert_equal "not_found", response.parsed_body.dig("error", "code")
       end
 
+      test "cross-origin checkout status GET cannot reconcile or mutate payment state" do
+        reservation =
+          Reservation.create!(
+            event: events(:indie_folk),
+            customer: customers(:one),
+            guest_cart: @guest_cart,
+            row_id: 9,
+            seat_range: 1...3,
+            status: :held,
+            hold_expires_at: 5.minutes.from_now
+          )
+        payment =
+          reservation.payments.create!(
+            external_id: "cs_test_cross_origin_read",
+            provider_key: "stripe",
+            status: "pending",
+            amount: 2_000,
+            currency: "cad"
+          )
+        paid_session =
+          Struct.new(:id, :metadata, :amount_total, :currency, :payment_status).new(
+            payment.external_id,
+            Struct.new(:reservation_id).new(reservation.id.to_s),
+            payment.amount,
+            payment.currency,
+            "paid"
+          )
+        config =
+          PaymentProviders::DevelopmentStripe::Configuration.new(
+            secret_key: "sk_test_secret",
+            publishable_key: "pk_test_public",
+            webhook_secret: "whsec_secret",
+            currency: "cad",
+            error: nil
+          )
+
+        with_method_stub(Stripe::Checkout::Session, :retrieve, paid_session) do
+          with_method_stub(PaymentProviders::DevelopmentStripe, :configuration, config) do
+            get api_v1_checkout_status_path(
+                  reservation,
+                  session_id: payment.external_id
+                ),
+                headers: { "Origin" => "https://attacker.example", "Sec-Fetch-Site" => "cross-site" }
+          end
+        end
+
+        assert_response :success
+        assert_equal "processing", response.parsed_body.fetch("status")
+        assert reservation.reload.held?
+        assert_equal "pending", payment.reload.status
+      end
+
+      test "cross-origin checkout reconciliation POST cannot retrieve Stripe or mutate state" do
+        reservation =
+          Reservation.create!(
+            event: events(:indie_folk),
+            customer: customers(:one),
+            guest_cart: @guest_cart,
+            row_id: 9,
+            seat_range: 1...3,
+            status: :held,
+            hold_expires_at: 5.minutes.from_now
+          )
+        payment =
+          reservation.payments.create!(
+            external_id: "cs_test_cross_origin_post",
+            provider_key: "stripe",
+            status: "pending",
+            amount: 2_000,
+            currency: "cad"
+          )
+        stripe_retrieved = false
+        config =
+          PaymentProviders::DevelopmentStripe::Configuration.new(
+            secret_key: "sk_test_secret",
+            publishable_key: "pk_test_public",
+            webhook_secret: "whsec_secret",
+            currency: "cad",
+            error: nil
+          )
+
+        with_method_stub(
+          Stripe::Checkout::Session,
+          :retrieve,
+          replacement: ->(*) { stripe_retrieved = true; raise "unexpected Stripe retrieve" }
+        ) do
+          with_method_stub(PaymentProviders::DevelopmentStripe, :configuration, config) do
+            post api_v1_checkout_reconcile_path(reservation),
+                 params: { session_id: payment.external_id },
+                 headers: {
+                   "Origin" => "https://attacker.example",
+                   "Sec-Fetch-Site" => "cross-site"
+                 }
+          end
+        end
+
+        assert_response :forbidden
+        assert_not stripe_retrieved
+        assert reservation.reload.held?
+        assert_equal "pending", payment.reload.status
+      end
+
+      test "a different guest cart cannot create a checkout session for a hold" do
+        reservation =
+          Reservation.create!(
+            event: events(:indie_folk),
+            customer: customers(:one),
+            guest_cart: @guest_cart,
+            row_id: 9,
+            seat_range: 1...3,
+            status: :held,
+            hold_expires_at: 5.minutes.from_now
+          )
+        post api_v1_guest_sessions_path, params: { transport: "body" }, as: :json
+        other_secret = response.parsed_body.fetch("secret")
+
+        post api_v1_checkout_session_path(reservation),
+             headers: { "Authorization" => "Guest #{other_secret}" }
+
+        assert_response :not_found
+        assert_empty reservation.payments
+      end
+
       private
 
-      def with_method_stub(target, name, value)
+      def post(path, **args)
+        args[:headers] = { "Origin" => portal_origin }.merge(args[:headers] || {})
+        super(path, **args)
+      end
+
+      def portal_origin
+        Rails.application.config.x.portal_origin
+      end
+
+      def with_method_stub(target, name, value = nil, replacement: nil)
         original = target.method(name)
-        target.define_singleton_method(name) { |*| value }
+        target.define_singleton_method(name, &(replacement || ->(*) { value }))
         yield
       ensure
         target.define_singleton_method(name, original)

@@ -8,11 +8,20 @@ module Api
       MAX_QUANTITY = 6
 
       def create
+        return unless require_guest_cookie_origin!
+
         event_id = params[:event_id]
         quantity = params[:quantity]
-        email = params[:email].to_s.strip.downcase
+        submitted_email = params[:email].to_s.strip.downcase
+        email = current_customer ? current_customer.email : submitted_email
         idempotency_key = request.headers["Idempotency-Key"].to_s.strip
         coordinates_provided = %i[row_id seat_start seat_end].any? { |key| params.key?(key) }
+
+        if current_customer &&
+             ((submitted_email.present? && submitted_email != current_customer.email) ||
+               (params[:customer_id].present? && params[:customer_id].to_s != current_customer.id.to_s))
+          return render_error("Reservation customer does not match the authenticated customer", :unprocessable_entity)
+        end
 
         unless event_id.is_a?(Integer) ? event_id.positive? : event_id.to_s.match?(/\A[1-9]\d*\z/)
           return render_error("event_id must be a positive integer", :unprocessable_entity)
@@ -39,6 +48,9 @@ module Api
           return render_error("Idempotency-Key is too long", :bad_request)
         end
 
+        guest_cart = current_customer ? nil : current_guest_cart
+        return unless require_guest_or_customer!
+
         event = Event.find(event_id)
         selected_row =
           if coordinates_provided
@@ -49,7 +61,8 @@ module Api
           return render_error("The selected row or seats do not exist", :unprocessable_entity)
         end
 
-        request_details = [event.id, quantity, email]
+        actor_fingerprint = current_customer ? "customer:#{current_customer.id}" : "guest_cart:#{guest_cart.id}"
+        request_details = [event.id, quantity, email, actor_fingerprint]
         if coordinates_provided
           request_details.concat([params[:row_id], params[:seat_start], params[:seat_end]])
         end
@@ -95,10 +108,11 @@ module Api
               end
             if allocation && allocation.first
               row, first_seat = allocation
-              customer = Customer.find_or_create_by!(email: email)
+              customer = current_customer || Customer.find_or_create_by!(email: email)
               reservation =
                 event.reservations.create!(
                   customer: customer,
+                  guest_cart: guest_cart,
                   row_id: row.fetch("row_id").to_i,
                   seat_range: first_seat...(first_seat + quantity),
                   status: :held,
@@ -131,7 +145,12 @@ module Api
       end
 
       def destroy
+        return unless require_guest_cookie_origin!
+        return unless require_guest_or_customer!
+
         reservation = Reservation.find(params[:id])
+        return unless authorize_guest_cart_reservation(reservation)
+
         reservation.with_lock { reservation.update!(status: :cancelled) if reservation.held? }
         response.headers["Cache-Control"] = "no-store"
         render json: { id: reservation.id, status: reservation.status }
