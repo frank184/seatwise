@@ -86,6 +86,15 @@ module Portal
       assert_redirected_to root_path
     end
 
+    test "preserves the ticket email return path to reservation management" do
+      request_code_for(customers(:one).email, return_to: "/account/reservations")
+
+      post sign_in_verify_path, params: { sign_in: { code: delivered_code } }
+
+      assert_redirected_to account_reservations_path
+      assert_equal customers(:one).id, session[:customer_id]
+    end
+
     test "verification customer comes only from the pre-auth session" do
       request_code_for(customers(:one).email)
       post sign_in_verify_path,

@@ -110,7 +110,7 @@ module Portal
 
       uri = URI.parse(candidate)
       return unless uri.scheme.nil? && uri.host.nil? && uri.userinfo.nil?
-      return unless uri.path == "/oauth/authorize"
+      return unless uri.path.in?(%w[/oauth/authorize /account/reservations])
 
       candidate
     rescue URI::InvalidURIError
