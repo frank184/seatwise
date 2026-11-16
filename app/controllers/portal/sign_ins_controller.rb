@@ -10,19 +10,19 @@ module Portal
     RATE_LIMIT_STORE = Rails.env.test? ? ActiveSupport::Cache::MemoryStore.new : Rails.cache
 
     rate_limit to: 20,
-                within: 15.minutes,
-                by: -> { request.remote_ip },
-                store: RATE_LIMIT_STORE,
-                name: "sign_in_code_by_ip",
-                only: :create,
-                with: -> { render_rate_limit }
+               within: 15.minutes,
+               by: -> { request.remote_ip },
+               store: RATE_LIMIT_STORE,
+               name: "sign_in_code_by_ip",
+               only: :create,
+               with: -> { render_rate_limit }
     rate_limit to: 5,
-                within: 15.minutes,
-                by: -> { normalized_email },
-                store: RATE_LIMIT_STORE,
-                name: "sign_in_code_by_email",
-                only: :create,
-                with: -> { render_rate_limit }
+               within: 15.minutes,
+               by: -> { normalized_email },
+               store: RATE_LIMIT_STORE,
+               name: "sign_in_code_by_email",
+               only: :create,
+               with: -> { render_rate_limit }
 
     def new
       @return_to = safe_return_path(params[:return_to])
@@ -30,7 +30,8 @@ module Portal
 
     def create
       email = normalized_email
-      return_to = safe_return_path(params[:return_to]) || safe_return_path(session[RETURN_TO_SESSION_KEY])
+      return_to =
+        safe_return_path(params[:return_to]) || safe_return_path(session[RETURN_TO_SESSION_KEY])
 
       if email.blank? || !email.match?(/\A[^\s@]+@[^\s@]+\.[^\s@]+\z/)
         clear_pending_sign_in
@@ -106,7 +107,10 @@ module Portal
 
     def safe_return_path(candidate)
       return unless candidate.is_a?(String) && candidate.start_with?("/")
-      return if candidate.start_with?("//", "/\\") || candidate.include?("\\") || candidate.match?(/[\u0000-\u001f\u007f]/)
+      if candidate.start_with?("//", "/\\") || candidate.include?("\\") ||
+           candidate.match?(/[\u0000-\u001f\u007f]/)
+        return
+      end
 
       uri = URI.parse(candidate)
       return unless uri.scheme.nil? && uri.host.nil? && uri.userinfo.nil?

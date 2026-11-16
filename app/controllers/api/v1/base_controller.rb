@@ -16,7 +16,11 @@ module Api
       def require_customer_scope!(scope)
         token = current_bearer_token
         unless token&.accessible? && current_customer
-          render_api_error("unauthorized", "A valid customer bearer token is required", :unauthorized)
+          render_api_error(
+            "unauthorized",
+            "A valid customer bearer token is required",
+            :unauthorized
+          )
           return false
         end
         unless token.scopes.exists?(scope)
@@ -85,7 +89,11 @@ module Api
       def require_guest_or_customer!
         return true if current_customer || current_guest_cart
 
-        render_api_error("unauthorized", "A guest-cart or customer credential is required", :unauthorized)
+        render_api_error(
+          "unauthorized",
+          "A guest-cart or customer credential is required",
+          :unauthorized
+        )
         false
       end
 
@@ -99,7 +107,11 @@ module Api
 
         cart = current_guest_cart
         unless cart
-          render_api_error("unauthorized", "A guest-cart or customer credential is required", :unauthorized)
+          render_api_error(
+            "unauthorized",
+            "A guest-cart or customer credential is required",
+            :unauthorized
+          )
           return false
         end
         return true if reservation_policy(reservation).show?

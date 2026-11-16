@@ -61,7 +61,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_190000) do
     t.string "code_challenge_method"
     t.string "resource_owner_type", null: false
     t.index ["application_id"], name: "index_oauth_access_grants_on_application_id"
-    t.index ["resource_owner_id", "resource_owner_type"], name: "polymorphic_owner_oauth_access_grants"
+    t.index %w[resource_owner_id resource_owner_type], name: "polymorphic_owner_oauth_access_grants"
     t.index ["resource_owner_id"], name: "index_oauth_access_grants_on_resource_owner_id"
     t.index ["token"], name: "index_oauth_access_grants_on_token", unique: true
   end
@@ -79,7 +79,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_190000) do
     t.string "resource_owner_type"
     t.index ["application_id"], name: "index_oauth_access_tokens_on_application_id"
     t.index ["refresh_token"], name: "index_oauth_access_tokens_on_refresh_token", unique: true
-    t.index ["resource_owner_id", "resource_owner_type"], name: "polymorphic_owner_oauth_access_tokens"
+    t.index %w[resource_owner_id resource_owner_type], name: "polymorphic_owner_oauth_access_tokens"
     t.index ["resource_owner_id"], name: "index_oauth_access_tokens_on_resource_owner_id"
     t.index ["token"], name: "index_oauth_access_tokens_on_token", unique: true
   end
@@ -108,7 +108,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_190000) do
     t.string "failure_code"
     t.index ["external_id"], name: "index_payments_on_external_id", unique: true
     t.index ["reservation_id"], name: "index_payments_on_reservation_id"
-    t.index ["reservation_id"], name: "index_payments_one_pending_per_reservation", unique: true, where: "((status)::text = 'pending'::text)"
+    t.index ["reservation_id"],
+            name: "index_payments_one_pending_per_reservation",
+            unique: true,
+            where: "((status)::text = 'pending'::text)"
   end
 
   create_table "reservations", force: :cascade do |t|
@@ -124,14 +127,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_190000) do
     t.string "request_fingerprint"
     t.bigint "guest_cart_id"
     t.index ["customer_id"], name: "index_reservations_on_customer_id"
-    t.index ["event_id", "idempotency_key"], name: "index_reservations_on_event_and_idempotency_key", unique: true, where: "(idempotency_key IS NOT NULL)"
+    t.index %w[event_id idempotency_key],
+            name: "index_reservations_on_event_and_idempotency_key",
+            unique: true,
+            where: "(idempotency_key IS NOT NULL)"
     t.index ["event_id"], name: "index_reservations_on_event_id"
     t.index ["guest_cart_id"], name: "index_reservations_on_guest_cart_id"
-    t.check_constraint "(upper(seat_range) - lower(seat_range)) <= 6", name: "reservations_seat_group_size"
-    t.check_constraint "NOT isempty(seat_range) AND NOT lower_inf(seat_range) AND NOT upper_inf(seat_range)", name: "reservations_seat_range_bounded_and_nonempty"
+    t.check_constraint "(upper(seat_range) - lower(seat_range)) <= 6",
+                       name: "reservations_seat_group_size"
+    t.check_constraint "NOT isempty(seat_range) AND NOT lower_inf(seat_range) AND NOT upper_inf(seat_range)",
+                       name: "reservations_seat_range_bounded_and_nonempty"
     t.check_constraint "lower(seat_range) >= 1", name: "reservations_seat_range_starts_positive"
-    t.check_constraint "status::text <> 'held'::text OR hold_expires_at IS NOT NULL", name: "reservations_held_requires_hold_expiry"
-    t.exclusion_constraint "event_id WITH =, row_id WITH =, seat_range WITH &&", where: "(status)::text = ANY ((ARRAY['held'::character varying, 'confirmed'::character varying])::text[])", using: :gist, name: "reservations_no_active_seat_overlap"
+    t.check_constraint "status::text <> 'held'::text OR hold_expires_at IS NOT NULL",
+                       name: "reservations_held_requires_hold_expiry"
+    t.exclusion_constraint "event_id WITH =, row_id WITH =, seat_range WITH &&",
+                           where:
+                             "(status)::text = ANY ((ARRAY['held'::character varying, 'confirmed'::character varying])::text[])",
+                           using: :gist,
+                           name: "reservations_no_active_seat_overlap"
   end
 
   create_table "stripe_webhook_events", force: :cascade do |t|

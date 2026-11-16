@@ -1,6 +1,6 @@
 module OAuthAllowedOrigins
   DEFAULTS = {
-    "development" => ["https://oauth-client.example.test", "http://localhost:4000"],
+    "development" => %w[https://oauth-client.example.test http://localhost:4000],
     "test" => ["https://external-client.example.test"]
   }.freeze
 

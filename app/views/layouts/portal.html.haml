@@ -61,9 +61,7 @@
               Sign in with your email to manage your bookings, before or after checkout.
             - if session[:customer_id].present?
               = button "My reservations", href: account_reservations_path, variant: :primary, size: :sm, class: "mt-3 w-full"
-              = form_with url: sign_out_path, method: :post, class: "mt-3",
-                          data: { controller: "portal--oauth", action: "submit->portal--oauth#signOut",
-                                  client_id: Doorkeeper::Application.find_by(name: "Seatwise Portal")&.uid } do |form|
+              = form_with url: sign_out_path, method: :post, class: "mt-3", data: { controller: "portal--oauth", action: "submit->portal--oauth#signOut", client_id: Doorkeeper::Application.find_by(name: "Seatwise Portal")&.uid } do |form|
                 = button "Sign out", type: :submit, variant: :ghost, size: :sm, class: "w-full"
             - else
               = button "Sign in to manage reservations", href: account_reservations_path, variant: :primary, size: :sm, class: "mt-3 w-full"

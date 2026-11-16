@@ -7,7 +7,7 @@
       = status_alert title: "Check your email", description: flash[:notice], variant: :info, soft: true, role: "status"
     %p.text-sm{class: "text-base-content/70"}
       Enter the code sent to
-      %span.font-semibold= "#{@customer.email}."
+      %span.font-semibold #{@customer.email}.
     = form_with url: verify_sign_in_code_path, scope: :sign_in, method: :post, class: "space-y-6" do |form|
       = hidden_field_tag :return_to, @return_to if @return_to.present?
       %fieldset.space-y-3
@@ -16,7 +16,8 @@
           - 6.times do
             %span
           = form.text_field :code, maxlength: 6, pattern: "[0-9]{6}", required: true, autocomplete: "one-time-code", inputmode: "numeric", aria: { label: "Six-digit verification code" }, autofocus: true
-        %p.text-sm{class: "text-base-content/55"} The code expires in 10 minutes and can only be used once.
+        %p.text-sm{class: "text-base-content/55"}
+          The code expires in 10 minutes and can only be used once.
       = button "Verify and continue", type: :submit, variant: :primary, size: :lg, class: "w-full"
     .flex.flex-wrap.items-center.justify-between.gap-3
       = link_to "Use a different email", sign_in_path(return_to: @return_to), class: "link link-hover text-sm"

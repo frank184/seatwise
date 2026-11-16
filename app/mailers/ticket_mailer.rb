@@ -12,9 +12,10 @@ class TicketMailer < ApplicationMailer
   private
 
   def sign_in_url
-    sign_in_path = Rails.application.routes.url_helpers.sign_in_path(
-      return_to: Rails.application.routes.url_helpers.account_reservations_path
-    )
+    sign_in_path =
+      Rails.application.routes.url_helpers.sign_in_path(
+        return_to: Rails.application.routes.url_helpers.account_reservations_path
+      )
     origin = Rails.application.config.x.portal_origin
     URI.join("#{origin}/", sign_in_path).to_s
   end

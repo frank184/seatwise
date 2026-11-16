@@ -12,19 +12,17 @@ module Api
         reservation = find_reservation_for_current_customer(params[:reservation_id])
         return unless authorize_guest_cart_reservation(reservation)
         unless reservation_policy(reservation).checkout?
-          return render json: {
-                          error: {
-                            code: "reservation_unavailable",
-                            message: "This seat hold is no longer active"
-                          }
-                        },
-                        status: :conflict
+          render json: {
+                   error: {
+                     code: "reservation_unavailable",
+                     message: "This seat hold is no longer active"
+                   }
+                 },
+                 status: :conflict
+          return
         end
 
-        result =
-          Checkouts::CreateStripeSession.call(
-            reservation:
-          )
+        result = Checkouts::CreateStripeSession.call(reservation:)
         response.headers["Cache-Control"] = "no-store"
         render json: {
                  payment_id: result.payment.id,

@@ -1,6 +1,7 @@
 require Rails.root.join("lib/oauth_allowed_origins")
 
-allowed_origins = OAuthAllowedOrigins.parse(value: ENV["OAUTH_ALLOWED_ORIGINS"], environment: Rails.env)
+allowed_origins =
+  OAuthAllowedOrigins.parse(value: ENV["OAUTH_ALLOWED_ORIGINS"], environment: Rails.env)
 
 Rails.application.config.middleware.insert_before 0, Rack::Cors do
   allow do

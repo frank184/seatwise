@@ -57,10 +57,7 @@ Rails.application.configure do
   # config.action_mailer.raise_delivery_errors = false
 
   portal_uri = URI.parse(config.x.portal_origin)
-  mailer_url_options = {
-    host: portal_uri.host,
-    protocol: portal_uri.scheme
-  }
+  mailer_url_options = { host: portal_uri.host, protocol: portal_uri.scheme }
   mailer_url_options[:port] = portal_uri.port unless [80, 443].include?(portal_uri.port)
   config.action_mailer.default_url_options = mailer_url_options
 

@@ -13,7 +13,9 @@ class GuestCart < ApplicationRecord
   scope :active, -> { where("expires_at > ?", Time.current) }
 
   def self.issue!(transport:)
-    raise ArgumentError, "unsupported guest-cart transport" unless TRANSPORTS.include?(transport.to_s)
+    unless TRANSPORTS.include?(transport.to_s)
+      raise ArgumentError, "unsupported guest-cart transport"
+    end
 
     secret = SecureRandom.urlsafe_base64(32)
     cart = create!(secret_digest: digest(secret), expires_at: LIFETIME.from_now)

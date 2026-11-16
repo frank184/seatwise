@@ -2,10 +2,7 @@
 
 class DevelopmentOauthClients
   CLIENTS = [
-    {
-      name: "Seatwise Portal",
-      redirect_uri: "http://localhost:3000/oauth/callback"
-    },
+    { name: "Seatwise Portal", redirect_uri: "http://localhost:3000/oauth/callback" },
     {
       name: "Seatwise Development OAuth Client",
       redirect_uri: "https://oauth-client.example.test/callback"

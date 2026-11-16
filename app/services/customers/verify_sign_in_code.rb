@@ -8,7 +8,8 @@ module Customers
       customer.with_lock do
         next if customer.sign_in_code_digest.blank?
 
-        if customer.sign_in_code_expires_at.blank? || customer.sign_in_code_expires_at <= Time.current
+        if customer.sign_in_code_expires_at.blank? ||
+             customer.sign_in_code_expires_at <= Time.current
           clear_code(customer)
           next
         end
@@ -27,7 +28,9 @@ module Customers
         else
           attempts = customer.sign_in_code_attempts + 1
           attributes = { sign_in_code_attempts: attempts }
-          attributes.merge!(sign_in_code_digest: nil, sign_in_code_expires_at: nil) if attempts >= MAX_ATTEMPTS
+          if attempts >= MAX_ATTEMPTS
+            attributes.merge!(sign_in_code_digest: nil, sign_in_code_expires_at: nil)
+          end
           customer.update!(attributes)
         end
       end

@@ -28,9 +28,7 @@ Doorkeeper.configure do
   hash_token_secrets
   allow_token_introspection false
 
-  skip_authorization do |_resource_owner, client|
-    client.name == "Seatwise Portal"
-  end
+  skip_authorization { |_resource_owner, client| client.name == "Seatwise Portal" }
 end
 
 # Doorkeeper 5.9.9 validates redirect URIs after its resource-owner callback.

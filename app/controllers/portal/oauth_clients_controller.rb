@@ -34,7 +34,10 @@ module Portal
 
     def safe_local_path(value)
       return unless value.is_a?(String) && value.start_with?("/")
-      return if value.start_with?("//", "/\\") || value.include?("\\") || value.match?(/[\u0000-\u001f\u007f]/)
+      if value.start_with?("//", "/\\") || value.include?("\\") ||
+           value.match?(/[\u0000-\u001f\u007f]/)
+        return
+      end
 
       uri = URI.parse(value)
       return unless uri.scheme.nil? && uri.host.nil? && uri.userinfo.nil?

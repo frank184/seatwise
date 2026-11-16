@@ -1,9 +1,9 @@
-Your tickets for #{@event.name}
+= "Your tickets for #{@event.name}"
 
 = @event.start_time.in_time_zone.strftime("%B %-d, %Y at %-I:%M %p %Z")
 
-Row #{@reservation.row_id}, seats #{@reservation.seat_range.begin}–#{@reservation.seat_range.end - 1}
+= "Row #{@reservation.row_id}, seats #{@reservation.seat_range.begin}\u2013#{@reservation.seat_range.end - 1}"
 
 To view or manage your reservation, sign in with the email used at checkout. We’ll send a one-time code to verify it.
 
-Sign in to Seatwise: #{@sign_in_url}
+= "Sign in to Seatwise: #{@sign_in_url}"

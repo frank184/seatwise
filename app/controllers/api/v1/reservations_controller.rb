@@ -11,7 +11,11 @@ module Api
         return unless require_customer_scope!("reservations:read")
 
         response.headers["Cache-Control"] = "no-store"
-        render json: current_customer.reservations.order(created_at: :desc).map { |reservation| reservation_payload(reservation) }
+        render json:
+                 current_customer
+                   .reservations
+                   .order(created_at: :desc)
+                   .map { |reservation| reservation_payload(reservation) }
       end
 
       def show
@@ -39,9 +43,18 @@ module Api
         coordinates_provided = %i[row_id seat_start seat_end].any? { |key| params.key?(key) }
 
         if current_customer &&
-             ((submitted_email.present? && submitted_email != current_customer.email) ||
-               (params[:customer_id].present? && params[:customer_id].to_s != current_customer.id.to_s))
-          return render_error("Reservation customer does not match the authenticated customer", :unprocessable_entity)
+             (
+               (submitted_email.present? && submitted_email != current_customer.email) ||
+                 (
+                   params[:customer_id].present? &&
+                     params[:customer_id].to_s != current_customer.id.to_s
+                 )
+             )
+          render_error(
+            "Reservation customer does not match the authenticated customer",
+            :unprocessable_entity
+          )
+          return
         end
 
         unless event_id.is_a?(Integer) ? event_id.positive? : event_id.to_s.match?(/\A[1-9]\d*\z/)
@@ -82,7 +95,8 @@ module Api
           return render_error("The selected row or seats do not exist", :unprocessable_entity)
         end
 
-        actor_fingerprint = current_customer ? "customer:#{current_customer.id}" : "guest_cart:#{guest_cart.id}"
+        actor_fingerprint =
+          current_customer ? "customer:#{current_customer.id}" : "guest_cart:#{guest_cart.id}"
         request_details = [event.id, quantity, email, actor_fingerprint]
         if coordinates_provided
           request_details.concat([params[:row_id], params[:seat_start], params[:seat_end]])

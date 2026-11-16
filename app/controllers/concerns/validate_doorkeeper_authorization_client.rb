@@ -11,24 +11,25 @@ module ValidateDoorkeeperAuthorizationClient
 
   def validate_oauth_client_and_redirect_uri
     authorization_request =
-      Doorkeeper::OAuth::PreAuthorization.new(
-        Doorkeeper.configuration,
-        send(:pre_auth_params),
-        nil
-      )
+      Doorkeeper::OAuth::PreAuthorization.new(Doorkeeper.configuration, send(:pre_auth_params), nil)
     return render_invalid_oauth_request unless authorization_request.client_valid?
 
     # Doorkeeper's authorization matcher intentionally ignores loopback ports.
     # This web-client MVP requires exact callback registrations to avoid an
     # unregistered local service receiving an authorization code.
     registered_redirect_uris = authorization_request.client.redirect_uri.to_s.split("\n")
-    return render_invalid_oauth_request unless registered_redirect_uris.include?(authorization_request.redirect_uri)
+    unless registered_redirect_uris.include?(authorization_request.redirect_uri)
+      return render_invalid_oauth_request
+    end
 
     return unless action_name.in?(%w[new create])
 
     # Doorkeeper 5.9's force_pkce only requires a challenge for public clients,
     # and accepts any configured challenge method. Require S256 for all clients.
-    return if authorization_request.code_challenge.present? && authorization_request.code_challenge_method == "S256"
+    if authorization_request.code_challenge.present? &&
+         authorization_request.code_challenge_method == "S256"
+      return
+    end
 
     render_invalid_oauth_request
   end

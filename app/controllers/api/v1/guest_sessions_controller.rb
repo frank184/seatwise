@@ -2,15 +2,26 @@ module Api
   module V1
     class GuestSessionsController < BaseController
       rate_limit to: 20,
-                  within: 1.minute,
-                  by: -> { request.remote_ip },
-                  name: "guest_session_creation",
-                  with: -> { render_api_error("too_many_requests", "Please try again shortly", :too_many_requests) }
+                 within: 1.minute,
+                 by: -> { request.remote_ip },
+                 name: "guest_session_creation",
+                 with: -> do
+                   render_api_error(
+                     "too_many_requests",
+                     "Please try again shortly",
+                     :too_many_requests
+                   )
+                 end
 
       def create
         transport = params[:transport].to_s
         unless GuestCart::TRANSPORTS.include?(transport)
-          return render_api_error("unprocessable_entity", "transport must be cookie or body", :unprocessable_entity)
+          render_api_error(
+            "unprocessable_entity",
+            "transport must be cookie or body",
+            :unprocessable_entity
+          )
+          return
         end
 
         if transport == "cookie"
