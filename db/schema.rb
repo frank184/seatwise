@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_16_163907) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_16_190000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -131,7 +131,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_163907) do
     t.check_constraint "NOT isempty(seat_range) AND NOT lower_inf(seat_range) AND NOT upper_inf(seat_range)", name: "reservations_seat_range_bounded_and_nonempty"
     t.check_constraint "lower(seat_range) >= 1", name: "reservations_seat_range_starts_positive"
     t.check_constraint "status::text <> 'held'::text OR hold_expires_at IS NOT NULL", name: "reservations_held_requires_hold_expiry"
-    t.exclusion_constraint "event_id WITH =, row_id WITH =, seat_range WITH &&", where: "(status)::text = ANY (ARRAY[('held'::character varying)::text, ('confirmed'::character varying)::text])", using: :gist, name: "reservations_no_active_seat_overlap"
+    t.exclusion_constraint "event_id WITH =, row_id WITH =, seat_range WITH &&", where: "(status)::text = ANY ((ARRAY['held'::character varying, 'confirmed'::character varying])::text[])", using: :gist, name: "reservations_no_active_seat_overlap"
   end
 
   create_table "stripe_webhook_events", force: :cascade do |t|
@@ -141,6 +141,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_163907) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["external_id"], name: "index_stripe_webhook_events_on_external_id", unique: true
+  end
+
+  create_table "ticket_deliveries", force: :cascade do |t|
+    t.bigint "reservation_id", null: false
+    t.datetime "delivered_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["reservation_id"], name: "index_ticket_deliveries_on_reservation_id", unique: true
   end
 
   create_table "venues", force: :cascade do |t|
@@ -157,4 +165,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_163907) do
   add_foreign_key "reservations", "customers"
   add_foreign_key "reservations", "events"
   add_foreign_key "reservations", "guest_carts", on_delete: :nullify
+  add_foreign_key "ticket_deliveries", "reservations"
 end

@@ -42,6 +42,10 @@ module Checkouts
             else
               payment.update!(status: "late_success", failure_code: "hold_expired")
             end
+
+            if payment.status == "succeeded" && reservation.confirmed?
+              TicketDelivery.create_or_find_by!(reservation:)
+            end
           end
         end
         record.update!(processed_at: Time.current)
