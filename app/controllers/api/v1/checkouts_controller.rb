@@ -2,11 +2,24 @@ module Api
   module V1
     class CheckoutsController < BaseController
       def create
-        return unless require_guest_cookie_origin!
-        return unless require_guest_or_customer!
+        if bearer_request?
+          return unless require_customer_scope!("reservations:manage")
+        else
+          return unless require_guest_cookie_origin!
+          return unless require_guest_or_customer!
+        end
 
-        reservation = Reservation.find(params[:reservation_id])
+        reservation = find_reservation_for_current_customer(params[:reservation_id])
         return unless authorize_guest_cart_reservation(reservation)
+        unless reservation_policy(reservation).checkout?
+          return render json: {
+                          error: {
+                            code: "reservation_unavailable",
+                            message: "This seat hold is no longer active"
+                          }
+                        },
+                        status: :conflict
+        end
 
         result =
           Checkouts::CreateStripeSession.call(
@@ -63,9 +76,13 @@ module Api
       end
 
       def show
-        return unless require_guest_or_customer!
+        if bearer_request?
+          return unless require_customer_scope!("reservations:read")
+        else
+          return unless require_guest_or_customer!
+        end
 
-        reservation = Reservation.find(params[:reservation_id])
+        reservation = find_reservation_for_current_customer(params[:reservation_id])
         return unless authorize_guest_cart_reservation(reservation)
 
         payment =
@@ -76,13 +93,17 @@ module Api
       end
 
       def reconcile
-        return unless require_guest_cookie_origin!
-        return unless require_guest_or_customer!
+        if bearer_request?
+          return unless require_customer_scope!("reservations:manage")
+        else
+          return unless require_guest_cookie_origin!
+          return unless require_guest_or_customer!
+        end
 
         config = PaymentProviders::DevelopmentStripe.configuration
         raise Checkouts::CreateStripeSession::ProviderUnavailable unless config.enabled?
 
-        reservation = Reservation.find(params[:reservation_id])
+        reservation = find_reservation_for_current_customer(params[:reservation_id])
         return unless authorize_guest_cart_reservation(reservation)
 
         payment =

@@ -7,8 +7,29 @@ module Api
       HOLD_DURATION = 5.minutes
       MAX_QUANTITY = 6
 
+      def index
+        return unless require_customer_scope!("reservations:read")
+
+        response.headers["Cache-Control"] = "no-store"
+        render json: current_customer.reservations.order(created_at: :desc).map { |reservation| reservation_payload(reservation) }
+      end
+
+      def show
+        return unless require_customer_scope!("reservations:read")
+
+        reservation = current_customer.reservations.find(params[:id])
+        response.headers["Cache-Control"] = "no-store"
+        render json: reservation_payload(reservation)
+      rescue ActiveRecord::RecordNotFound
+        render_error("Reservation not found", :not_found)
+      end
+
       def create
-        return unless require_guest_cookie_origin!
+        if bearer_request?
+          return unless require_customer_scope!("reservations:manage")
+        else
+          return unless require_guest_cookie_origin!
+        end
 
         event_id = params[:event_id]
         quantity = params[:quantity]
@@ -145,11 +166,18 @@ module Api
       end
 
       def destroy
-        return unless require_guest_cookie_origin!
-        return unless require_guest_or_customer!
+        if bearer_request?
+          return unless require_customer_scope!("reservations:manage")
+        else
+          return unless require_guest_cookie_origin!
+          return unless require_guest_or_customer!
+        end
 
-        reservation = Reservation.find(params[:id])
+        reservation = find_reservation_for_current_customer(params[:id])
         return unless authorize_guest_cart_reservation(reservation)
+        unless reservation_policy(reservation).cancel?
+          return render_error("Only active holds can be cancelled", :conflict)
+        end
 
         reservation.with_lock { reservation.update!(status: :cancelled) if reservation.held? }
         response.headers["Cache-Control"] = "no-store"
