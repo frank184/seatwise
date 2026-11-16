@@ -1,16 +1,24 @@
-# Be sure to restart your server when you modify this file.
+require Rails.root.join("lib/oauth_allowed_origins")
 
-# Avoid CORS issues when API is called from the frontend app.
-# Handle Cross-Origin Resource Sharing (CORS) in order to accept cross-origin Ajax requests.
+allowed_origins = OAuthAllowedOrigins.parse(value: ENV["OAUTH_ALLOWED_ORIGINS"], environment: Rails.env)
 
-# Read more: https://github.com/cyu/rack-cors
-
-# Rails.application.config.middleware.insert_before 0, Rack::Cors do
-#   allow do
-#     origins "example.com"
-#
-#     resource "*",
-#       headers: :any,
-#       methods: [:get, :post, :put, :patch, :delete, :options, :head]
-#   end
-# end
+Rails.application.config.middleware.insert_before 0, Rack::Cors do
+  allow do
+    origins(*allowed_origins)
+    resource "/oauth/token",
+             headers: %w[Accept Authorization Content-Type],
+             methods: %i[post options],
+             credentials: false,
+             max_age: 600
+    resource "/oauth/revoke",
+             headers: %w[Accept Authorization Content-Type],
+             methods: %i[post options],
+             credentials: false,
+             max_age: 600
+    resource "/api/v1/*",
+             headers: %w[Accept Authorization Content-Type Idempotency-Key],
+             methods: %i[get post delete options],
+             credentials: false,
+             max_age: 600
+  end
+end

@@ -35,6 +35,9 @@ Rails.application.routes.draw do
     get "sign-in/verify", to: "sign_ins#verify", as: :sign_in_verify
     post "sign-in/verify", to: "sign_ins#verify_code", as: :verify_sign_in_code
     post "sign-out", to: "sign_ins#destroy", as: :sign_out
+    get "oauth/start", to: "oauth_clients#start", as: :oauth_start
+    get "oauth/callback", to: "oauth_clients#callback", as: :oauth_callback
+    get "account/reservations", to: "oauth_clients#reservations", as: :account_reservations
     get "design", to: "design_system#show", as: :design_system
     get "status", to: "status#show", as: :status
   end

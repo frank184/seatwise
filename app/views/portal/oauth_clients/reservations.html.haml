@@ -1,0 +1,14 @@
+- content_for :title, "My reservations · Seatwise"
+%main.mx-auto.w-full.max-w-3xl.px-4.py-10.sm:px-6.sm:py-16{
+  data: {
+    controller: "portal--oauth",
+    action: "portal:oauth:load->portal--oauth#loadReservations",
+    return_to: @return_to,
+    client_id: @client_id,
+    redirect_uri: @redirect_uri
+  }
+}
+  = card title: "My reservations", description: "Your bookings are loaded through your customer access token.", body_class: "gap-5 p-6 sm:p-8" do
+    #oauth-client-status
+      = status_alert title: "Loading reservations", description: "Checking your sign-in and reservations.", variant: :info, soft: true, role: "status"
+    #reservation-list.space-y-3

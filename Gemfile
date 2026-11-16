@@ -8,6 +8,7 @@ gem "turbo-rails"
 gem "stimulus-rails"
 gem "jbuilder"
 gem "doorkeeper", "~> 5.9.9"
+gem "rack-cors", "~> 2.0"
 gem "stripe"
 gem "kaminari", "~> 1.2"
 gem "ransack", "~> 6.1"
@@ -41,7 +42,6 @@ gem "thruster", require: false
 gem "image_processing", "~> 2.2"
 
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
-# gem "rack-cors"
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem

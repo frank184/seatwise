@@ -4,9 +4,15 @@ import relativeTime from "dayjs/plugin/relativeTime";
 dayjs.extend(relativeTime);
 
 export async function fetchJson(url, options = {}) {
+  const headers = new Headers(options.headers);
+  if (!headers.has("Accept")) headers.set("Accept", "application/json");
+  if (typeof url === "string" && url.startsWith("/api/v1/") && !headers.has("Authorization")) {
+    const token = readPortalAccessToken();
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+  }
   const response = await fetch(url, {
-    headers: { Accept: "application/json", ...options.headers },
     ...options,
+    headers,
   });
   const body = await response.json();
   if (!response.ok) {
@@ -16,6 +22,15 @@ export async function fetchJson(url, options = {}) {
     throw error;
   }
   return body;
+}
+
+export function readPortalAccessToken() {
+  try {
+    const token = JSON.parse(sessionStorage.getItem("seatwise.oauth.token"));
+    if (token?.access_token && token.expires_at > Date.now()) return token.access_token;
+  } catch (_) {}
+  sessionStorage.removeItem("seatwise.oauth.token");
+  return null;
 }
 
 export function cloneTemplate(root, selector) {
