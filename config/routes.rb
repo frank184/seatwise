@@ -1,4 +1,7 @@
 Rails.application.routes.draw do
+  use_doorkeeper do
+    skip_controllers :applications, :authorized_applications, :token_info
+  end
   mount ActionCable.server => "/cable"
 
   mount LetterOpenerWeb::Engine, at: "/letter_opener" if Rails.env.development?
