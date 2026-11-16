@@ -1,6 +1,8 @@
 Rails.application.routes.draw do
   mount ActionCable.server => "/cable"
 
+  mount LetterOpenerWeb::Engine, at: "/letter_opener" if Rails.env.development?
+
   namespace :api do
     namespace :v1 do
       get "up", to: "health#show", as: :health

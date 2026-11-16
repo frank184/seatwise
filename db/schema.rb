@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_16_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_16_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -23,6 +23,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_000000) do
     t.integer "sign_in_code_attempts", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.datetime "sign_in_code_sent_at"
     t.index ["email"], name: "index_customers_on_email", unique: true
   end
 
