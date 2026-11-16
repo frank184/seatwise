@@ -1,6 +1,6 @@
 # Seatwise API specification
 
-> **Implementation status:** V1 health, public event reads, guest-cart creation, guest-scoped reservation hold/cancellation, guest checkout, development organization/provider, Stripe Checkout Session/reconciliation, and Stripe webhook endpoints are implemented. OAuth customer sign-in and customer-scoped reservation lookup remain planned.
+> **Implementation status:** V1 health, public event reads, guest-cart creation, guest-scoped reservation operations, customer OAuth sign-in and reservation access, development organization/provider, Stripe Checkout Session/reconciliation, Stripe webhooks, and post-payment ticket delivery are implemented. See [authentication and authorization](auth.md) for the complete customer flow and security boundaries.
 
 The Seatwise JSON API exposes event availability, reservation holds, checkout, cancellation and payment confirmation. See the [V1 requirements](requirements.md).
 
@@ -11,44 +11,56 @@ The Seatwise JSON API exposes event availability, reservation holds, checkout, c
 - Seat positions start at 1. `seat_start` and `seat_end` are inclusive.
 - Timestamps are UTC ISO 8601 strings. The server determines hold expiry.
 - Error responses use `{"error":{"code":"machine_readable_code","message":"Human-readable explanation"}}`.
-- Event reads are public. Guest reservation and checkout operations require a guest-cart capability: the Portal uses an HttpOnly cookie; direct API clients use `Authorization: Guest <secret>`. OAuth customer bearer access is a planned layer; see [auth](auth.md) for the design boundary.
+- Event reads are public. Reservation and checkout operations accept either the guest-cart capability that owns the reservation or an authenticated customer bearer token with the required scope. The Portal uses an HttpOnly cookie for its guest cart; direct guest API clients use `Authorization: Guest <secret>`. See [authentication and authorization](auth.md).
 
 ## Endpoints
 
 | Method and path | Request | Success |
 | --- | --- | --- |
 | `GET /api/v1/up` | — | `200` with `{"status":"ok","api_version":"v1"}`. |
-| `GET /api/v1/events` | — | `200` with `events`, an array of published event summaries ordered by `starts_at` with an ID tie-breaker. |
+| `GET /api/v1/events` | — | `200` with a paginated `data` array of matching event summaries and a `meta` object. There is currently no draft/published visibility filter. |
 | `GET /api/v1/events/:event_id` | — | `200` with an event summary including `id`, `name`, `ticket_price_cents`, and `starts_at`. |
 | `GET /api/v1/organizations/development` | — | `200` with public, in-memory Stripe provider configuration. |
-| `POST /api/v1/guest_sessions` | `{"transport":"cookie"}` for the Portal or `{"transport":"body"}` for a direct API client. | `201` creates a guest cart; cookie transport sets an HttpOnly cookie, body transport returns its secret once. An existing valid Portal cookie returns `200` without rotating it. |
-| `POST /api/v1/reservations` | `{"event_id":42,"quantity":2,"email":"buyer@example.com"}`. Requires a guest-cart credential and `Idempotency-Key` header. | `201` with the held reservation and server-assigned seats. |
-| `DELETE /api/v1/reservations/:id` | Requires the guest-cart credential associated with the hold. | `200` with the reservation marked cancelled if it was held. |
-| `POST /api/v1/reservations/:reservation_id/checkout/session` | Empty JSON object; requires the guest-cart credential associated with the hold. | `200` with the pending payment, Stripe Checkout Session ID, client secret, amount, and currency. |
-| `GET /api/v1/reservations/:reservation_id/checkout?session_id=cs_...` | Requires the guest-cart credential associated with the hold. Reads locally persisted status only. | `200` with `processing`, `succeeded`, `failed`, or `expired`; does not contact Stripe or change payment/reservation state. |
-| `POST /api/v1/reservations/:reservation_id/checkout/reconcile` | `{"session_id":"cs_..."}`; requires the guest-cart credential associated with the hold. | `200` with the reconciled checkout status after retrieving the session from Stripe. |
+| `POST /api/v1/guest_sessions` | `{"transport":"cookie"}` for the Portal or `{"transport":"body"}` for a direct API client. Limited to 20 requests per remote IP per minute. | `201` creates a guest cart; cookie transport sets an HttpOnly cookie, body transport returns its secret once. An existing valid Portal cookie returns `200` without rotating it. |
+| `GET /api/v1/reservations` | Requires a customer bearer token with `reservations:read`. | `200` with only that customer's reservations. |
+| `GET /api/v1/reservations/:id` | Requires a customer bearer token with `reservations:read`. | `200` with that customer's reservation; another customer's reservation is `404`. |
+| `POST /api/v1/reservations` | `{"event_id":42,"quantity":2,"email":"buyer@example.com"}` and `Idempotency-Key`. Requires the owning guest-cart credential or a customer bearer token with `reservations:manage`. | `201` with the held reservation and server-assigned seats. Customer identity comes from the token, not request fields. |
+| `DELETE /api/v1/reservations/:id` | Requires the owning guest-cart credential or a customer bearer token with `reservations:manage`. | `200` with the reservation marked cancelled if it was held. |
+| `POST /api/v1/reservations/:reservation_id/checkout/session` | Empty JSON object; requires the owning guest-cart credential or a customer bearer token with `reservations:manage`. | `200` with the pending payment, Stripe Checkout Session ID, client secret, amount, and currency. |
+| `GET /api/v1/reservations/:reservation_id/checkout?session_id=cs_...` | Requires the owning guest-cart credential or a customer bearer token with `reservations:read`. Reads locally persisted status only. | `200` with `processing`, `succeeded`, `failed`, or `expired`; does not contact Stripe or change payment/reservation state. |
+| `POST /api/v1/reservations/:reservation_id/checkout/reconcile` | `{"session_id":"cs_..."}`; requires the owning guest-cart credential or a customer bearer token with `reservations:manage`. | `200` with the reconciled checkout status after retrieving the session from Stripe. |
 | `POST /api/v1/payment_webhooks/stripe` | Stripe raw event body and `Stripe-Signature` header. | `200` after supported signed event processing; invalid signatures return `400`. |
 
 ### Availability response
 
 ```json
 {
-  "event_id": "evt_42",
-  "rows": [
-    {
-      "row_id": "front_a",
-      "label": "A",
-      "seat_count": 10,
-      "blocked_ranges": [
-        { "seat_start": 1, "seat_end": 4 },
-        { "seat_start": 7, "seat_end": 8 }
-      ]
-    }
-  ]
+  "data": {
+    "id": 42,
+    "name": "Saturday Matinee",
+    "ticket_price_cents": 2500,
+    "starts_at": "2026-11-14T14:00:00Z",
+    "ends_at": "2026-11-14T16:00:00Z",
+    "past": false,
+    "venue": { "name": "Studio Theatre" },
+    "rows": [
+      {
+        "row_id": 1,
+        "label": "A",
+        "allocation_order": 1,
+        "seat_count": 10,
+        "reserved_seats": [1, 2, 3, 4, 7, 8]
+      }
+    ],
+    "seat_count": 10,
+    "reserved_count": 6,
+    "available_count": 4
+  },
+  "meta": { "api_version": "v1" }
 }
 ```
 
-Blocked ranges are sorted, with touching or overlapping intervals merged. They represent confirmed reservations and unexpired holds. Availability can change between this read and the hold request. For this example a request for two seats would be allocated seats 5–6 if the inventory stays the same.
+Event show responses wrap the event in `data` and include `meta.api_version`. Event list responses use the same envelope, with an array in `data` and pagination values in `meta`. Row IDs and event IDs are numeric. Each row's `reserved_seats` contains seat numbers occupied by confirmed reservations and unexpired holds. Availability can change between this read and the hold request. For the example, a request for two seats would be allocated seats 5–6 if the inventory stays the same.
 
 ### Create reservation response
 
@@ -66,7 +78,7 @@ Blocked ranges are sorted, with touching or overlapping intervals merged. They r
 }
 ```
 
-Guest reservation creation requires either the Portal's guest-cart cookie or a direct client's `Authorization: Guest <secret>` capability, plus a guest email. The cookie is issued by `POST /api/v1/guest_sessions` and stored server-side as a digest. Cookie-transport bootstrap and cookie-authenticated unsafe requests require the configured Portal `Origin`; cross-site requests are rejected. Body-transport secrets are returned only once and must not be sent to the Portal. The email is reservation contact data, not proof of customer identity.
+Guest reservation creation requires either the Portal's guest-cart cookie or a direct client's `Authorization: Guest <secret>` capability, plus a guest email; customer-token creation instead uses the verified customer associated with that token. The cookie is issued by `POST /api/v1/guest_sessions` and stored server-side as a digest. Cookie-transport bootstrap and cookie-authenticated unsafe requests require the configured Portal `Origin`; cross-site requests are rejected. Body-transport secrets are returned only once and must not be sent to the Portal. A guest email is reservation contact data, not proof of customer identity.
 
 Repeating the same event, quantity, email and guest cart with the same `Idempotency-Key` returns the original reservation with `200`; changing those values or using the key from another guest cart returns `409`. A different or missing guest credential cannot continue the hold. Stale held reservations are marked expired during allocation, and the database overlap constraint remains the final guard against concurrent claims.
 
@@ -89,15 +101,16 @@ The Portal uses Stripe.js Express Checkout Element and Payment Element. A paymen
 | Status | Example |
 | --- | --- |
 | `400 Bad Request` | Malformed JSON or missing required idempotency key. |
-| `401 Unauthorized` | Missing, invalid, expired, or wrong guest-cart credential. |
+| `401 Unauthorized` | Missing, invalid, or expired guest-cart credential, or missing/invalid/expired customer bearer token. |
 | `403 Forbidden` | Cookie-authenticated mutation has a missing or disallowed Portal `Origin`. |
 | `404 Not Found` | The event or reservation cannot be found or accessed by the caller. |
 | `409 Conflict` | No contiguous block fits, a reservation transition is invalid, or an idempotency key is reused with a different request. |
+| `429 Too Many Requests` | Guest-cart bootstrap exceeds 20 requests per remote IP in one minute. |
 | `422 Unprocessable Content` | Quantity is missing, is outside 1–6, or is not a JSON integer. |
 
 - Reservation creation scopes each idempotency key to the guest cart, event, and booking parameters. The same key and parameters replay the original successful creation response; a different guest cart or changed parameters cannot replay another caller's hold. Use read-only checkout status or the signed-in reservation lookup for current state. Reusing a key with different parameters in the same scope is a conflict. Concurrent requests with the same key must create at most one hold.
 - Stripe webhook event IDs are unique and retries do not apply confirmation twice. The session ID, reservation metadata, amount, and currency must match the pending local payment.
 - Payment confirmation, cancellation, and expiry leave one consistent reservation state even when they race. Expired holds are released from the database's overlap constraint so allocation can reclaim their seats.
-- Reservation allocation and expiry are handled transactionally; active seat overlap and unique pending Stripe payments are protected by database constraints. Guest-cart credentials allow only operations on that cart's reservations; they do not grant customer-wide reservation access. OAuth customer-scoped access is not implemented yet.
+- Reservation allocation and expiry are handled transactionally; active seat overlap and unique pending Stripe payments are protected by database constraints. Guest-cart credentials allow only operations on that cart's reservations; they do not grant customer-wide reservation access. Customer bearer queries and actions are scoped to the verified token owner and additionally require the relevant OAuth scope.
 
 See the [stack](stack.md) and [browser UI](ui.md) for how this interface sits alongside Rails-rendered pages.
