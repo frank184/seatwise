@@ -79,10 +79,7 @@ module Portal
     end
 
     def destroy
-      cart = GuestCart.resolve(cookies[:guest_cart])
-      rotated_guest_secret = cart&.rotate_secret!
       reset_session
-      write_guest_cart_cookie(cart, rotated_guest_secret) if cart && rotated_guest_secret
       redirect_to root_path, status: :see_other
     end
 
@@ -123,26 +120,12 @@ module Portal
 
     def finish_sign_in(customer)
       return_to = safe_return_path(session[RETURN_TO_SESSION_KEY])
-      cart = GuestCart.resolve(cookies[:guest_cart])
-      rotated_guest_secret = cart&.rotate_secret!
 
       reset_session
       session[:customer_id] = customer.id
       session[RETURN_TO_SESSION_KEY] = return_to if return_to
-      write_guest_cart_cookie(cart, rotated_guest_secret) if cart && rotated_guest_secret
 
       redirect_to return_to.presence || root_path, status: :see_other
-    end
-
-    def write_guest_cart_cookie(cart, secret)
-      cookies[:guest_cart] = {
-        value: secret,
-        expires: cart.expires_at,
-        path: "/",
-        httponly: true,
-        same_site: :lax,
-        secure: Rails.env.production?
-      }
     end
 
     def generic_request_message

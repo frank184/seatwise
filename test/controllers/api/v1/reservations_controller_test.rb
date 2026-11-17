@@ -7,16 +7,7 @@ module Api
 
       setup do
         travel_to Time.zone.local(2026, 11, 9, 12)
-        post api_v1_guest_sessions_path,
-             params: {
-               transport: "cookie"
-             },
-             headers: {
-               "Origin" => portal_origin
-             },
-             as: :json
-        assert_response :created
-        @guest_cart = GuestCart.resolve(cookies[:guest_cart])
+        @guest, @guest_token = Guest.issue!
         @event =
           Event.create!(
             venue: venues(:one),
@@ -57,12 +48,10 @@ module Api
         assert_equal "held", body.fetch("status")
         assert_equal 5.minutes.from_now.iso8601, Time.iso8601(body.fetch("expires_at")).iso8601
         assert_equal "buyer@example.com", Reservation.find(body.fetch("id")).customer.email
-        assert_equal GuestCart.last, Reservation.find(body.fetch("id")).guest_cart
+        assert_equal Guest.last, Reservation.find(body.fetch("id")).guest
       end
 
-      test "rejects a hold without a guest cart credential" do
-        reset!
-
+      test "rejects a hold without a guest credential" do
         post api_v1_reservations_path,
              params: {
                event_id: @event.id,
@@ -70,6 +59,7 @@ module Api
                email: "buyer@example.com"
              },
              headers: {
+               "Authorization" => "",
                "Idempotency-Key" => "reservation-no-guest-1"
              },
              as: :json
@@ -78,7 +68,7 @@ module Api
         assert_empty @event.reservations
       end
 
-      test "rejects cross-origin mutation even when the guest cookie is valid" do
+      test "guest authorization is independent of browser origin metadata" do
         post api_v1_reservations_path,
              params: {
                event_id: @event.id,
@@ -91,11 +81,11 @@ module Api
              },
              as: :json
 
-        assert_response :forbidden
-        assert_empty @event.reservations
+        assert_response :created
+        assert_equal @guest.id, Reservation.find(response.parsed_body.fetch("id")).guest_id
       end
 
-      test "does not fall back to the guest cookie when an unsupported Authorization scheme is present" do
+      test "does not accept a cookie when an unsupported Authorization scheme is present" do
         post api_v1_reservations_path,
              params: {
                event_id: @event.id,
@@ -104,6 +94,7 @@ module Api
              },
              headers: {
                "Authorization" => "Bearer invalid-token",
+               "Cookie" => "guest=#{@guest_token}",
                "Idempotency-Key" => "reservation-invalid-bearer-1"
              },
              as: :json
@@ -112,15 +103,33 @@ module Api
         assert_empty @event.reservations
       end
 
-      test "a different cart cannot replay an existing cart's idempotency key" do
-        headers = { "Idempotency-Key" => "reservation-other-cart-replay-1" }
+      test "a guest cookie alone cannot authorize a reservation" do
+        post api_v1_reservations_path,
+             params: {
+               event_id: @event.id,
+               quantity: 1,
+               email: "buyer@example.com"
+             },
+             headers: {
+               "Authorization" => "",
+               "Cookie" => "guest=#{@guest_token}",
+               "Idempotency-Key" => "reservation-cookie-only-1"
+             },
+             as: :json
+
+        assert_response :unauthorized
+        assert_empty @event.reservations
+      end
+
+      test "a different guest cannot replay another guest's idempotency key" do
+        headers = { "Idempotency-Key" => "reservation-other-guest-replay-1" }
         params = { event_id: @event.id, quantity: 2, email: "buyer@example.com" }
         post api_v1_reservations_path, params:, headers:, as: :json
         assert_response :created
         original_id = response.parsed_body.fetch("id")
 
-        post api_v1_guest_sessions_path, params: { transport: "body" }, as: :json
-        other_secret = response.parsed_body.fetch("secret")
+        post api_v1_guest_sessions_path, params: {}, as: :json
+        other_secret = response.parsed_body.fetch("guest_token")
         post api_v1_reservations_path,
              params:,
              headers: headers.merge("Authorization" => "Guest #{other_secret}"),
@@ -135,7 +144,7 @@ module Api
         assert_equal 1, @event.reservations.count
       end
 
-      test "another cart cannot cancel this cart's hold" do
+      test "another guest cannot cancel this guest's hold" do
         post api_v1_reservations_path,
              params: {
                event_id: @event.id,
@@ -143,12 +152,12 @@ module Api
                email: "buyer@example.com"
              },
              headers: {
-               "Idempotency-Key" => "reservation-other-cart-cancel-1"
+               "Idempotency-Key" => "reservation-other-guest-cancel-1"
              },
              as: :json
         reservation = Reservation.find(response.parsed_body.fetch("id"))
-        post api_v1_guest_sessions_path, params: { transport: "body" }, as: :json
-        other_secret = response.parsed_body.fetch("secret")
+        post api_v1_guest_sessions_path, params: {}, as: :json
+        other_secret = response.parsed_body.fetch("guest_token")
 
         delete api_v1_reservation_path(reservation),
                headers: {
@@ -206,7 +215,7 @@ module Api
         old_reservation =
           @event.reservations.create!(
             customer: customers(:one),
-            guest_cart: @guest_cart,
+            guest: @guest,
             row_id: 17,
             seat_range: 1...4,
             status: :held,
@@ -449,7 +458,7 @@ module Api
         reservation =
           @event.reservations.create!(
             customer: customers(:one),
-            guest_cart: @guest_cart,
+            guest: @guest,
             row_id: 17,
             seat_range: 1...2,
             status: :held,
@@ -466,17 +475,13 @@ module Api
       private
 
       def post(path, **args)
-        args[:headers] = { "Origin" => portal_origin }.merge(args[:headers] || {})
+        args[:headers] = { "Authorization" => "Guest #{@guest_token}" }.merge(args[:headers] || {})
         super(path, **args)
       end
 
       def delete(path, **args)
-        args[:headers] = { "Origin" => portal_origin }.merge(args[:headers] || {})
+        args[:headers] = { "Authorization" => "Guest #{@guest_token}" }.merge(args[:headers] || {})
         super(path, **args)
-      end
-
-      def portal_origin
-        Rails.application.config.x.portal_origin
       end
     end
   end

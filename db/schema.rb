@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_11_16_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_17_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "pg_catalog.plpgsql"
@@ -39,13 +39,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_190000) do
     t.index ["venue_id"], name: "index_events_on_venue_id"
   end
 
-  create_table "guest_carts", force: :cascade do |t|
+  create_table "guests", force: :cascade do |t|
     t.string "secret_digest", null: false
     t.datetime "expires_at", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["expires_at"], name: "index_guest_carts_on_expires_at"
-    t.index ["secret_digest"], name: "index_guest_carts_on_secret_digest", unique: true
+    t.index ["expires_at"], name: "index_guests_on_expires_at"
+    t.index ["secret_digest"], name: "index_guests_on_secret_digest", unique: true
   end
 
   create_table "oauth_access_grants", force: :cascade do |t|
@@ -125,14 +125,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_190000) do
     t.datetime "updated_at", null: false
     t.string "idempotency_key"
     t.string "request_fingerprint"
-    t.bigint "guest_cart_id"
+    t.bigint "guest_id"
     t.index ["customer_id"], name: "index_reservations_on_customer_id"
     t.index %w[event_id idempotency_key],
             name: "index_reservations_on_event_and_idempotency_key",
             unique: true,
             where: "(idempotency_key IS NOT NULL)"
     t.index ["event_id"], name: "index_reservations_on_event_id"
-    t.index ["guest_cart_id"], name: "index_reservations_on_guest_cart_id"
+    t.index ["guest_id"], name: "index_reservations_on_guest_id"
     t.check_constraint "(upper(seat_range) - lower(seat_range)) <= 6",
                        name: "reservations_seat_group_size"
     t.check_constraint "NOT isempty(seat_range) AND NOT lower_inf(seat_range) AND NOT upper_inf(seat_range)",
@@ -177,6 +177,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_11_16_190000) do
   add_foreign_key "payments", "reservations"
   add_foreign_key "reservations", "customers"
   add_foreign_key "reservations", "events"
-  add_foreign_key "reservations", "guest_carts", on_delete: :nullify
+  add_foreign_key "reservations", "guests", on_delete: :nullify
   add_foreign_key "ticket_deliveries", "reservations"
 end

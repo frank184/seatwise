@@ -107,7 +107,7 @@ module Api
 
         assert_response :created
         assert_equal customers(:one), Reservation.find(response.parsed_body.fetch("id")).customer
-        assert_nil Reservation.find(response.parsed_body.fetch("id")).guest_cart
+        assert_nil Reservation.find(response.parsed_body.fetch("id")).guest
         assert_equal existing_reservations_count + 1, @event.reservations.count
       end
 
@@ -130,8 +130,8 @@ module Api
       end
 
       test "guest email matching an existing customer does not grant access to that customer's reservations" do
-        post api_v1_guest_sessions_path, params: { transport: "body" }, as: :json
-        guest_secret = response.parsed_body.fetch("secret")
+        post api_v1_guest_sessions_path, params: {}, as: :json
+        guest_secret = response.parsed_body.fetch("guest_token")
         post api_v1_reservations_path,
              params: {
                event_id: @event.id,
@@ -146,7 +146,7 @@ module Api
         assert_response :created
         guest_reservation = Reservation.find(response.parsed_body.fetch("id"))
         assert_equal customers(:one), guest_reservation.customer
-        assert_not_equal @owned_reservation.guest_cart_id, guest_reservation.guest_cart_id
+        assert_not_equal @owned_reservation.guest_id, guest_reservation.guest_id
 
         delete api_v1_reservation_path(@owned_reservation),
                headers: {

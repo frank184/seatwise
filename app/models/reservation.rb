@@ -11,7 +11,7 @@ class Reservation < ApplicationRecord
 
   belongs_to :event
   belongs_to :customer
-  belongs_to :guest_cart, optional: true
+  belongs_to :guest, optional: true
   has_many :payments
 
   after_create_commit :broadcast_inventory_invalidation

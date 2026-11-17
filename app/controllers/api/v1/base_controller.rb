@@ -1,8 +1,6 @@
 module Api
   module V1
     class BaseController < ActionController::API
-      include ActionController::Cookies
-
       protected
 
       def current_customer
@@ -43,61 +41,29 @@ module Api
         ReservationPolicy.new(
           reservation:,
           customer: current_customer,
-          guest_cart: current_customer ? nil : current_guest_cart
+          guest: current_customer ? nil : current_guest
         )
       end
 
-      def current_guest_cart
-        return @current_guest_cart if defined?(@current_guest_cart)
+      def current_guest
+        return @current_guest if defined?(@current_guest)
 
-        authorization = request.headers["Authorization"].to_s
-        if authorization.present?
-          @guest_cart_credential_source = :authorization
-          secret = authorization.delete_prefix("Guest ") if authorization.start_with?("Guest ")
-          @current_guest_cart = GuestCart.resolve(secret) if secret.present?
-        else
-          @guest_cart_credential_source = :cookie
-          @current_guest_cart = GuestCart.resolve(cookies[:guest_cart])
-        end
-      end
-
-      def guest_cookie_credential?
-        return false if current_customer || request.headers["Authorization"].present?
-
-        @guest_cart_credential_source != :authorization && cookies[:guest_cart].present?
-      end
-
-      def valid_guest_cookie_origin?(required: false)
-        return true unless required || guest_cookie_credential?
-
-        origin = request.headers["Origin"]
-        fetch_site = request.headers["Sec-Fetch-Site"]
-        origin == Rails.application.config.x.portal_origin && fetch_site != "cross-site"
-      end
-
-      def require_guest_cookie_origin!(required: false)
-        return true if valid_guest_cookie_origin?(required:)
-
-        render_api_error(
-          "forbidden",
-          "Guest-cookie requests must come from the configured Portal origin",
-          :forbidden
-        )
-        false
+        scheme, token = request.headers["Authorization"].to_s.split(/\s+/, 2)
+        @current_guest = Guest.resolve(token) if scheme&.casecmp?("Guest") && token.present?
       end
 
       def require_guest_or_customer!
-        return true if current_customer || current_guest_cart
+        return true if current_customer || current_guest
 
         render_api_error(
           "unauthorized",
-          "A guest-cart or customer credential is required",
+          "A guest or customer credential is required",
           :unauthorized
         )
         false
       end
 
-      def authorize_guest_cart_reservation(reservation)
+      def authorize_guest_reservation(reservation)
         if current_customer
           return true if reservation_policy(reservation).show?
 
@@ -105,11 +71,11 @@ module Api
           return false
         end
 
-        cart = current_guest_cart
-        unless cart
+        guest = current_guest
+        unless guest
           render_api_error(
             "unauthorized",
-            "A guest-cart or customer credential is required",
+            "A guest or customer credential is required",
             :unauthorized
           )
           return false

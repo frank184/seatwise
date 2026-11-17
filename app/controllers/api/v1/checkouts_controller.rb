@@ -5,12 +5,11 @@ module Api
         if bearer_request?
           return unless require_customer_scope!("reservations:manage")
         else
-          return unless require_guest_cookie_origin!
           return unless require_guest_or_customer!
         end
 
         reservation = find_reservation_for_current_customer(params[:reservation_id])
-        return unless authorize_guest_cart_reservation(reservation)
+        return unless authorize_guest_reservation(reservation)
         unless reservation_policy(reservation).checkout?
           render json: {
                    error: {
@@ -81,7 +80,7 @@ module Api
         end
 
         reservation = find_reservation_for_current_customer(params[:reservation_id])
-        return unless authorize_guest_cart_reservation(reservation)
+        return unless authorize_guest_reservation(reservation)
 
         payment =
           reservation.payments.find_by!(provider_key: "stripe", external_id: params[:session_id])
@@ -94,7 +93,6 @@ module Api
         if bearer_request?
           return unless require_customer_scope!("reservations:manage")
         else
-          return unless require_guest_cookie_origin!
           return unless require_guest_or_customer!
         end
 
@@ -102,7 +100,7 @@ module Api
         raise Checkouts::CreateStripeSession::ProviderUnavailable unless config.enabled?
 
         reservation = find_reservation_for_current_customer(params[:reservation_id])
-        return unless authorize_guest_cart_reservation(reservation)
+        return unless authorize_guest_reservation(reservation)
 
         payment =
           reservation.payments.find_by!(provider_key: "stripe", external_id: params[:session_id])

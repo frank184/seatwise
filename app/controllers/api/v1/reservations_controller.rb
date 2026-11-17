@@ -31,8 +31,6 @@ module Api
       def create
         if bearer_request?
           return unless require_customer_scope!("reservations:manage")
-        else
-          return unless require_guest_cookie_origin!
         end
 
         event_id = params[:event_id]
@@ -82,7 +80,7 @@ module Api
           return render_error("Idempotency-Key is too long", :bad_request)
         end
 
-        guest_cart = current_customer ? nil : current_guest_cart
+        guest = current_customer ? nil : current_guest
         return unless require_guest_or_customer!
 
         event = Event.find(event_id)
@@ -96,7 +94,7 @@ module Api
         end
 
         actor_fingerprint =
-          current_customer ? "customer:#{current_customer.id}" : "guest_cart:#{guest_cart.id}"
+          current_customer ? "customer:#{current_customer.id}" : "guest:#{guest.id}"
         request_details = [event.id, quantity, email, actor_fingerprint]
         if coordinates_provided
           request_details.concat([params[:row_id], params[:seat_start], params[:seat_end]])
@@ -147,7 +145,7 @@ module Api
               reservation =
                 event.reservations.create!(
                   customer: customer,
-                  guest_cart: guest_cart,
+                  guest: guest,
                   row_id: row.fetch("row_id").to_i,
                   seat_range: first_seat...(first_seat + quantity),
                   status: :held,
@@ -183,12 +181,11 @@ module Api
         if bearer_request?
           return unless require_customer_scope!("reservations:manage")
         else
-          return unless require_guest_cookie_origin!
           return unless require_guest_or_customer!
         end
 
         reservation = find_reservation_for_current_customer(params[:id])
-        return unless authorize_guest_cart_reservation(reservation)
+        return unless authorize_guest_reservation(reservation)
         unless reservation_policy(reservation).cancel?
           return render_error("Only active holds can be cancelled", :conflict)
         end

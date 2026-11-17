@@ -4,16 +4,7 @@ module Api
   module V1
     class CheckoutsControllerTest < ActionDispatch::IntegrationTest
       setup do
-        post api_v1_guest_sessions_path,
-             params: {
-               transport: "cookie"
-             },
-             headers: {
-               "Origin" => portal_origin
-             },
-             as: :json
-        assert_response :created
-        @guest_cart = GuestCart.resolve(cookies[:guest_cart])
+        @guest, @guest_token = Guest.issue!
       end
 
       test "returns session details without returning provider secrets" do
@@ -21,7 +12,7 @@ module Api
           Reservation.create!(
             event: events(:indie_folk),
             customer: customers(:one),
-            guest_cart: @guest_cart,
+            guest: @guest,
             row_id: 9,
             seat_range: 1...3,
             status: :held,
@@ -57,7 +48,7 @@ module Api
           Reservation.create!(
             event: events(:indie_folk),
             customer: customers(:one),
-            guest_cart: @guest_cart,
+            guest: @guest,
             row_id: 9,
             seat_range: 1...3,
             status: :held,
@@ -83,7 +74,7 @@ module Api
           Reservation.create!(
             event: events(:indie_folk),
             customer: customers(:one),
-            guest_cart: @guest_cart,
+            guest: @guest,
             row_id: 19,
             seat_range: 1...3,
             status: :held,
@@ -133,7 +124,7 @@ module Api
           Reservation.create!(
             event: events(:indie_folk),
             customer: customers(:one),
-            guest_cart: @guest_cart,
+            guest: @guest,
             row_id: 9,
             seat_range: 1...3,
             status: :held,
@@ -168,7 +159,7 @@ module Api
           Reservation.create!(
             event: events(:indie_folk),
             customer: customers(:one),
-            guest_cart: @guest_cart,
+            guest: @guest,
             row_id: 9,
             seat_range: 1...3,
             status: :held,
@@ -215,12 +206,12 @@ module Api
         assert_equal "pending", payment.reload.status
       end
 
-      test "cross-origin checkout reconciliation POST cannot retrieve Stripe or mutate state" do
+      test "checkout reconciliation requires the guest token regardless of origin metadata" do
         reservation =
           Reservation.create!(
             event: events(:indie_folk),
             customer: customers(:one),
-            guest_cart: @guest_cart,
+            guest: @guest,
             row_id: 9,
             seat_range: 1...3,
             status: :held,
@@ -258,31 +249,32 @@ module Api
                    session_id: payment.external_id
                  },
                  headers: {
+                   "Authorization" => "",
                    "Origin" => "https://attacker.example",
                    "Sec-Fetch-Site" => "cross-site"
                  }
           end
         end
 
-        assert_response :forbidden
+        assert_response :unauthorized
         assert_not stripe_retrieved
         assert reservation.reload.held?
         assert_equal "pending", payment.reload.status
       end
 
-      test "a different guest cart cannot create a checkout session for a hold" do
+      test "a different guest cannot create a checkout session for a hold" do
         reservation =
           Reservation.create!(
             event: events(:indie_folk),
             customer: customers(:one),
-            guest_cart: @guest_cart,
+            guest: @guest,
             row_id: 9,
             seat_range: 1...3,
             status: :held,
             hold_expires_at: 5.minutes.from_now
           )
-        post api_v1_guest_sessions_path, params: { transport: "body" }, as: :json
-        other_secret = response.parsed_body.fetch("secret")
+        post api_v1_guest_sessions_path, params: {}, as: :json
+        other_secret = response.parsed_body.fetch("guest_token")
 
         post api_v1_checkout_session_path(reservation),
              headers: {
@@ -298,7 +290,7 @@ module Api
           Reservation.create!(
             event: events(:indie_folk),
             customer: customers(:one),
-            guest_cart: @guest_cart,
+            guest: @guest,
             row_id: 9,
             seat_range: 1...3,
             status: :held,
@@ -333,7 +325,7 @@ module Api
           Reservation.create!(
             event: events(:indie_folk),
             customer: customers(:one),
-            guest_cart: @guest_cart,
+            guest: @guest,
             row_id: 19,
             seat_range: 1...3,
             status: :held,
@@ -369,7 +361,7 @@ module Api
           Reservation.create!(
             event: events(:indie_folk),
             customer: customers(:one),
-            guest_cart: @guest_cart,
+            guest: @guest,
             row_id: 29,
             seat_range: 1...3,
             status: :held,
@@ -407,12 +399,13 @@ module Api
       end
 
       def post(path, **args)
-        args[:headers] = { "Origin" => portal_origin }.merge(args[:headers] || {})
+        args[:headers] = { "Authorization" => "Guest #{@guest_token}" }.merge(args[:headers] || {})
         super(path, **args)
       end
 
-      def portal_origin
-        Rails.application.config.x.portal_origin
+      def get(path, **args)
+        args[:headers] = { "Authorization" => "Guest #{@guest_token}" }.merge(args[:headers] || {})
+        super(path, **args)
       end
 
       def with_method_stub(target, name, value = nil, replacement: nil)

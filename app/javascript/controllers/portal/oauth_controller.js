@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus";
+import { fetchJson } from "controllers/portal/view_helpers";
 
 const TRANSACTION_KEY = "seatwise.oauth.transaction";
 const TOKEN_KEY = "seatwise.oauth.token";
@@ -140,17 +141,15 @@ export default class extends Controller {
     const token = savedToken();
     if (!token) return this.beginAuthorization();
     try {
-      const response = await fetch(`${API_BASE}/reservations`, {
+      const reservations = await fetchJson(`${API_BASE}/reservations`, {
         headers: { Accept: "application/json", Authorization: `Bearer ${token.access_token}` },
       });
-      if (response.status === 401) {
+      this.renderReservations(reservations);
+    } catch (error) {
+      if (error.status === 401) {
         sessionStorage.removeItem(TOKEN_KEY);
         return this.beginAuthorization();
       }
-      if (!response.ok) throw new Error(`Reservation request failed (${response.status})`);
-      const reservations = await response.json();
-      this.renderReservations(reservations);
-    } catch (error) {
       const status = document.getElementById("oauth-client-status");
       if (status) status.textContent = error.message || "Could not load reservations.";
     }

@@ -112,15 +112,13 @@ module Portal
       assert_not_equal customers(:two).id, session[:customer_id]
     end
 
-    test "OTP success rotates the guest capability and preserves its active holds" do
-      bootstrap_guest_cart
-      old_secret = cookies[:guest_cart]
-      cart = GuestCart.resolve(old_secret)
+    test "OTP verification leaves the API guest capability independent of the Portal session" do
+      guest, guest_token = Guest.issue!
       reservation =
         Reservation.create!(
           event: events(:one),
           customer: customers(:two),
-          guest_cart: cart,
+          guest: guest,
           row_id: 50,
           seat_range: 1...3,
           status: :held,
@@ -130,29 +128,24 @@ module Portal
 
       post sign_in_verify_path, params: { sign_in: { code: delivered_code } }
 
-      new_secret = cookies[:guest_cart]
-      assert_not_equal old_secret, new_secret
-      assert_nil GuestCart.resolve(old_secret)
-      assert_equal cart.id, GuestCart.resolve(new_secret).id
-      assert_equal cart.id, reservation.reload.guest_cart_id
+      assert_equal guest, Guest.resolve(guest_token)
+      assert_equal guest.id, reservation.reload.guest_id
       assert reservation.held?
+      assert_no_guest_cookie
     end
 
-    test "sign-out clears the customer session but retains the guest cart" do
-      bootstrap_guest_cart
+    test "sign-out clears the customer session without managing the API guest token" do
+      guest, guest_token = Guest.issue!
       request_code_for(customers(:one).email)
       post sign_in_verify_path, params: { sign_in: { code: delivered_code } }
-      guest_secret = cookies[:guest_cart]
       assert_equal customers(:one).id, session[:customer_id]
 
       post sign_out_path
 
       assert_redirected_to root_path
       assert_nil session[:customer_id]
-      new_guest_secret = cookies[:guest_cart]
-      assert_not_equal guest_secret, new_guest_secret
-      assert_nil GuestCart.resolve(guest_secret)
-      assert GuestCart.resolve(new_guest_secret).present?
+      assert_equal guest, Guest.resolve(guest_token)
+      assert_no_guest_cookie
     end
 
     test "rate limits code requests by normalized email and remote IP" do
@@ -217,16 +210,8 @@ module Portal
       ActionMailer::Base.deliveries.last.text_part.body.to_s[/\b\d{6}\b/]
     end
 
-    def bootstrap_guest_cart
-      post api_v1_guest_sessions_path,
-           params: {
-             transport: "cookie"
-           },
-           headers: {
-             "Origin" => Rails.application.config.x.portal_origin
-           },
-           as: :json
-      assert_response :created
+    def assert_no_guest_cookie
+      assert_not_includes response.headers.fetch("Set-Cookie", ""), "guest="
     end
   end
 end
