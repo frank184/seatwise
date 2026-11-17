@@ -19,10 +19,14 @@
     .w-full.rounded-box.border.border-base-300.bg-base-100.p-4.shadow-sm
       %dl.grid.gap-3.text-sm{class: "sm:grid-cols-2"}
         %div
-          %dt.text-xs{class: "text-base-content/55"} Event
+          %dt.flex.items-center.gap-1.5.text-xs{class: "text-base-content/55"}
+            = lucide "music-2", class: "size-3.5"
+            Event
           %dd.mt-1.font-medium{data: { reservation_event: true }} Event name
         %div
-          %dt.text-xs{class: "text-base-content/55"} Date &amp; time
+          %dt.flex.items-center.gap-1.5.text-xs{class: "text-base-content/55"}
+            = lucide "calendar-days", class: "size-3.5"
+            Date &amp; time
           .flex.flex-wrap.items-baseline.justify-between.gap-x-3.gap-y-1
             %dd.mt-1.font-medium{data: { reservation_date: true }} Event date
             %dd.mt-1.whitespace-nowrap.text-right.text-xs.font-medium.text-primary{
@@ -30,16 +34,22 @@
             }
 
         %div
-          %dt.text-xs{class: "text-base-content/55"} Venue
+          %dt.flex.items-center.gap-1.5.text-xs{class: "text-base-content/55"}
+            = lucide "map-pin", class: "size-3.5"
+            Venue
           %dd.mt-1.font-medium{data: { reservation_venue: true }} Venue name
         %div
-          %dt.text-xs{class: "text-base-content/55"} Booking reference
+          %dt.flex.items-center.gap-1.5.text-xs{class: "text-base-content/55"}
+            = lucide "ticket", class: "size-3.5"
+            Booking reference
           %dd.mt-1.font-mono.font-semibold{data: { reservation_reference: true }}
             Pending
       .mt-5.border-t.border-base-300.pt-4{hidden: "", data: { confirmed_invoice: true }}
         .grid.grid-cols-2.items-start.gap-4
           %div
-            %p.text-xs{class: "text-base-content/55"} Event tickets
+            %p.flex.items-center.gap-1.5.text-xs{class: "text-base-content/55"}
+              = lucide "armchair", class: "size-3.5"
+              Event tickets
             %p.mt-1.font-semibold{data: { invoice_seat_summary: true }}
               Seats pending
             %p.mt-0.5.whitespace-nowrap.text-xs{

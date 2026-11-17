@@ -20,13 +20,21 @@
       %p.mt-2.text-sm{class: "text-base-content/65", data: { payment_copy: true }}
         Your seats remain held until your payment is confirmed.
     = card card_class: "border border-base-300 bg-base-100 shadow-sm", body_class: "gap-4 p-4 sm:p-6" do
-      .flex.items-center.justify-between.gap-3.border-b.border-base-300.pb-4
-        = image_tag "/stripe.png", alt: "Stripe", class: "inline-block h-[18px] w-auto align-middle", data: { payment_brand: true }
-        %span{data: { payment_badge: true }}
-          = badge safe_join([lucide("lock-keyhole", class: "size-3.5"), "Secure payment"]), variant: :success, style: :soft, size: :sm, extra_class: "gap-1.5"
       = button "Check payment status", variant: :outline, class: "self-start", data: { action: "click->portal--checkout#checkStatus", check_payment_status: true }, hidden: true
       %div
-        %p.text-sm.font-semibold{"data-seat-summary": ""} No seats selected
+        %p.flex.items-center.gap-2.text-sm.font-semibold
+          = lucide "armchair", class: "size-4 text-primary"
+          %span{data: { seat_summary: true }} No seats selected
         .mt-3.flex.flex-wrap.items-center.justify-between.gap-2
-          %p.text-sm{class: "text-base-content/65"} Hold time remaining
+          %p.flex.items-center.gap-1.5.text-sm{class: "text-base-content/65"}
+            = lucide "clock-3", class: "size-4"
+            Hold time remaining
           %p.text-lg.font-bold.tabular-nums{"data-hold-countdown": ""} 5:00
+      .mt-1.flex.flex-wrap.items-center.justify-between.gap-3.border-t.border-base-300.pt-4{
+        role: "status"
+      }
+        %p.text-sm{class: "text-base-content/65"}
+          Payment processed by
+          = image_tag "/stripe.png", alt: "Stripe", class: "ml-1 inline-block h-[18px] w-auto align-middle", data: { payment_brand: true }
+        %span{data: { payment_badge: true }}
+          = badge safe_join([lucide("lock-keyhole", class: "size-3.5"), "Secure payment"]), variant: :success, style: :soft, size: :sm, extra_class: "gap-1.5"
