@@ -150,6 +150,15 @@ export default class extends Controller {
     if (this.initialSnapshotApplied) return;
     this.initialSnapshotApplied = true;
 
+    if (window.location.hash === "#checkout-panel") {
+      window.requestAnimationFrame(() => {
+        this.element.querySelector("#checkout-panel")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    }
+
     const checkoutSessionId = new URLSearchParams(window.location.search).get("session_id");
     if (checkoutSessionId) {
       this.restoreCheckoutReturn(checkoutSessionId);
@@ -317,7 +326,7 @@ export default class extends Controller {
   }
 
   renderEventDetails(content, event) {
-    content.querySelector("[data-detail-date]").textContent = formatDate(event.starts_at, {
+    content.querySelector("[data-detail-date-label]").textContent = formatDate(event.starts_at, {
       weekday: "long",
       month: "long",
       day: "numeric",
@@ -330,7 +339,7 @@ export default class extends Controller {
       : "";
     relativeTime.hidden = !relativeLabel;
     content.querySelector("[data-detail-name]").textContent = event.name;
-    content.querySelector("[data-detail-venue]").textContent = event.venue.name;
+    content.querySelector("[data-detail-venue-label]").textContent = event.venue.name;
     content.querySelector("[data-detail-start]").textContent = formatDate(event.starts_at, {
       hour: "numeric",
       minute: "2-digit",

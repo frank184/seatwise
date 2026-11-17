@@ -323,7 +323,14 @@ export default class extends Controller {
       status.classList.add(
         ...(statusClasses[reservation.status] || ["badge-soft", "badge-neutral"]),
       );
-      if (reservation.status === "held" && reservation.expires_at) {
+      const activeHold =
+        reservation.status === "held" &&
+        reservation.expires_at &&
+        Date.parse(reservation.expires_at) > Date.now();
+      if (activeHold) {
+        const resume = item.querySelector("[data-reservation-resume]");
+        resume.href = `/events/${encodeURIComponent(event.id)}#checkout-panel`;
+        resume.classList.remove("hidden");
         const countdown = item.querySelector("[data-reservation-countdown]");
         countdown.dataset.reservationId = reservation.id;
         countdown.dataset.deadline = reservation.expires_at;
@@ -361,7 +368,10 @@ export default class extends Controller {
       const text = node.querySelector("[data-reservation-countdown-text]");
       if (remaining <= 0) {
         node.hidden = true;
-        const status = node.closest("article")?.querySelector("[data-reservation-status]");
+        const card = node.closest("article");
+        const status = card?.querySelector("[data-reservation-status]");
+        const resume = card?.querySelector("[data-reservation-resume]");
+        if (resume) resume.classList.add("hidden");
         if (status) {
           status.textContent = "Expired";
           status.classList.remove("badge-success", "badge-warning", "badge-neutral", "badge-ghost");
