@@ -3,8 +3,8 @@
   = card title: "Enter your sign-in code", description: "Check your inbox for the six-digit code.", title_class: "text-2xl", description_class: "mt-2", body_class: "gap-0 p-6 sm:p-8" do
     - if @verification_error
       = status_alert title: "That code did not work", description: "Check the code and try again, or request a new one.", variant: :error, soft: true, extra_class: "mt-6"
-    - elsif flash[:notice].present?
-      = status_alert title: "Check your email", description: flash[:notice], variant: :info, icon: "mail", soft: true, role: "status", extra_class: "mt-6"
+    - else
+      = status_alert title: "Check your email", description: "If that email can sign in, a one-time code will arrive shortly.", variant: :info, icon: "mail", soft: true, role: "status", extra_class: "mt-6"
     %p.mt-6.text-sm{class: "text-base-content/70"}
       Enter the code sent to
       %span.font-semibold #{@customer.email}.
