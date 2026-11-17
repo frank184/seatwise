@@ -28,7 +28,8 @@ module Portal
 
       assert_oauth_navigation_to(account_reservations_path)
       assert_text "Reservation #{reservations(:one).id}", wait: 10
-      assert_text "row 1, seats 1–1"
+      assert_text reservations(:one).event.name
+      assert_text "Row 1 · Seat 1"
       token_json = page.evaluate_script("sessionStorage.getItem('seatwise.oauth.token')")
       assert token_json.present?, "OAuth callback should persist an access token in this tab"
       assert_match(/Bearer/, token_json)
@@ -40,7 +41,7 @@ module Portal
         const done = arguments[0];
         import("controllers/portal/view_helpers").then(({ fetchJson }) =>
           fetchJson("/api/v1/reservations", { headers: { "X-Portal-Test": "kept" } })
-            .then((reservations) => done({ ids: reservations.map((reservation) => reservation.id) }))
+            .then((response) => done({ ids: response.data.map((reservation) => reservation.id), meta: response.meta }))
             .catch((error) => done({ error: error.message }))
         );
       JS
@@ -49,6 +50,8 @@ module Portal
       assert helper_result["ids"].present?,
              "Portal API helper should return at least one reservation ID"
       assert_includes helper_result.fetch("ids"), reservations(:one).id
+      assert_equal 1, helper_result.dig("meta", "page")
+      assert_operator helper_result.dig("meta", "total_count"), :>=, 1
 
       expired_token = JSON.parse(token_json)
       expired_token["expires_at"] = 1

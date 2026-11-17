@@ -6,16 +6,33 @@ module Api
     class ReservationsController < BaseController
       HOLD_DURATION = 5.minutes
       MAX_QUANTITY = 6
+      PER_PAGE = 10
 
       def index
         return unless require_customer_scope!("reservations:read")
 
         response.headers["Cache-Control"] = "no-store"
-        render json:
-                 current_customer
-                   .reservations
-                   .order(created_at: :desc)
-                   .map { |reservation| reservation_payload(reservation) }
+        reservations = current_customer.reservations.includes(event: :venue)
+        reservations = filter_reservations(reservations)
+        total_count = reservations.count
+        total_pages = (total_count.to_f / PER_PAGE).ceil
+        requested_page = params[:page].to_s.to_i
+        page = [[requested_page, 1].max, [total_pages, 1].max].min
+        reservations = reservations.order(created_at: :desc, id: :desc).page(page).per(PER_PAGE)
+
+        render json: {
+                 data: reservations.map { |reservation| reservation_payload(reservation) },
+                 meta: {
+                   count: reservations.size,
+                   total_count:,
+                   page: reservations.current_page,
+                   per_page: reservations.limit_value,
+                   total_pages:,
+                   next_page: reservations.next_page,
+                   previous_page: reservations.prev_page,
+                   api_version: "v1"
+                 }
+               }
       end
 
       def show
@@ -199,6 +216,24 @@ module Api
 
       private
 
+      def filter_reservations(reservations)
+        case params[:status]
+        when "active"
+          reservations = reservations.where(status: %i[held confirmed])
+        when "history"
+          reservations = reservations.where(status: %i[expired cancelled])
+        end
+
+        query = params[:q].to_s.strip
+        return reservations if query.blank?
+
+        pattern = "%#{ActiveRecord::Base.sanitize_sql_like(query)}%"
+        reservations.joins(event: :venue).where(
+          "CAST(reservations.id AS TEXT) ILIKE :query OR events.name ILIKE :query OR venues.name ILIKE :query",
+          query: pattern
+        )
+      end
+
       def schedule_expiration(reservation)
         ExpireReservationJob.set(wait_until: reservation.hold_expires_at).perform_later(
           reservation.id
@@ -239,6 +274,15 @@ module Api
         {
           id: reservation.id,
           event_id: reservation.event_id,
+          event: {
+            id: reservation.event.id,
+            name: reservation.event.name,
+            starts_at: reservation.event.start_time.iso8601,
+            ends_at: reservation.event.end_time.iso8601,
+            venue: {
+              name: reservation.event.venue.name
+            }
+          },
           row_id: reservation.row_id,
           seat_start: reservation.seat_range.begin,
           seat_end: reservation.seat_range.end - 1,

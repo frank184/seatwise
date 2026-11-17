@@ -45,7 +45,8 @@ module Portal
 
       assert_current_path account_reservations_path, wait: 20
       assert_text "Reservation #{reservation.id}"
-      assert_text "row 1, seats 1–1"
+      assert_text reservation.event.name
+      assert_text "Row 1 · Seat 1"
       assert oauth_client.persisted?
     end
   end

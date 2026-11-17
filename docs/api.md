@@ -23,7 +23,7 @@ The Seatwise JSON API exposes event availability, reservation holds, checkout, c
 | `GET /api/v1/events/:event_id` | — | `200` with an event summary including `id`, `name`, `ticket_price_cents`, and `starts_at`. |
 | `GET /api/v1/organizations/development` | — | `200` with public, in-memory Stripe provider configuration. |
 | `POST /api/v1/guest_sessions` | Empty JSON object. Limited to 20 requests per remote IP per minute. | `201` creates a `Guest` and returns its one-time `guest_token` plus `expires_at`. It never sets a cookie. |
-| `GET /api/v1/reservations` | Requires a customer bearer token with `reservations:read`. | `200` with only that customer's reservations. |
+| `GET /api/v1/reservations` | Requires a customer bearer token with `reservations:read`. Accepts `page`, `status=active|history`, and `q` (reservation number, event name, or venue name). | `200` with the customer's matching reservations in `data` and pagination metadata in `meta`; each reservation includes event name, date/time, and venue details. Pages contain up to 10 reservations. |
 | `GET /api/v1/reservations/:id` | Requires a customer bearer token with `reservations:read`. | `200` with that customer's reservation; another customer's reservation is `404`. |
 | `POST /api/v1/reservations` | `{"event_id":42,"quantity":2,"email":"buyer@example.com"}` and `Idempotency-Key`. Requires `Authorization: Guest <guest_token>` or a customer bearer token with `reservations:manage`. | `201` with the held reservation and server-assigned seats. Customer identity comes from the token, not request fields. |
 | `DELETE /api/v1/reservations/:id` | Requires the owning guest token or a customer bearer token with `reservations:manage`. | `200` with the reservation marked cancelled if it was held. |

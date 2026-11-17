@@ -51,7 +51,16 @@ module Api
 
         assert_response :success
         assert_equal customers(:one).reservations.order(created_at: :desc).pluck(:id),
-                     response.parsed_body.map { |item| item.fetch("id") }
+                     response.parsed_body.fetch("data").map { |item| item.fetch("id") }
+        assert_equal customers(:one).reservations.count,
+                     response.parsed_body.dig("meta", "total_count")
+        owned_payload =
+          response
+            .parsed_body
+            .fetch("data")
+            .find { |item| item.fetch("id") == @owned_reservation.id }
+        assert_equal "Private reservation API test", owned_payload.dig("event", "name")
+        assert_equal "no-store", response.headers["Cache-Control"]
 
         get api_v1_reservation_path(@owned_reservation), headers: bearer(access_token)
         assert_response :success
@@ -61,6 +70,45 @@ module Api
 
         assert_response :not_found
         assert_equal "held", @other_reservation.reload.status
+      end
+
+      test "reservation listing supports status and search filters with paginated metadata" do
+        access_token = token_for(customers(:one), scopes: "reservations:read")
+        11.times { |index| create_reservation(customer: customers(:one), row_id: index + 10) }
+
+        get api_v1_reservations_path,
+            params: {
+              status: "active",
+              q: "Private reservation",
+              page: 2
+            },
+            headers: bearer(access_token)
+
+        assert_response :success
+        body = response.parsed_body
+        assert_equal 2, body.dig("meta", "page")
+        assert_equal 10, body.dig("meta", "per_page")
+        assert_equal 12, body.dig("meta", "total_count")
+        assert_equal 2, body.dig("meta", "total_pages")
+        assert_equal 2, body.fetch("data").length
+
+        get api_v1_reservations_path,
+            params: {
+              status: "active",
+              q: "Private reservation",
+              page: 99
+            },
+            headers: bearer(access_token)
+
+        assert_response :success
+        assert_equal 2, response.parsed_body.dig("meta", "page")
+        assert_equal 2, response.parsed_body.fetch("data").length
+
+        get api_v1_reservations_path, params: { status: "history" }, headers: bearer(access_token)
+
+        assert_response :success
+        assert_empty response.parsed_body.fetch("data")
+        assert_equal 0, response.parsed_body.dig("meta", "total_count")
       end
 
       test "private reads require reservations read scope" do

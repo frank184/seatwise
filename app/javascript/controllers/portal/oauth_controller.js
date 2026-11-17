@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus";
-import { fetchJson } from "controllers/portal/view_helpers";
+import { cloneTemplate, fetchJson, formatDate } from "controllers/portal/view_helpers";
 
 const TRANSACTION_KEY = "seatwise.oauth.transaction";
 const TOKEN_KEY = "seatwise.oauth.token";
@@ -46,6 +46,16 @@ function savedToken() {
 
 export default class extends Controller {
   connect() {
+    this.page = Number(new URLSearchParams(window.location.search).get("page")) || 1;
+    this.handleReservationPopState = () => {
+      this.page = Number(new URLSearchParams(window.location.search).get("page")) || 1;
+      this.syncReservationFiltersFromUrl();
+      this.loadReservations();
+    };
+    if (this.element.dataset.returnTo !== undefined) {
+      window.addEventListener("popstate", this.handleReservationPopState);
+      this.syncReservationFiltersFromUrl();
+    }
     if (this.element.dataset.code !== undefined) this.finishCallback();
     if (this.element.dataset.autostart === "true") this.routeFromStart();
     if (
@@ -53,6 +63,11 @@ export default class extends Controller {
       this.element.dataset.action?.includes("load")
     )
       this.loadReservations();
+  }
+
+  disconnect() {
+    window.removeEventListener("popstate", this.handleReservationPopState);
+    this.reservationsAbortController?.abort();
   }
 
   async start(event) {
@@ -139,7 +154,10 @@ export default class extends Controller {
       if (!response.ok || !token.access_token) throw new Error("Token exchange failed");
       sessionStorage.setItem(
         TOKEN_KEY,
-        JSON.stringify({ ...token, expires_at: Date.now() + Number(token.expires_in) * 1000 }),
+        JSON.stringify({
+          ...token,
+          expires_at: Date.now() + Number(token.expires_in) * 1000,
+        }),
       );
       window.location.replace(safeReturnTo(transaction.returnTo));
     } catch (_) {
@@ -150,18 +168,66 @@ export default class extends Controller {
   async loadReservations() {
     const token = savedToken();
     if (!token) return this.beginAuthorization();
+    const list = this.element.querySelector("#reservation-list");
+    const empty = this.element.querySelector("#reservation-empty");
+    const errorContainer = this.element.querySelector("#reservation-error");
+    const pagination = this.element.querySelector("#reservation-pagination");
+    const status = this.element.querySelector("#oauth-client-status");
+    const count = this.element.querySelector("#reservation-count");
+    this.reservationsAbortController?.abort();
+    this.reservationsAbortController = new AbortController();
+    const { signal } = this.reservationsAbortController;
+    if (list) list.setAttribute("aria-busy", "true");
+    empty.hidden = true;
+    errorContainer.hidden = true;
+    errorContainer.replaceChildren();
+    if (status) {
+      status.replaceChildren();
+      status.append(cloneTemplate(this.element, "#reservation-loading-template"));
+    }
+    const url = new URL(`${API_BASE}/reservations`, window.location.origin);
+    const params = new URLSearchParams(window.location.search);
+    ["q", "status", "page"].forEach((key) => {
+      if (params.has(key)) url.searchParams.set(key, params.get(key));
+    });
+    url.searchParams.set("page", this.page);
     try {
-      const reservations = await fetchJson(`${API_BASE}/reservations`, {
-        headers: { Accept: "application/json", Authorization: `Bearer ${token.access_token}` },
+      const { data: reservations, meta } = await fetchJson(url, {
+        signal,
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token.access_token}`,
+        },
       });
-      this.renderReservations(reservations);
-    } catch (error) {
-      if (error.status === 401) {
+      if (signal.aborted) return;
+      if (this.page !== meta.page) {
+        this.page = meta.page;
+        const currentParams = new URLSearchParams(window.location.search);
+        if (this.page > 1) currentParams.set("page", this.page);
+        else currentParams.delete("page");
+        const query = currentParams.toString();
+        window.history.replaceState(
+          {},
+          "",
+          `${window.location.pathname}${query ? `?${query}` : ""}`,
+        );
+      }
+      this.renderReservations(reservations, meta);
+      if (status) status.replaceChildren();
+      count.textContent = `${meta.total_count} ${meta.total_count === 1 ? "reservation" : "reservations"}`;
+      this.renderReservationPagination(pagination, meta);
+    } catch (requestError) {
+      if (requestError.name === "AbortError") return;
+      if (requestError.status === 401) {
         sessionStorage.removeItem(TOKEN_KEY);
         return this.beginAuthorization();
       }
-      const status = document.getElementById("oauth-client-status");
-      if (status) status.textContent = error.message || "Could not load reservations.";
+      if (status) status.replaceChildren();
+      errorContainer.hidden = false;
+      errorContainer.append(cloneTemplate(this.element, "#reservation-error-template"));
+      count.textContent = "Reservations unavailable";
+    } finally {
+      if (!signal.aborted && list) list.removeAttribute("aria-busy");
     }
   }
 
@@ -187,28 +253,162 @@ export default class extends Controller {
     this.element.submit();
   }
 
-  renderReservations(reservations) {
-    const list = document.getElementById("reservation-list");
-    const status = document.getElementById("oauth-client-status");
+  renderReservations(reservations, meta) {
+    const list = this.element.querySelector("#reservation-list");
+    const empty = this.element.querySelector("#reservation-empty");
     if (!list) return;
     list.replaceChildren();
     if (reservations.length === 0) {
-      if (status) status.textContent = "No reservations are associated with this account yet.";
+      const emptyCard = cloneTemplate(this.element, "#reservation-empty-template");
+      const message = emptyCard.querySelector("[data-reservation-empty-message]");
+      const searchParams = new URLSearchParams(window.location.search);
+      const hasFilters = Boolean(searchParams.get("q") || searchParams.get("status"));
+      if (message && (!hasFilters || meta.total_count > 0)) {
+        message.textContent = !hasFilters
+          ? "Your bookings will appear here once you reserve a seat."
+          : "Try another search or choose a different status filter.";
+      }
+      empty.append(emptyCard);
+      empty.hidden = false;
+      list.hidden = true;
       return;
     }
-    if (status) status.textContent = "Your reservations";
+    list.hidden = false;
     reservations.forEach((reservation) => {
-      const item = document.createElement("article");
-      item.className = "rounded-box border border-base-300 bg-base-100 p-4";
-      const title = document.createElement("h2");
-      title.className = "font-semibold";
-      title.textContent = `Reservation ${reservation.id}`;
-      const detail = document.createElement("p");
-      detail.className = "mt-1 text-sm text-base-content/70";
+      const item = cloneTemplate(this.element, "#reservation-card-template");
       const quantity = reservation.seat_end - reservation.seat_start + 1;
-      detail.textContent = `${reservation.status} · row ${reservation.row_id}, seats ${reservation.seat_start}–${reservation.seat_end} · ${quantity} seat${quantity === 1 ? "" : "s"}`;
-      item.append(title, detail);
+      const event = reservation.event;
+      item.querySelector("[data-reservation-reference]").textContent =
+        `Reservation ${reservation.id}`;
+      item.querySelector("[data-reservation-event]").textContent = event.name;
+      const time = item.querySelector("[data-reservation-time]");
+      time.dateTime = event.starts_at;
+      time.textContent = formatDate(event.starts_at, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      item.querySelector("[data-reservation-venue]").textContent = event.venue.name;
+      const seatDescription =
+        quantity === 1
+          ? `Seat ${reservation.seat_start}`
+          : `Seats ${reservation.seat_start}–${reservation.seat_end} · ${quantity} seats`;
+      item.querySelector("[data-reservation-seats]").textContent =
+        `Row ${reservation.row_id} · ${seatDescription}`;
+      const status = item.querySelector("[data-reservation-status]");
+      const statusLabels = {
+        held: "On hold",
+        confirmed: "Confirmed",
+        expired: "Expired",
+        cancelled: "Cancelled",
+      };
+      status.textContent = statusLabels[reservation.status] || reservation.status;
+      status.classList.add(
+        reservation.status === "confirmed"
+          ? "badge-success"
+          : reservation.status === "held"
+            ? "badge-warning"
+            : "badge-ghost",
+      );
       list.append(item);
     });
+  }
+
+  renderReservationPagination(pagination, meta) {
+    pagination.hidden = meta.total_pages < 2;
+    const previous = pagination.querySelector("[data-page-previous]");
+    const next = pagination.querySelector("[data-page-next]");
+    previous.disabled = !meta.previous_page;
+    next.disabled = !meta.next_page;
+    pagination
+      .querySelectorAll("[data-page-number], [data-page-ellipsis]")
+      .forEach((node) => node.remove());
+
+    const pages = [...new Set([1, meta.page - 1, meta.page, meta.page + 1, meta.total_pages])]
+      .filter((page) => page > 0 && page <= meta.total_pages)
+      .sort((left, right) => left - right);
+    let priorPage = 0;
+    pages.forEach((page) => {
+      if (page - priorPage > 1) {
+        const ellipsis = document.createElement("span");
+        ellipsis.className = "join-item px-2 text-base-content/50";
+        ellipsis.dataset.pageEllipsis = "";
+        ellipsis.textContent = "…";
+        next.before(ellipsis);
+      }
+      const button = cloneTemplate(this.element, "#reservation-page-number-template");
+      button.dataset.pageNumber = page;
+      button.textContent = page;
+      button.setAttribute("aria-label", `Page ${page}`);
+      button.classList.toggle("btn-primary", page === meta.page);
+      button.classList.toggle("btn-active", page === meta.page);
+      if (page === meta.page) button.setAttribute("aria-current", "page");
+      next.before(button);
+      priorPage = page;
+    });
+  }
+
+  submitReservationFilters(event) {
+    event.preventDefault();
+    this.applyReservationFilters();
+  }
+
+  reservationFilterChanged() {
+    this.applyReservationFilters();
+  }
+
+  applyReservationFilters() {
+    const form = this.element.querySelector("#reservation-filters");
+    const params = new URLSearchParams(new FormData(form));
+    for (const key of [...params.keys()]) {
+      if (params.get(key) === "" || (key === "status" && params.get(key) === "all")) {
+        params.delete(key);
+      }
+    }
+    this.page = 1;
+    params.delete("page");
+    this.pushReservationUrl(params);
+    this.loadReservations();
+  }
+
+  navigateToReservationPage(page) {
+    this.page = page;
+    const params = new URLSearchParams(window.location.search);
+    if (page > 1) params.set("page", page);
+    else params.delete("page");
+    this.pushReservationUrl(params);
+    this.loadReservations();
+  }
+
+  previousReservationPage() {
+    this.navigateToReservationPage(this.page - 1);
+  }
+
+  nextReservationPage() {
+    this.navigateToReservationPage(this.page + 1);
+  }
+
+  goToReservationPage({ currentTarget }) {
+    this.navigateToReservationPage(Number(currentTarget.dataset.pageNumber));
+  }
+
+  retryReservations() {
+    this.loadReservations();
+  }
+
+  pushReservationUrl(params) {
+    const query = params.toString();
+    window.history.pushState({}, "", `${window.location.pathname}${query ? `?${query}` : ""}`);
+  }
+
+  syncReservationFiltersFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const form = this.element.querySelector("#reservation-filters");
+    if (!form) return;
+    form.querySelector('[name="q"]').value = params.get("q") || "";
+    form.querySelector('[name="status"]').value = params.get("status") || "all";
   }
 }
