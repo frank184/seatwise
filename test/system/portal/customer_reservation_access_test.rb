@@ -48,6 +48,11 @@ module Portal
       assert_text reservation.event.name
       assert_text "Row 1 · Seat 1"
       assert_selector "[data-reservation-countdown]", text: /\d+:\d{2} remaining/
+      assert_selector "[data-reservation-venue-filter] option", text: reservation.event.venue.name
+      assert_selector "[data-reservation-status-filter='all'][aria-pressed='true']"
+      click_button "On hold"
+      assert_current_path account_reservations_path(status: "held"), wait: 10
+      assert_text reservation.event.name
       assert oauth_client.persisted?
     end
   end

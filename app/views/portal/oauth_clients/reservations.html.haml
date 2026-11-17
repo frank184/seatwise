@@ -23,7 +23,7 @@
             Your Seatwise
           %h1.flex.items-center.gap-3.text-3xl.font-black.tracking-tight.sm:text-4xl
             %span.grid.size-11.shrink-0.place-items-center.rounded-full.text-primary{
-              class: "bg-base-100/90"
+              class: "bg-neutral/75 ring-1 ring-neutral-content/20"
             }
               = lucide "ticket-check", class: "size-6"
             My Reservations
@@ -40,12 +40,30 @@
 
     %section.scroll-mt-24.space-y-5{"aria-labelledby": "reservations-heading"}
       = section_heading kicker: "Your bookings", title: "Find a reservation", description: "Search by event, venue, or reservation number. Filter by booking status.", heading_id: "reservations-heading"
-      = form_with url: account_reservations_path, method: :get, id: "reservation-filters", class: "grid gap-3 rounded-box border border-base-300 bg-base-100 p-3 sm:grid-cols-[minmax(0,1fr)_12rem_auto] sm:p-4", data: { action: "submit->portal--oauth#submitReservationFilters" } do |form|
-        %label.input.input-bordered.flex.w-full.min-w-0.items-center.gap-2
-          = lucide "search", class: "size-4 text-base-content/45"
-          = form.search_field :q, value: params[:q], class: "grow", placeholder: "Search reservations", aria: { label: "Search reservations" }, autocomplete: "off"
-        = form.select :status, options_for_select([["All reservations", "all"], ["Active", "active"], ["Past bookings", "history"]], params[:status].presence || "all"), {}, class: "select select-bordered w-full", aria: { label: "Filter reservations by status" }, data: { action: "change->portal--oauth#reservationFilterChanged" }
-        = button "Search", type: "submit", variant: :neutral, class: "sm:w-24"
+      - selected_status = params[:status].presence || "all"
+      = form_with url: account_reservations_path, method: :get, id: "reservation-filters", class: "space-y-3 rounded-box border border-base-300 bg-base-100 p-3 sm:p-4", data: { action: "submit->portal--oauth#submitReservationFilters" } do |form|
+        = form.hidden_field :status, value: selected_status, id: "reservation-status-filter"
+        .grid.gap-3{class: "md:grid-cols-[minmax(0,1fr)_12rem]"}
+          %label.input.input-bordered.flex.w-full.min-w-0.items-center.gap-2
+            = lucide "search", class: "size-4 text-base-content/45"
+            = form.search_field :q, value: params[:q], class: "grow", placeholder: "Search reservations", aria: { label: "Search reservations" }, autocomplete: "off"
+          = form.select :venue_id, options_for_select([["All venues", ""]], params[:venue_id]), {}, class: "select select-bordered w-full", aria: { label: "Filter by venue" }, data: { action: "change->portal--oauth#reservationFilterChanged", reservation_venue_filter: "" }
+        .flex.flex-col.gap-3.border-t.border-base-200.pt-3.sm:flex-row.sm:items-center.sm:justify-between
+          %fieldset
+            %legend.sr-only Filter reservations by status
+            .flex.flex-wrap.gap-2
+              - [["All", "all"], ["On hold", "held"], ["Confirmed", "confirmed"], ["Cancelled", "cancelled"], ["Expired", "expired"]].each do |label, value|
+                %button.btn.btn-sm{
+                  type: "button",
+                  class: ("btn-primary" if selected_status == value),
+                  aria: { pressed: selected_status == value },
+                  data: {
+                    action: "click->portal--oauth#selectReservationStatus",
+                    reservation_status_filter: value
+                  }
+                }
+                  = label
+          = button "Search", type: "submit", variant: :neutral, class: "sm:w-24 sm:ml-auto"
 
       #oauth-client-status
         = status_alert title: "Loading reservations", description: "Checking your account and reservations.", variant: :info, soft: true, role: "status"

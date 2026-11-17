@@ -12,6 +12,7 @@ module Api
         return unless require_customer_scope!("reservations:read")
 
         response.headers["Cache-Control"] = "no-store"
+        expire_due_holds
         reservations = current_customer.reservations.includes(event: :venue)
         reservations = filter_reservations(reservations)
         total_count = reservations.count
@@ -30,6 +31,7 @@ module Api
                    total_pages:,
                    next_page: reservations.next_page,
                    previous_page: reservations.prev_page,
+                   venues: reservation_venues,
                    api_version: "v1"
                  }
                }
@@ -222,6 +224,13 @@ module Api
           reservations = reservations.where(status: %i[held confirmed])
         when "history"
           reservations = reservations.where(status: %i[expired cancelled])
+        when "held", "confirmed", "cancelled", "expired"
+          reservations = reservations.where(status: params[:status])
+        end
+
+        if params[:venue_id].present?
+          venue_id = Integer(params[:venue_id], 10)
+          reservations = reservations.joins(event: :venue).where(venues: { id: venue_id })
         end
 
         query = params[:q].to_s.strip
@@ -232,6 +241,26 @@ module Api
           "CAST(reservations.id AS TEXT) ILIKE :query OR events.name ILIKE :query OR venues.name ILIKE :query",
           query: pattern
         )
+      rescue ArgumentError
+        reservations.none
+      end
+
+      def expire_due_holds
+        current_customer
+          .reservations
+          .where(status: :held)
+          .where("hold_expires_at <= ?", Time.current)
+          .find_each { |reservation| Reservations::ExpireIfDue.call(reservation:) }
+      end
+
+      def reservation_venues
+        current_customer
+          .reservations
+          .joins(event: :venue)
+          .distinct
+          .order("venues.name")
+          .pluck("venues.id", "venues.name")
+          .map { |id, name| { id:, name: } }
       end
 
       def schedule_expiration(reservation)

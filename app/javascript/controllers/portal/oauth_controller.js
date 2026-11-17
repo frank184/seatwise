@@ -188,7 +188,7 @@ export default class extends Controller {
     }
     const url = new URL(`${API_BASE}/reservations`, window.location.origin);
     const params = new URLSearchParams(window.location.search);
-    ["q", "status", "page"].forEach((key) => {
+    ["q", "status", "venue_id", "page"].forEach((key) => {
       if (params.has(key)) url.searchParams.set(key, params.get(key));
     });
     url.searchParams.set("page", this.page);
@@ -201,6 +201,7 @@ export default class extends Controller {
         },
       });
       if (signal.aborted) return;
+      this.renderReservationVenues(meta.venues || []);
       if (this.page !== meta.page) {
         this.page = meta.page;
         const currentParams = new URLSearchParams(window.location.search);
@@ -313,7 +314,9 @@ export default class extends Controller {
           ? "badge-success"
           : reservation.status === "held"
             ? "badge-warning"
-            : "badge-ghost",
+            : reservation.status === "expired"
+              ? "badge-error"
+              : "badge-neutral",
       );
       if (reservation.status === "held" && reservation.expires_at) {
         const countdown = item.querySelector("[data-reservation-countdown]");
@@ -324,6 +327,15 @@ export default class extends Controller {
       list.append(item);
     });
     this.startReservationHoldClock();
+  }
+
+  renderReservationVenues(venues) {
+    const select = this.element.querySelector("[data-reservation-venue-filter]");
+    if (!select) return;
+    const selectedVenue = new URLSearchParams(window.location.search).get("venue_id") || "";
+    select.replaceChildren(new Option("All venues", ""));
+    venues.forEach(({ id, name }) => select.add(new Option(name, id)));
+    select.value = selectedVenue;
   }
 
   startReservationHoldClock() {
@@ -343,7 +355,13 @@ export default class extends Controller {
       const remaining = Date.parse(node.dataset.deadline) - Date.now();
       const text = node.querySelector("[data-reservation-countdown-text]");
       if (remaining <= 0) {
-        text.textContent = "Hold time elapsed · checking status";
+        node.hidden = true;
+        const status = node.closest("article")?.querySelector("[data-reservation-status]");
+        if (status) {
+          status.textContent = "Expired";
+          status.classList.remove("badge-success", "badge-warning", "badge-neutral", "badge-ghost");
+          status.classList.add("badge-error");
+        }
         const reservationId = node.dataset.reservationId;
         if (!this.expiredReservationIds.has(reservationId)) {
           this.expiredReservationIds.add(reservationId);
@@ -362,6 +380,9 @@ export default class extends Controller {
       const seconds = totalSeconds % 60;
       text.textContent = `${minutes}:${String(seconds).padStart(2, "0")} remaining`;
     });
+    if (!this.element.querySelector("[data-reservation-countdown]:not([hidden])")) {
+      clearInterval(this.reservationHoldTimer);
+    }
   }
 
   renderReservationPagination(pagination, meta) {
@@ -404,6 +425,17 @@ export default class extends Controller {
   }
 
   reservationFilterChanged() {
+    this.applyReservationFilters();
+  }
+
+  selectReservationStatus({ currentTarget }) {
+    const selectedStatus = currentTarget.dataset.reservationStatusFilter;
+    this.element.querySelector("#reservation-status-filter").value = selectedStatus;
+    this.element.querySelectorAll("[data-reservation-status-filter]").forEach((button) => {
+      const selected = button === currentTarget;
+      button.classList.toggle("btn-primary", selected);
+      button.setAttribute("aria-pressed", selected);
+    });
     this.applyReservationFilters();
   }
 
@@ -457,5 +489,12 @@ export default class extends Controller {
     if (!form) return;
     form.querySelector('[name="q"]').value = params.get("q") || "";
     form.querySelector('[name="status"]').value = params.get("status") || "all";
+    form.querySelector('[name="venue_id"]').value = params.get("venue_id") || "";
+    const selectedStatus = params.get("status") || "all";
+    form.querySelectorAll("[data-reservation-status-filter]").forEach((button) => {
+      const selected = button.dataset.reservationStatusFilter === selectedStatus;
+      button.classList.toggle("btn-primary", selected);
+      button.setAttribute("aria-pressed", selected);
+    });
   }
 }

@@ -3,7 +3,10 @@ require "test_helper"
 module Api
   module V1
     class PrivateReservationsControllerTest < ActionDispatch::IntegrationTest
+      include ActiveSupport::Testing::TimeHelpers
+
       setup do
+        travel_to Time.zone.local(2026, 11, 9, 12)
         @client =
           Doorkeeper::Application.create!(
             name: "Private reservation API client",
@@ -16,6 +19,8 @@ module Api
         @owned_reservation = create_reservation(customer: customers(:one))
         @other_reservation = create_reservation(customer: customers(:two), row_id: 2)
       end
+
+      teardown { travel_back }
 
       test "private list and detail require a valid customer bearer token" do
         get api_v1_reservations_path
@@ -109,6 +114,57 @@ module Api
         assert_response :success
         assert_empty response.parsed_body.fetch("data")
         assert_equal 0, response.parsed_body.dig("meta", "total_count")
+      end
+
+      test "reservation listing expires elapsed holds and filters by status and venue" do
+        access_token = token_for(customers(:one), scopes: "reservations:read")
+        expired_reservation = @owned_reservation
+        expired_reservation.update!(hold_expires_at: 1.second.ago)
+        other_venue_event =
+          Event.create!(
+            venue: venues(:two),
+            name: "Other venue reservation",
+            start_time: 1.day.from_now,
+            end_time: 1.day.from_now + 2.hours,
+            ticket_price_cents: 1_000,
+            layout_snapshot: {
+              "rows" => [{ "row_id" => 1, "seat_count" => 20 }]
+            }
+          )
+        other_venue_reservation =
+          Reservation.create!(
+            event: other_venue_event,
+            customer: customers(:one),
+            row_id: 1,
+            seat_range: 1...2,
+            status: :held,
+            hold_expires_at: 5.minutes.from_now
+          )
+
+        get api_v1_reservations_path,
+            params: {
+              status: "expired",
+              venue_id: venues(:one).id
+            },
+            headers: bearer(access_token)
+
+        assert_response :success
+        assert expired_reservation.reload.expired?
+        body = response.parsed_body
+        assert_equal [expired_reservation.id], body.fetch("data").map { |item| item.fetch("id") }
+        assert_includes body.dig("meta", "venues").map { |venue| venue.fetch("id") },
+                        venues(:two).id
+
+        get api_v1_reservations_path,
+            params: {
+              status: "held",
+              venue_id: venues(:two).id
+            },
+            headers: bearer(access_token)
+
+        assert_response :success
+        assert_equal [other_venue_reservation.id],
+                     response.parsed_body.fetch("data").map { |item| item.fetch("id") }
       end
 
       test "private reads require reservations read scope" do
