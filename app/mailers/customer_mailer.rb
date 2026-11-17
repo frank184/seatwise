@@ -3,6 +3,6 @@ class CustomerMailer < ApplicationMailer
     @customer = customer
     @code = code
 
-    mail(to: customer.email, subject: "Your Seatwise sign-in code")
+    mail(to: customer.email, subject: "Your Seatwise Sign-In Code")
   end
 end

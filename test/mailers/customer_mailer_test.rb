@@ -11,7 +11,7 @@ class CustomerMailerTest < ActionMailer::TestCase
 
     delivered = ActionMailer::Base.deliveries.last
     assert_equal [customer.email], delivered.to
-    assert_includes delivered.subject, "sign-in code"
+    assert_includes delivered.subject, "Sign-In Code"
     assert_includes delivered.text_part.body.to_s, code
     assert_includes delivered.html_part.body.to_s, code
     assert Customers::VerifySignInCode.call(customer:, code:)
@@ -22,7 +22,7 @@ class CustomerMailerTest < ActionMailer::TestCase
 
     email = CustomerMailer.sign_in_code(customer, "123456")
 
-    assert_equal "Your Seatwise sign-in code", email.subject
+    assert_equal "Your Seatwise Sign-In Code", email.subject
     assert_not_includes email.subject, "123456"
   end
 end

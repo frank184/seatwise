@@ -36,8 +36,8 @@ module Portal
           follow_redirect!
           assert_response :success
           assert_select ".alert p",
-                        text: "If that email can sign in, a one-time code will arrive shortly."
-          "If that email can sign in, a one-time code will arrive shortly."
+                        text: "If that email is eligible, a one-time code will arrive shortly."
+          "If that email is eligible, a one-time code will arrive shortly."
         end
 
       assert_equal responses.first, responses.second

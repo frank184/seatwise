@@ -129,7 +129,7 @@ module Portal
     end
 
     def generic_request_message
-      "If that email can sign in, a one-time code will arrive shortly."
+      "If that email is eligible, a one-time code will arrive shortly."
     end
 
     def render_rate_limit

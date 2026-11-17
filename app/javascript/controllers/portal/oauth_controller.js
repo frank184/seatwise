@@ -115,7 +115,7 @@ export default class extends Controller {
       transaction.state !== returnedState ||
       Date.now() - transaction.createdAt > 10 * 60 * 1000
     ) {
-      showError("We could not complete that sign-in. Please start again.");
+      showError("We could not complete the secure connection. Please start again.");
       return;
     }
 
