@@ -68,6 +68,7 @@ export default class extends Controller {
   disconnect() {
     window.removeEventListener("popstate", this.handleReservationPopState);
     this.reservationsAbortController?.abort();
+    clearInterval(this.reservationHoldTimer);
   }
 
   async start(event) {
@@ -257,6 +258,7 @@ export default class extends Controller {
     const list = this.element.querySelector("#reservation-list");
     const empty = this.element.querySelector("#reservation-empty");
     if (!list) return;
+    clearInterval(this.reservationHoldTimer);
     list.replaceChildren();
     if (reservations.length === 0) {
       const emptyCard = cloneTemplate(this.element, "#reservation-empty-template");
@@ -313,7 +315,52 @@ export default class extends Controller {
             ? "badge-warning"
             : "badge-ghost",
       );
+      if (reservation.status === "held" && reservation.expires_at) {
+        const countdown = item.querySelector("[data-reservation-countdown]");
+        countdown.dataset.reservationId = reservation.id;
+        countdown.dataset.deadline = reservation.expires_at;
+        countdown.hidden = false;
+      }
       list.append(item);
+    });
+    this.startReservationHoldClock();
+  }
+
+  startReservationHoldClock() {
+    clearInterval(this.reservationHoldTimer);
+    this.updateReservationHoldCountdowns();
+    if (this.element.querySelector("[data-reservation-countdown]:not([hidden])")) {
+      this.reservationHoldTimer = window.setInterval(
+        () => this.updateReservationHoldCountdowns(),
+        1000,
+      );
+    }
+  }
+
+  updateReservationHoldCountdowns() {
+    this.expiredReservationIds ||= new Set();
+    this.element.querySelectorAll("[data-reservation-countdown]:not([hidden])").forEach((node) => {
+      const remaining = Date.parse(node.dataset.deadline) - Date.now();
+      const text = node.querySelector("[data-reservation-countdown-text]");
+      if (remaining <= 0) {
+        text.textContent = "Hold time elapsed · checking status";
+        const reservationId = node.dataset.reservationId;
+        if (!this.expiredReservationIds.has(reservationId)) {
+          this.expiredReservationIds.add(reservationId);
+          if (!this.reservationExpiryCheckPending) {
+            this.reservationExpiryCheckPending = true;
+            this.loadReservations().finally(() => {
+              this.reservationExpiryCheckPending = false;
+            });
+          }
+        }
+        return;
+      }
+
+      const totalSeconds = Math.ceil(remaining / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      text.textContent = `${minutes}:${String(seconds).padStart(2, "0")} remaining`;
     });
   }
 

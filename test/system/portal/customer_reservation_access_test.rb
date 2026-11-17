@@ -20,6 +20,7 @@ module Portal
         )
 
       reservation = reservations(:two)
+      reservation.update!(status: :held, hold_expires_at: 5.minutes.from_now)
       Portal::SignInsController::RATE_LIMIT_STORE.clear
       reservation.customer.update!(
         email: "customer-access-#{SecureRandom.hex(8)}@example.test",
@@ -46,6 +47,7 @@ module Portal
       assert_text(/Reservation #{reservation.id}/i)
       assert_text reservation.event.name
       assert_text "Row 1 · Seat 1"
+      assert_selector "[data-reservation-countdown]", text: /\d+:\d{2} remaining/
       assert oauth_client.persisted?
     end
   end

@@ -90,6 +90,14 @@
               .flex.items-center.gap-2.font-medium
                 = lucide "armchair", class: "size-4 text-primary"
                 %span{"data-reservation-seats": ""}
+              .flex.items-center.gap-2.font-medium.text-warning{
+                hidden: "",
+                role: "timer",
+                "aria-live": "off",
+                data: { reservation_countdown: "" }
+              }
+                = lucide "clock-3", class: "size-4"
+                %span{data: { reservation_countdown_text: "" }}
 
     %template#reservation-loading-template
       = status_alert title: "Loading reservations", description: "Checking your account and reservations.", variant: :info, soft: true, role: "status"
