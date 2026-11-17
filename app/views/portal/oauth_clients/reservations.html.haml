@@ -83,11 +83,11 @@
     %template#reservation-card-template
       = card element: :article, body: false, card_class: "overflow-hidden border border-base-300 bg-base-100 transition-shadow hover:shadow-lg" do
         %div{class: "grid grid-cols-[auto_minmax(0,1fr)]"}
-          .grid.w-16.place-items-center.bg-gradient-to-b{
-            class: "from-primary/15 via-secondary/10 to-accent/15 sm:w-20"
+          .grid.w-20.place-items-center.bg-gradient-to-b{
+            class: "from-primary/15 via-secondary/10 to-accent/15 sm:w-30"
           }
-            %span.grid.size-11.place-items-center.rounded-full.bg-base-100.text-primary.shadow-sm
-              = lucide "ticket", class: "size-5"
+            %span.grid.size-14.place-items-center.rounded-full.bg-base-100.text-primary.shadow-sm
+              = lucide "ticket", class: "size-6"
           .min-w-0.p-4.sm:p-5
             .flex.flex-wrap.items-start.justify-between.gap-3
               .min-w-0
