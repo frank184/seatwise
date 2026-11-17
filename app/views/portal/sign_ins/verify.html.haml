@@ -19,7 +19,7 @@
         %p.text-sm{class: "text-base-content/55"}
           The code expires in 10 minutes and can only be used once.
       = button "Verify and continue", type: :submit, variant: :primary, size: :lg, class: "w-full"
-    .mt-1.flex.flex-wrap.items-center.justify-between.gap-3
+    .mt-4.flex.flex-wrap.items-center.justify-between.gap-3
       = link_to "Use a different email", sign_in_path(return_to: @return_to), class: "link link-hover text-sm focus-visible:underline focus-visible:decoration-2 focus-visible:outline-none"
       = form_with url: sign_in_code_path, scope: :sign_in, method: :post do |form|
         = hidden_field_tag :return_to, @return_to if @return_to.present?
