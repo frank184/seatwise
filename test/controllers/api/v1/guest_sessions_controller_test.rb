@@ -4,7 +4,7 @@ module Api
   module V1
     class GuestSessionsControllerTest < ActionDispatch::IntegrationTest
       test "creates a guest with a one-time JSON capability and never sets a cookie" do
-        post api_v1_guest_sessions_path, params: {}, as: :json
+        post api_v1_guest_sessions_path, params: nil, as: :json
 
         assert_response :created
         assert_equal "no-store", response.headers["Cache-Control"]
@@ -16,8 +16,7 @@ module Api
 
       test "ignores incoming cookies because the API has no cookie session" do
         post api_v1_guest_sessions_path,
-             params: {
-             },
+             params: nil,
              headers: {
                "Cookie" => "guest=not-an-api-credential"
              },
@@ -30,8 +29,7 @@ module Api
 
       test "does not vary the JSON contract by origin or fetch metadata" do
         post api_v1_guest_sessions_path,
-             params: {
-             },
+             params: nil,
              headers: {
                "Origin" => "https://another-client.example",
                "Sec-Fetch-Site" => "cross-site"
