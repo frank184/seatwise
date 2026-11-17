@@ -6,7 +6,14 @@
 
 @plugin "./daisyui.mjs";
 @plugin "./daisyui-theme.mjs" {
-  themes: light --default, dark --prefersdark;
+  themes:
+    light --default,
+    dark --prefersdark;
+}
+
+html :is(.input, .select, .textarea):focus,
+html .otp:focus-within {
+  --input-color: color-mix(in oklab, var(--color-base-content) 50%, var(--color-base-100));
 }
 
 [data-theme="dark"] {
