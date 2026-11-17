@@ -36,7 +36,6 @@
             "aria-live": "polite"
           }
             Loading reservations…
-          = link_to "Browse events", root_path, class: "btn btn-primary btn-sm"
 
     %section.scroll-mt-24.space-y-5{"aria-labelledby": "reservations-heading"}
       = section_heading kicker: "Your bookings", title: "Find a reservation", description: "Search by event, venue, or reservation number. Filter by booking status.", heading_id: "reservations-heading"
@@ -49,24 +48,27 @@
             = form.search_field :q, value: params[:q], class: "grow", placeholder: "Search reservations", aria: { label: "Search reservations" }, autocomplete: "off"
           = form.select :venue_id, options_for_select([["All venues", ""]], params[:venue_id]), {}, class: "select select-bordered w-full", aria: { label: "Filter by venue" }, data: { action: "change->portal--oauth#reservationFilterChanged", reservation_venue_filter: "" }
         .flex.flex-col.gap-3.border-t.border-base-200.pt-3.sm:flex-row.sm:items-center.sm:justify-between
-          %fieldset
+          %fieldset.min-w-0
             %legend.sr-only Filter reservations by status
-            .flex.flex-wrap.gap-2
-              - [["All", "all"], ["On hold", "held"], ["Confirmed", "confirmed"], ["Cancelled", "cancelled"], ["Expired", "expired"]].each do |label, value|
-                %button.btn.btn-sm{
-                  type: "button",
-                  class: ("btn-primary" if selected_status == value),
-                  aria: { pressed: selected_status == value },
-                  data: {
-                    action: "click->portal--oauth#selectReservationStatus",
-                    reservation_status_filter: value
+            .max-w-full.overflow-x-auto.pb-1
+              .join.w-max
+                - [["All", "all"], ["On hold", "held"], ["Confirmed", "confirmed"], ["Cancelled", "cancelled"], ["Expired", "expired"]].each do |label, value|
+                  - status_active_class, status_inactive_class = { "all" => ["btn-primary", "btn-soft btn-primary"], "held" => ["btn-warning", "btn-soft btn-warning"], "confirmed" => ["btn-success", "btn-soft btn-success"], "cancelled" => ["btn-neutral", "bg-base-200 text-base-content border-base-300 hover:bg-base-300"], "expired" => ["btn-error", "btn-soft btn-error"] }.fetch(value)
+                  - selected = selected_status == value
+                  %button.btn.btn-sm.join-item{
+                    type: "button",
+                    class: (selected ? status_active_class : status_inactive_class),
+                    aria: { pressed: selected },
+                    data: {
+                      action: "click->portal--oauth#selectReservationStatus focus->portal--oauth#revealReservationStatusFilter",
+                      reservation_status_filter: value,
+                      reservation_status_active_class: status_active_class,
+                      reservation_status_inactive_class: status_inactive_class
+                    }
                   }
-                }
-                  = label
+                    = label
           = button "Search", type: "submit", variant: :neutral, class: "sm:w-24 sm:ml-auto"
 
-      #oauth-client-status
-        = status_alert title: "Loading reservations", description: "Checking your account and reservations.", variant: :info, soft: true, role: "status"
       #reservation-error{hidden: ""}
       #reservation-empty{hidden: ""}
       .space-y-3#reservation-list{"aria-live": "polite", hidden: ""}
@@ -118,7 +120,22 @@
                 %span{data: { reservation_countdown_text: "" }}
 
     %template#reservation-loading-template
-      = status_alert title: "Loading reservations", description: "Checking your account and reservations.", variant: :info, soft: true, role: "status"
+      %span.sr-only{role: "status"} Loading reservations
+      - 3.times do
+        %article.card.card-border.overflow-hidden.border.border-base-300.bg-base-100{
+          aria: { hidden: "true" }
+        }
+          %div{class: "grid grid-cols-[auto_minmax(0,1fr)]"}
+            .grid.w-16.place-items-center.bg-base-200{class: "sm:w-20"}
+              .skeleton.size-11.rounded-full
+            .min-w-0.space-y-3.p-4.sm:p-5
+              .flex.items-start.justify-between.gap-3
+                .skeleton.h-3.w-36.rounded-full
+                .skeleton.h-6.w-20.rounded-full
+              .skeleton{class: "h-5 w-2/3 rounded-full"}
+              .skeleton{class: "h-4 w-3/4 rounded-full"}
+              .border-t.border-base-200.pt-3
+                .skeleton{class: "h-4 w-1/3 rounded-full"}
 
     %template#reservation-empty-template
       = card card_class: "border border-base-300 bg-base-100", body_class: "items-center py-12 text-center" do

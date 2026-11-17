@@ -47,6 +47,7 @@ function savedToken() {
 export default class extends Controller {
   connect() {
     this.page = Number(new URLSearchParams(window.location.search).get("page")) || 1;
+    this.reservationsLoaded = false;
     this.handleReservationPopState = () => {
       this.page = Number(new URLSearchParams(window.location.search).get("page")) || 1;
       this.syncReservationFiltersFromUrl();
@@ -173,18 +174,17 @@ export default class extends Controller {
     const empty = this.element.querySelector("#reservation-empty");
     const errorContainer = this.element.querySelector("#reservation-error");
     const pagination = this.element.querySelector("#reservation-pagination");
-    const status = this.element.querySelector("#oauth-client-status");
     const count = this.element.querySelector("#reservation-count");
     this.reservationsAbortController?.abort();
     this.reservationsAbortController = new AbortController();
     const { signal } = this.reservationsAbortController;
     if (list) list.setAttribute("aria-busy", "true");
-    empty.hidden = true;
     errorContainer.hidden = true;
     errorContainer.replaceChildren();
-    if (status) {
-      status.replaceChildren();
-      status.append(cloneTemplate(this.element, "#reservation-loading-template"));
+    if (!this.reservationsLoaded) {
+      empty.hidden = true;
+      list.replaceChildren(cloneTemplate(this.element, "#reservation-loading-template"));
+      list.hidden = false;
     }
     const url = new URL(`${API_BASE}/reservations`, window.location.origin);
     const params = new URLSearchParams(window.location.search);
@@ -214,8 +214,8 @@ export default class extends Controller {
           `${window.location.pathname}${query ? `?${query}` : ""}`,
         );
       }
+      this.reservationsLoaded = true;
       this.renderReservations(reservations, meta);
-      if (status) status.replaceChildren();
       count.textContent = `${meta.total_count} ${meta.total_count === 1 ? "reservation" : "reservations"}`;
       this.renderReservationPagination(pagination, meta);
     } catch (requestError) {
@@ -224,7 +224,10 @@ export default class extends Controller {
         sessionStorage.removeItem(TOKEN_KEY);
         return this.beginAuthorization();
       }
-      if (status) status.replaceChildren();
+      if (!this.reservationsLoaded) {
+        list.replaceChildren();
+        list.hidden = true;
+      }
       errorContainer.hidden = false;
       errorContainer.append(cloneTemplate(this.element, "#reservation-error-template"));
       count.textContent = "Reservations unavailable";
@@ -261,6 +264,7 @@ export default class extends Controller {
     if (!list) return;
     clearInterval(this.reservationHoldTimer);
     list.replaceChildren();
+    empty.hidden = true;
     if (reservations.length === 0) {
       const emptyCard = cloneTemplate(this.element, "#reservation-empty-template");
       const message = emptyCard.querySelector("[data-reservation-empty-message]");
@@ -271,7 +275,7 @@ export default class extends Controller {
           ? "Your bookings will appear here once you reserve a seat."
           : "Try another search or choose a different status filter.";
       }
-      empty.append(emptyCard);
+      empty.replaceChildren(emptyCard);
       empty.hidden = false;
       list.hidden = true;
       return;
@@ -309,14 +313,15 @@ export default class extends Controller {
         cancelled: "Cancelled",
       };
       status.textContent = statusLabels[reservation.status] || reservation.status;
+      status.classList.remove("badge-soft");
+      const statusClasses = {
+        held: ["badge-soft", "badge-warning"],
+        confirmed: ["badge-soft", "badge-success"],
+        expired: ["badge-soft", "badge-error"],
+        cancelled: ["badge-outline", "border-base-content/25", "text-base-content/75"],
+      };
       status.classList.add(
-        reservation.status === "confirmed"
-          ? "badge-success"
-          : reservation.status === "held"
-            ? "badge-warning"
-            : reservation.status === "expired"
-              ? "badge-error"
-              : "badge-neutral",
+        ...(statusClasses[reservation.status] || ["badge-soft", "badge-neutral"]),
       );
       if (reservation.status === "held" && reservation.expires_at) {
         const countdown = item.querySelector("[data-reservation-countdown]");
@@ -424,6 +429,14 @@ export default class extends Controller {
     this.applyReservationFilters();
   }
 
+  revealReservationStatusFilter({ currentTarget }) {
+    const scroller = currentTarget.closest(".overflow-x-auto");
+    const button = currentTarget.getBoundingClientRect();
+    const bounds = scroller.getBoundingClientRect();
+    if (button.left < bounds.left) scroller.scrollLeft += button.left - bounds.left;
+    else if (button.right > bounds.right) scroller.scrollLeft += button.right - bounds.right;
+  }
+
   reservationFilterChanged() {
     this.applyReservationFilters();
   }
@@ -431,12 +444,19 @@ export default class extends Controller {
   selectReservationStatus({ currentTarget }) {
     const selectedStatus = currentTarget.dataset.reservationStatusFilter;
     this.element.querySelector("#reservation-status-filter").value = selectedStatus;
+    this.syncReservationStatusFilterStyles(selectedStatus);
+    this.applyReservationFilters();
+  }
+
+  syncReservationStatusFilterStyles(selectedStatus) {
     this.element.querySelectorAll("[data-reservation-status-filter]").forEach((button) => {
-      const selected = button === currentTarget;
-      button.classList.toggle("btn-primary", selected);
+      const selected = button.dataset.reservationStatusFilter === selectedStatus;
+      const activeClasses = button.dataset.reservationStatusActiveClass.split(" ");
+      const inactiveClasses = button.dataset.reservationStatusInactiveClass.split(" ");
+      button.classList.remove(...activeClasses, ...inactiveClasses);
+      button.classList.add(...(selected ? activeClasses : inactiveClasses));
       button.setAttribute("aria-pressed", selected);
     });
-    this.applyReservationFilters();
   }
 
   applyReservationFilters() {
@@ -491,10 +511,6 @@ export default class extends Controller {
     form.querySelector('[name="status"]').value = params.get("status") || "all";
     form.querySelector('[name="venue_id"]').value = params.get("venue_id") || "";
     const selectedStatus = params.get("status") || "all";
-    form.querySelectorAll("[data-reservation-status-filter]").forEach((button) => {
-      const selected = button.dataset.reservationStatusFilter === selectedStatus;
-      button.classList.toggle("btn-primary", selected);
-      button.setAttribute("aria-pressed", selected);
-    });
+    this.syncReservationStatusFilterStyles(selectedStatus);
   }
 }

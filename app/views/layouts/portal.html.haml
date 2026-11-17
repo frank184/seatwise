@@ -18,7 +18,7 @@
     = javascript_tag nonce: true do
       try { if (localStorage.getItem("seatwise-theme") === "dark") document.documentElement.dataset.theme = "dark"; } catch (_) {}
     %script{src: "https://js.stripe.com/dahlia/stripe.js", async: true}
-    %link{href: "/icon.svg", rel: "icon", type: "image/svg+xml"}/
+    %link{href: "/favicon.png", rel: "icon", type: "image/png"}/
     %link{as: "image", fetchpriority: "low", href: "/text-dark.png", rel: "preload"}/
     = stylesheet_link_tag :app, "data-turbo-track": "reload"
     = stylesheet_link_tag "tailwind", "data-turbo-track": "reload"
@@ -62,7 +62,7 @@
             - if session[:customer_id].present?
               = button href: oauth_start_path(return_to: account_reservations_path), variant: :primary, size: :sm, class: "mt-3 w-full gap-2" do
                 = lucide "ticket-check", class: "size-4"
-                %span My Reservations
+                %span Reservations
               = form_with url: sign_out_path, method: :post, class: "mt-1", data: { controller: "portal--oauth", action: "submit->portal--oauth#signOut", client_id: Doorkeeper::Application.find_by(name: "Seatwise Portal")&.uid } do |form|
                 = button type: :submit, variant: :ghost, size: :sm, class: "w-full gap-2" do
                   = lucide "log-out", class: "size-4"
