@@ -16,8 +16,11 @@ module Api
 
       test "ignores incoming cookies because the API has no cookie session" do
         post api_v1_guest_sessions_path,
-             params: {},
-             headers: { "Cookie" => "guest=not-an-api-credential" },
+             params: {
+             },
+             headers: {
+               "Cookie" => "guest=not-an-api-credential"
+             },
              as: :json
 
         assert_response :created
@@ -27,7 +30,8 @@ module Api
 
       test "does not vary the JSON contract by origin or fetch metadata" do
         post api_v1_guest_sessions_path,
-             params: {},
+             params: {
+             },
              headers: {
                "Origin" => "https://another-client.example",
                "Sec-Fetch-Site" => "cross-site"

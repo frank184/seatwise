@@ -30,7 +30,8 @@ class ExternalOauthClientTest < ActionDispatch::IntegrationTest
     assert_select "#oauth-client-status[data-controller='portal--oauth'][data-autostart='true']"
     assert_select "#oauth-client-status[data-client-id=?]",
                   Doorkeeper::Application.find_by!(name: "Seatwise Portal").uid
-    assert_select "#oauth-client-status[data-redirect-uri=?]", "http://www.example.com/oauth/callback"
+    assert_select "#oauth-client-status[data-redirect-uri=?]",
+                  "http://www.example.com/oauth/callback"
     assert_select "#oauth-client-status[data-return-to=?]", "/account/reservations?filter=current"
 
     get oauth_start_path, params: { return_to: "//attacker.example/collect" }

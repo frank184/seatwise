@@ -3,9 +3,7 @@ require "test_helper"
 module Api
   module V1
     class CheckoutsControllerTest < ActionDispatch::IntegrationTest
-      setup do
-        @guest, @guest_token = Guest.issue!
-      end
+      setup { @guest, @guest_token = Guest.issue! }
 
       test "returns session details without returning provider secrets" do
         reservation =
