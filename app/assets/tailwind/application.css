@@ -13,7 +13,7 @@
 
 html :is(.input, .select, .textarea):focus,
 html .otp:focus-within {
-  --input-color: color-mix(in oklab, var(--color-primary) 35%, var(--color-base-100));
+  --input-color: color-mix(in oklab, var(--color-primary) 45%, var(--color-base-100));
 }
 
 [data-theme="dark"] {
