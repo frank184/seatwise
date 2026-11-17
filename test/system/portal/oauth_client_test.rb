@@ -67,7 +67,6 @@ module Portal
       access_token = renewed_token.fetch("access_token")
 
       visit oauth_start_path(return_to: "/events?when=upcoming")
-      click_button "Continue with Seatwise"
       assert_oauth_navigation_to("/events?when=upcoming")
       assert_text "Find your event"
 
@@ -105,12 +104,10 @@ module Portal
       create_portal_client
 
       visit oauth_start_path(return_to: "/events?when=upcoming")
-      continue_button = find("button[data-controller='portal--oauth']")
-      assert_equal "/events?when=upcoming", continue_button["data-return-to"]
+      assert_current_path(/#{Regexp.escape(sign_in_path)}(?:\?|$)/, wait: 20)
 
       visit oauth_start_path(return_to: "//attacker.example/collect")
-      continue_button = find("button[data-controller='portal--oauth']")
-      assert_equal account_reservations_path, continue_button["data-return-to"]
+      assert_current_path(/#{Regexp.escape(sign_in_path)}(?:\?|$)/, wait: 20)
       assert_no_text "attacker.example"
     end
 

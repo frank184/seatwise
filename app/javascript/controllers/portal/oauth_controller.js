@@ -47,6 +47,7 @@ function savedToken() {
 export default class extends Controller {
   connect() {
     if (this.element.dataset.code !== undefined) this.finishCallback();
+    if (this.element.dataset.autostart === "true") this.routeFromStart();
     if (
       this.element.dataset.returnTo !== undefined &&
       this.element.dataset.action?.includes("load")
@@ -56,6 +57,15 @@ export default class extends Controller {
 
   async start(event) {
     event?.preventDefault();
+    await this.beginAuthorization();
+  }
+
+  async routeFromStart() {
+    await new Promise((resolve) => window.setTimeout(resolve, 250));
+    if (savedToken()) {
+      window.location.replace(safeReturnTo(this.element.dataset.returnTo));
+      return;
+    }
     await this.beginAuthorization();
   }
 
