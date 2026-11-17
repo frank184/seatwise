@@ -219,9 +219,10 @@ This alternative snapshots only the rows and seats an event sells and enables en
 
 ## Customer identity and reservation ownership
 
-- A `Customer` has a stable ID and a unique `email`. The record can exist before email verification. Seatwise sets `email_verified_at` on first verification and sends confirmations and event updates to the address provided at checkout.
-- A guest hold belongs to the customer identified by the submitted email, even before verification. The authenticated customer's ID controls subsequent reservation lookup and cancellation. HTML pages resolve the customer from the session. The API resolves the customer from a bearer token. The local API exercise can run with trusted callers.
-- The `Customer` record stores one active sign-in code at a time. Seatwise consumes it to establish a browser session. Code expiry, session expiry and reservation hold expiry have separate lifecycles. See [auth](auth.md) for the sign-in flow.
+- A `Customer` has a stable ID and a unique `email`. The record can exist before email verification: a guest hold creates or reuses it from the submitted email, which is contact information until verified. Seatwise sets `email_verified_at` after a successful OTP challenge.
+- A guest session tracks only the holds created in that browser's cart; it does not make the unverified `Customer` an authenticated actor or grant access to all reservations with that email. After OTP, the `Customer` becomes the customer actor and the API uses the authenticated actor to scope reservation lookup and management. See [authentication](auth.md).
+- An already verified customer can sign in before booking. Authenticated booking attaches the reservation to that customer instead of creating another customer from a request email. Login-session expiry, OAuth access-token expiry, guest-session expiry and reservation hold expiry have separate lifecycles.
+- OTP sign-in is implemented: Seatwise stores a digest and expiry for the active code, then marks the email verified and establishes the Portal session after successful verification. See [authentication](auth.md).
 - A confirmed reservation can supply the data for a future [offline ticket](tickets.md). The ticket grants admission only.
 
 ## Open design questions

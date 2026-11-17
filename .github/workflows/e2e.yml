@@ -1,4 +1,4 @@
-name: E2E system tests
+name: E2E
 
 on:
   pull_request:
@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   e2e:
-    name: E2E system tests
+    name: system tests
     runs-on: ubuntu-24.04
     environment: e2e
     timeout-minutes: 20

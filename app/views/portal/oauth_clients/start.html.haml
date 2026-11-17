@@ -1,0 +1,16 @@
+- content_for :title, "Connect to Seatwise · Seatwise"
+%main.mx-auto.w-full.max-w-xl.px-4.py-10.sm:px-6.sm:py-16
+  = card title: "Connecting securely", description: "Checking your account before opening your reservations.", title_class: "text-2xl", description_class: "mt-2", body_class: "gap-0 p-6 sm:p-8" do
+    .mt-7#oauth-client-status{
+      data: {
+        controller: "portal--oauth",
+        autostart: "true",
+        client_id: @client_id,
+        redirect_uri: @redirect_uri,
+        return_to: @return_to
+      }
+    }
+      = status_alert title: "One moment", description: "We’re securely connecting your Seatwise account.", variant: :info, icon: "lock-keyhole", soft: true, role: "status"
+    .mt-6.flex.items-center.gap-3.text-sm{class: "text-base-content/60", aria: { live: "polite" }}
+      %span.loading.loading-spinner.loading-sm{aria: { hidden: "true" }}
+      %span Preparing your reservation access…

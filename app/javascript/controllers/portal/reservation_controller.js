@@ -4,6 +4,7 @@ import {
   fetchJson,
   formatDate,
   formatRelativeTime,
+  guestAuthorizationHeader,
 } from "controllers/portal/view_helpers";
 
 const STEP_NUMBERS = { seats: 1, payment: 2, redirecting: 2, confirmed: 3, expired: 1 };
@@ -148,6 +149,15 @@ export default class extends Controller {
     requestIds.forEach((requestId) => this.resolveAvailabilityRefresh(requestId, true));
     if (this.initialSnapshotApplied) return;
     this.initialSnapshotApplied = true;
+
+    if (window.location.hash === "#checkout-panel") {
+      window.requestAnimationFrame(() => {
+        this.element.querySelector("#checkout-panel")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    }
 
     const checkoutSessionId = new URLSearchParams(window.location.search).get("session_id");
     if (checkoutSessionId) {
@@ -316,7 +326,7 @@ export default class extends Controller {
   }
 
   renderEventDetails(content, event) {
-    content.querySelector("[data-detail-date]").textContent = formatDate(event.starts_at, {
+    content.querySelector("[data-detail-date-label]").textContent = formatDate(event.starts_at, {
       weekday: "long",
       month: "long",
       day: "numeric",
@@ -329,7 +339,7 @@ export default class extends Controller {
       : "";
     relativeTime.hidden = !relativeLabel;
     content.querySelector("[data-detail-name]").textContent = event.name;
-    content.querySelector("[data-detail-venue]").textContent = event.venue.name;
+    content.querySelector("[data-detail-venue-label]").textContent = event.venue.name;
     content.querySelector("[data-detail-start]").textContent = formatDate(event.starts_at, {
       hour: "numeric",
       minute: "2-digit",
@@ -584,12 +594,15 @@ export default class extends Controller {
     this.clearHoldError();
 
     try {
+      const authorization = await guestAuthorizationHeader();
+      const headers = {
+        "Content-Type": "application/json",
+        "Idempotency-Key": this.flow.request.idempotencyKey,
+      };
+      if (authorization) headers.Authorization = authorization;
       const reservation = await fetchJson("/api/v1/reservations", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Idempotency-Key": this.flow.request.idempotencyKey,
-        },
+        headers,
         body: JSON.stringify({
           event_id: Number(this.element.dataset.eventId),
           quantity: this.selectedSeats.size,
@@ -1065,8 +1078,10 @@ export default class extends Controller {
     if (button) button.disabled = true;
     if (error) error.hidden = true;
     try {
+      const authorization = await guestAuthorizationHeader();
       await fetchJson(`/api/v1/reservations/${encodeURIComponent(this.flow.reservation.id)}`, {
         method: "DELETE",
+        headers: authorization ? { Authorization: authorization } : {},
       });
     } catch (failure) {
       this.releasingHold = false;

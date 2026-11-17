@@ -6,13 +6,73 @@ module Api
     class ReservationsController < BaseController
       HOLD_DURATION = 5.minutes
       MAX_QUANTITY = 6
+      PER_PAGE = 10
+
+      def index
+        return unless require_customer_scope!("reservations:read")
+
+        response.headers["Cache-Control"] = "no-store"
+        expire_due_holds
+        reservations = current_customer.reservations.includes(event: :venue)
+        reservations = filter_reservations(reservations)
+        total_count = reservations.count
+        total_pages = (total_count.to_f / PER_PAGE).ceil
+        requested_page = params[:page].to_s.to_i
+        page = [[requested_page, 1].max, [total_pages, 1].max].min
+        reservations = reservations.order(created_at: :desc, id: :desc).page(page).per(PER_PAGE)
+
+        render json: {
+                 data: reservations.map { |reservation| reservation_payload(reservation) },
+                 meta: {
+                   count: reservations.size,
+                   total_count:,
+                   page: reservations.current_page,
+                   per_page: reservations.limit_value,
+                   total_pages:,
+                   next_page: reservations.next_page,
+                   previous_page: reservations.prev_page,
+                   venues: reservation_venues,
+                   api_version: "v1"
+                 }
+               }
+      end
+
+      def show
+        return unless require_customer_scope!("reservations:read")
+
+        reservation = current_customer.reservations.find(params[:id])
+        response.headers["Cache-Control"] = "no-store"
+        render json: reservation_payload(reservation)
+      rescue ActiveRecord::RecordNotFound
+        render_error("Reservation not found", :not_found)
+      end
 
       def create
+        if bearer_request?
+          return unless require_customer_scope!("reservations:manage")
+        end
+
         event_id = params[:event_id]
         quantity = params[:quantity]
-        email = params[:email].to_s.strip.downcase
+        submitted_email = params[:email].to_s.strip.downcase
+        email = current_customer ? current_customer.email : submitted_email
         idempotency_key = request.headers["Idempotency-Key"].to_s.strip
         coordinates_provided = %i[row_id seat_start seat_end].any? { |key| params.key?(key) }
+
+        if current_customer &&
+             (
+               (submitted_email.present? && submitted_email != current_customer.email) ||
+                 (
+                   params[:customer_id].present? &&
+                     params[:customer_id].to_s != current_customer.id.to_s
+                 )
+             )
+          render_error(
+            "Reservation customer does not match the authenticated customer",
+            :unprocessable_entity
+          )
+          return
+        end
 
         unless event_id.is_a?(Integer) ? event_id.positive? : event_id.to_s.match?(/\A[1-9]\d*\z/)
           return render_error("event_id must be a positive integer", :unprocessable_entity)
@@ -39,6 +99,9 @@ module Api
           return render_error("Idempotency-Key is too long", :bad_request)
         end
 
+        guest = current_customer ? nil : current_guest
+        return unless require_guest_or_customer!
+
         event = Event.find(event_id)
         selected_row =
           if coordinates_provided
@@ -49,7 +112,9 @@ module Api
           return render_error("The selected row or seats do not exist", :unprocessable_entity)
         end
 
-        request_details = [event.id, quantity, email]
+        actor_fingerprint =
+          current_customer ? "customer:#{current_customer.id}" : "guest:#{guest.id}"
+        request_details = [event.id, quantity, email, actor_fingerprint]
         if coordinates_provided
           request_details.concat([params[:row_id], params[:seat_start], params[:seat_end]])
         end
@@ -95,10 +160,11 @@ module Api
               end
             if allocation && allocation.first
               row, first_seat = allocation
-              customer = Customer.find_or_create_by!(email: email)
+              customer = current_customer || Customer.find_or_create_by!(email: email)
               reservation =
                 event.reservations.create!(
                   customer: customer,
+                  guest: guest,
                   row_id: row.fetch("row_id").to_i,
                   seat_range: first_seat...(first_seat + quantity),
                   status: :held,
@@ -131,7 +197,18 @@ module Api
       end
 
       def destroy
-        reservation = Reservation.find(params[:id])
+        if bearer_request?
+          return unless require_customer_scope!("reservations:manage")
+        else
+          return unless require_guest_or_customer!
+        end
+
+        reservation = find_reservation_for_current_customer(params[:id])
+        return unless authorize_guest_reservation(reservation)
+        unless reservation_policy(reservation).cancel?
+          return render_error("Only active holds can be cancelled", :conflict)
+        end
+
         reservation.with_lock { reservation.update!(status: :cancelled) if reservation.held? }
         response.headers["Cache-Control"] = "no-store"
         render json: { id: reservation.id, status: reservation.status }
@@ -140,6 +217,51 @@ module Api
       end
 
       private
+
+      def filter_reservations(reservations)
+        case params[:status]
+        when "active"
+          reservations = reservations.where(status: %i[held confirmed])
+        when "history"
+          reservations = reservations.where(status: %i[expired cancelled])
+        when "held", "confirmed", "cancelled", "expired"
+          reservations = reservations.where(status: params[:status])
+        end
+
+        if params[:venue_id].present?
+          venue_id = Integer(params[:venue_id], 10)
+          reservations = reservations.joins(event: :venue).where(venues: { id: venue_id })
+        end
+
+        query = params[:q].to_s.strip
+        return reservations if query.blank?
+
+        pattern = "%#{ActiveRecord::Base.sanitize_sql_like(query)}%"
+        reservations.joins(event: :venue).where(
+          "CAST(reservations.id AS TEXT) ILIKE :query OR events.name ILIKE :query OR venues.name ILIKE :query",
+          query: pattern
+        )
+      rescue ArgumentError
+        reservations.none
+      end
+
+      def expire_due_holds
+        current_customer
+          .reservations
+          .where(status: :held)
+          .where("hold_expires_at <= ?", Time.current)
+          .find_each { |reservation| Reservations::ExpireIfDue.call(reservation:) }
+      end
+
+      def reservation_venues
+        current_customer
+          .reservations
+          .joins(event: :venue)
+          .distinct
+          .order("venues.name")
+          .pluck("venues.id", "venues.name")
+          .map { |id, name| { id:, name: } }
+      end
 
       def schedule_expiration(reservation)
         ExpireReservationJob.set(wait_until: reservation.hold_expires_at).perform_later(
@@ -181,6 +303,15 @@ module Api
         {
           id: reservation.id,
           event_id: reservation.event_id,
+          event: {
+            id: reservation.event.id,
+            name: reservation.event.name,
+            starts_at: reservation.event.start_time.iso8601,
+            ends_at: reservation.event.end_time.iso8601,
+            venue: {
+              name: reservation.event.venue.name
+            }
+          },
           row_id: reservation.row_id,
           seat_start: reservation.seat_range.begin,
           seat_end: reservation.seat_range.end - 1,

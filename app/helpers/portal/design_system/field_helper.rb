@@ -39,7 +39,10 @@ module Portal
             }
           )
 
-        parts = [tag.span(safe_join(label_parts), class: "label-text mb-2 font-medium"), input]
+        parts = [
+          tag.span(safe_join(label_parts), class: "label-text mb-2 block font-medium"),
+          input
+        ]
         if hint.present?
           parts << tag.span(hint, id: hint_id, class: "label mt-1 text-base-content/55")
         end

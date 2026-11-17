@@ -341,3 +341,7 @@ Reservation
   end
 
 puts "Seeded #{events.size} sample events across #{venues.size} venues with #{customers.size} customers and #{simulated_reservations.size} simulated reservations."
+
+DevelopmentOauthClients.seed!.each do |application|
+  puts "OAuth client #{application.name}: client_id=#{application.uid} callback=#{application.redirect_uri}"
+end

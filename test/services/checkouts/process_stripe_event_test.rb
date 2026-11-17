@@ -3,6 +3,7 @@ require "test_helper"
 module Checkouts
   class ProcessStripeEventTest < ActiveSupport::TestCase
     include ActiveSupport::Testing::TimeHelpers
+    include ActiveJob::TestHelper
 
     setup do
       travel_to Time.zone.local(2026, 11, 9, 12)
@@ -28,19 +29,51 @@ module Checkouts
     teardown { travel_back }
 
     test "confirms a held reservation for a matching paid checkout session" do
-      ProcessStripeEvent.call(
-        event: event("evt_paid", "checkout.session.completed", session(payment_status: "paid"))
-      )
+      assert_enqueued_jobs 1, only: DeliverTicketEmailJob do
+        ProcessStripeEvent.call(
+          event: event("evt_paid", "checkout.session.completed", session(payment_status: "paid"))
+        )
+      end
       assert @reservation.reload.confirmed?
       assert_equal "succeeded", @payment.reload.status
+      assert_equal [@reservation.id], TicketDelivery.pluck(:reservation_id)
+    end
+
+    test "payment processing creates no ticket delivery" do
+      assert_no_enqueued_jobs only: DeliverTicketEmailJob do
+        ProcessStripeEvent.call(
+          event:
+            event("evt_processing", "checkout.session.completed", session(payment_status: "unpaid"))
+        )
+      end
+
+      assert_empty TicketDelivery.all
+    end
+
+    test "payment failure creates no ticket delivery" do
+      assert_no_enqueued_jobs only: DeliverTicketEmailJob do
+        ProcessStripeEvent.call(
+          event:
+            event(
+              "evt_async_failed",
+              "checkout.session.async_payment_failed",
+              session(payment_status: "unpaid")
+            )
+        )
+      end
+
+      assert_empty TicketDelivery.all
     end
 
     test "duplicate webhook delivery has no additional effect" do
       payload =
         event("evt_duplicate", "checkout.session.completed", session(payment_status: "paid"))
-      ProcessStripeEvent.call(event: payload)
-      ProcessStripeEvent.call(event: payload)
+      assert_enqueued_jobs 1, only: DeliverTicketEmailJob do
+        ProcessStripeEvent.call(event: payload)
+        ProcessStripeEvent.call(event: payload)
+      end
       assert_equal 1, StripeWebhookEvent.where(external_id: "evt_duplicate").count
+      assert_equal 1, TicketDelivery.where(reservation: @reservation).count
     end
 
     test "reconciled unpaid session still expires the hold when a duplicate poll arrives after its deadline" do

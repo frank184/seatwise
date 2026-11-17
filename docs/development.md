@@ -20,6 +20,14 @@ rails s
 
 The PostgreSQL image creates `seatwise_development` on its first start. Database migrations are explicit: run `bin/rails db:migrate` only after migration work is ready. Neither app startup nor `bin/setup` migrates or prepares the database automatically. Use `RAILS_ENV=test bin/rails db:migrate` only when the test schema is ready too.
 
+After applying migrations on a fresh development database, run `bin/rails db:seed` once to provision the two public OAuth clients alongside the sample data. The seed is idempotent: rerunning it updates the same named clients without changing their client IDs. No client secret is created or shared. Client IDs and exact callback URIs are public configuration:
+
+```sh
+bin/rails runner 'Doorkeeper::Application.order(:name).each { |client| puts "#{client.name}: client_id=#{client.uid} callback=#{client.redirect_uri}" }'
+```
+
+For a fresh checkout with the Rails service in Compose, the same sequence is `docker compose exec rails bin/rails db:migrate` followed by `docker compose exec rails bin/rails db:seed`. Restarting the application does not rerun migrations or seeds.
+
 During schema development, Rails skips the development pending-migration page so the API and UI health routes remain available. Database-backed features still require the corresponding schema.
 
 For a detached database that waits for readiness:

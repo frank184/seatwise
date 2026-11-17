@@ -1,0 +1,27 @@
+- content_for :title, "Verify your email · Seatwise"
+%main.mx-auto.w-full.max-w-xl.px-4.py-10.sm:px-6.sm:py-16
+  = card title: "Enter your one-time code", description: "Check your inbox for the six-digit code.", title_class: "text-2xl", description_class: "mt-2", body_class: "gap-0 p-6 sm:p-8" do
+    - if @verification_error
+      = status_alert title: "That code did not work", description: "Check the code and try again, or request a new one.", variant: :error, soft: true, extra_class: "mt-6"
+    - else
+      = status_alert title: "Check your email", description: "If that email is eligible, a one-time code will arrive shortly.", variant: :info, icon: "mail", soft: true, role: "status", extra_class: "mt-6"
+    %p.mt-6.text-sm{class: "text-base-content/70"}
+      Enter the code sent to
+      %span.font-semibold #{@customer.email}.
+    = form_with url: verify_sign_in_code_path, scope: :sign_in, method: :post, class: "mt-7 flex flex-col gap-6" do |form|
+      = hidden_field_tag :return_to, @return_to if @return_to.present?
+      %fieldset.space-y-3
+        %legend.text-sm.font-semibold Six-digit verification code
+        %label.otp.otp-joined.otp-lg
+          - 6.times do
+            %span
+          = form.text_field :code, maxlength: 6, pattern: "[0-9]{6}", required: true, autocomplete: "one-time-code", inputmode: "numeric", aria: { label: "Six-digit verification code" }, autofocus: true, data: { controller: "portal--one-time-code", action: "input->portal--one-time-code#submitWhenComplete" }
+        %p.text-sm{class: "text-base-content/55"}
+          The code expires in 10 minutes and can only be used once.
+      = button "Verify and continue", type: :submit, variant: :primary, size: :lg, class: "w-full"
+    .mt-4.flex.flex-wrap.items-center.justify-between.gap-3
+      = link_to "Use a different email", sign_in_path(return_to: @return_to), class: "link link-hover text-sm focus-visible:underline focus-visible:decoration-2 focus-visible:outline-none"
+      = form_with url: sign_in_code_path, scope: :sign_in, method: :post do |form|
+        = hidden_field_tag :return_to, @return_to if @return_to.present?
+        = form.hidden_field :email, value: @customer.email
+        = form.button "Send a new code", type: :submit, class: "link link-hover cursor-pointer text-sm focus-visible:underline focus-visible:decoration-2 focus-visible:outline-none"

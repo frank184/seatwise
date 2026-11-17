@@ -32,6 +32,13 @@ class CustomerTest < ActiveSupport::TestCase
     assert_nil customer.sign_in_code_expires_at
   end
 
+  test "normalizes email before validating it" do
+    customer = Customer.new(email: "  New.Customer@Example.Test ", sign_in_code_attempts: 0)
+
+    assert_predicate customer, :valid?
+    assert_equal "new.customer@example.test", customer.email
+  end
+
   test "reaches payments through reservations" do
     assert_equal [payments(:one)], customers(:one).payments.to_a
   end

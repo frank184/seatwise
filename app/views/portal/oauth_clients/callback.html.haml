@@ -1,0 +1,14 @@
+- content_for :title, "Finishing Sign In · Seatwise"
+%main.mx-auto.w-full.max-w-xl.px-4.py-10.sm:px-6.sm:py-16
+  = card title: "Finishing Sign In", description: "Completing the secure connection for this tab.", body_class: "gap-6 p-6 sm:p-8" do
+    #oauth-client-status{
+      data: {
+        controller: "portal--oauth",
+        client_id: @client_id,
+        redirect_uri: @redirect_uri,
+        code: @code,
+        state: @state,
+        oauth_error: @oauth_error
+      }
+    }
+      = status_alert title: "Connecting", description: "Please wait while we finish signing you in.", variant: :info, soft: true, role: "status"

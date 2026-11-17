@@ -30,10 +30,12 @@
               class: "bg-base-100/80"
             }
               = lucide "music-2", class: "size-6"
-            %span.badge.badge-lg.absolute.bottom-6.left-6{
+            %span.badge.badge-lg.absolute.bottom-6.left-6.flex.items-center.gap-2{
               class: "border-base-100/70 bg-base-100/90",
               "data-detail-date": ""
             }
+              = lucide "calendar-days", class: "size-4 text-primary"
+              %span{data: { detail_date_label: true }}
 
             %time.badge.absolute.bottom-6.right-6{
               class: "border border-base-100/70 bg-base-100/90 text-primary",
@@ -47,21 +49,34 @@
               "data-detail-name": ""
             }
 
-            %p.mt-2.text-base{class: "text-base-content/65", "data-detail-venue": ""}
+            %p.mt-2.flex.items-center.gap-2.text-base{
+              class: "text-base-content/65",
+              data: { detail_venue: true }
+            }
+              = lucide "map-pin", class: "size-4 shrink-0 text-secondary"
+              %span{data: { detail_venue_label: true }}
 
             .divider
             %dl.grid.grid-cols-2.gap-4.text-sm
               %div
-                %dt{class: "text-base-content/55"} Doors &amp; show
+                %dt.flex.items-center.gap-1.5{class: "text-base-content/55"}
+                  = lucide "clock-3", class: "size-4"
+                  Doors &amp; show
                 %dd.mt-1.font-semibold{"data-detail-start": ""}
               %div
-                %dt{class: "text-base-content/55"} Ends around
+                %dt.flex.items-center.gap-1.5{class: "text-base-content/55"}
+                  = lucide "clock-3", class: "size-4"
+                  Ends around
                 %dd.mt-1.font-semibold{"data-detail-end": ""}
               %div
-                %dt{class: "text-base-content/55"} Room capacity
+                %dt.flex.items-center.gap-1.5{class: "text-base-content/55"}
+                  = lucide "armchair", class: "size-4"
+                  Room capacity
                 %dd.mt-1.font-semibold{"data-detail-seats": ""}
               %div
-                %dt{class: "text-base-content/55"} Available now
+                %dt.flex.items-center.gap-1.5{class: "text-base-content/55"}
+                  = lucide "armchair", class: "size-4"
+                  Available now
                 %dd.mt-1.font-semibold.text-success{"data-detail-open": ""}
             .mt-6
               %div{data: { availability_change_notice: true }}

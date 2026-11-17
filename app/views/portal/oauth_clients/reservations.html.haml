@@ -1,0 +1,162 @@
+- content_for :title, "My Reservations · Seatwise"
+.min-h-full{class: "bg-base-200/60"}
+  %main.mx-auto.max-w-7xl.space-y-8.px-4.py-5.sm:px-8.sm:py-8{
+    data: {
+      controller: "portal--oauth",
+      action: "portal:oauth:load->portal--oauth#loadReservations",
+      return_to: @return_to,
+      client_id: @client_id,
+      redirect_uri: @redirect_uri
+    }
+  }
+    %section.relative.isolate.overflow-hidden.rounded-box.bg-neutral.text-neutral-content.shadow-xl
+      .absolute.-right-16.-top-24.-z-10.size-96.rounded-full.blur-3xl{
+        "aria-hidden": "true",
+        class: "bg-primary/25"
+      }
+
+      %div{
+        class: "grid gap-5 px-6 py-7 sm:px-10 sm:py-9 lg:grid-cols-[1fr_auto] lg:items-center lg:px-14"
+      }
+        .max-w-3xl
+          %p.mb-3.text-xs.font-bold.uppercase.text-primary{class: "tracking-[0.24em]"}
+            Your Seatwise
+          %h1.flex.items-center.gap-3.text-3xl.font-black.tracking-tight.sm:text-4xl
+            %span.grid.size-11.shrink-0.place-items-center.rounded-full.text-primary{
+              class: "bg-base-100/90"
+            }
+              = lucide "ticket-check", class: "size-6"
+            My Reservations
+          %p.mt-3.max-w-2xl.text-sm.leading-6.sm:text-base{class: "text-neutral-content/70"}
+            The details for your upcoming plans and past bookings, all in one place.
+        .flex.flex-wrap.gap-2.lg:justify-end
+          %span.badge.badge-outline.text-neutral-content{
+            class: "border-neutral-content/25",
+            id: "reservation-count",
+            "aria-live": "polite"
+          }
+            Loading reservations…
+
+    %section.scroll-mt-24.space-y-5{"aria-labelledby": "reservations-heading"}
+      = section_heading kicker: "Your bookings", title: "Find a reservation", description: "Search by event, venue, or reservation number. Filter by booking status.", heading_id: "reservations-heading"
+      - selected_status = params[:status].presence || "all"
+      = form_with url: account_reservations_path, method: :get, id: "reservation-filters", class: "space-y-3 rounded-box border border-base-300 bg-base-100 p-3 sm:p-4", data: { action: "submit->portal--oauth#submitReservationFilters" } do |form|
+        = form.hidden_field :status, value: selected_status, id: "reservation-status-filter"
+        .grid.gap-3{class: "md:grid-cols-[minmax(0,1fr)_12rem]"}
+          %label.input.input-bordered.flex.w-full.min-w-0.items-center.gap-2
+            = lucide "search", class: "size-4 text-base-content/45"
+            = form.search_field :q, value: params[:q], class: "grow", placeholder: "Search reservations", aria: { label: "Search reservations" }, autocomplete: "off"
+          = form.select :venue_id, options_for_select([["All venues", ""]], params[:venue_id]), {}, class: "select select-bordered w-full", aria: { label: "Filter by venue" }, data: { action: "change->portal--oauth#reservationFilterChanged", reservation_venue_filter: "" }
+        .flex.flex-col.gap-3.border-t.border-base-200.pt-3.sm:flex-row.sm:items-center.sm:justify-between
+          %fieldset.min-w-0
+            %legend.sr-only Filter reservations by status
+            .max-w-full.overflow-x-auto.pb-1
+              .join.w-max
+                - [["All", "all"], ["On hold", "held"], ["Confirmed", "confirmed"], ["Cancelled", "cancelled"], ["Expired", "expired"]].each do |label, value|
+                  - status_active_class, status_inactive_class = { "all" => ["btn-primary", "btn-soft btn-primary"], "held" => ["btn-warning", "btn-soft btn-warning"], "confirmed" => ["btn-success", "btn-soft btn-success"], "cancelled" => ["btn-neutral", "bg-base-200 text-base-content border-base-300 hover:bg-base-300"], "expired" => ["btn-error", "btn-soft btn-error"] }.fetch(value)
+                  - selected = selected_status == value
+                  %button.btn.btn-sm.join-item{
+                    type: "button",
+                    class: (selected ? status_active_class : status_inactive_class),
+                    aria: { pressed: selected },
+                    data: {
+                      action: "click->portal--oauth#selectReservationStatus focus->portal--oauth#revealReservationStatusFilter",
+                      reservation_status_filter: value,
+                      reservation_status_active_class: status_active_class,
+                      reservation_status_inactive_class: status_inactive_class
+                    }
+                  }
+                    = label
+          = button "Search", type: "submit", variant: :neutral, class: "sm:w-24 sm:ml-auto"
+
+      #reservation-error{hidden: ""}
+      #reservation-empty{hidden: ""}
+      .space-y-3#reservation-list{"aria-live": "polite", hidden: ""}
+      %nav.flex.items-center.justify-center.gap-4#reservation-pagination{
+        "aria-label": "Reservation pages",
+        hidden: ""
+      }
+        .join
+          = button "Previous", size: :sm, class: "join-item", data: { action: "click->portal--oauth#previousReservationPage", page_previous: true }
+          = button "Next", size: :sm, class: "join-item", data: { action: "click->portal--oauth#nextReservationPage", page_next: true }
+
+    %template#reservation-card-template
+      = card element: :article, body: false, card_class: "overflow-hidden border border-base-300 bg-base-100 transition-shadow hover:shadow-lg" do
+        %div{class: "grid grid-cols-[auto_minmax(0,1fr)]"}
+          .grid.w-20.place-items-center.bg-gradient-to-b{
+            class: "from-primary/15 via-secondary/10 to-accent/15 sm:w-30"
+          }
+            %span.grid.size-14.place-items-center.rounded-full.bg-base-100.text-primary.shadow-sm
+              = lucide "ticket", class: "size-6"
+          .min-w-0.p-4.sm:p-5
+            .flex.flex-wrap.items-start.justify-between.gap-3
+              .min-w-0
+                %p.text-xs.font-semibold.uppercase{
+                  class: "tracking-[0.14em] text-base-content/50",
+                  "data-reservation-reference": ""
+                }
+
+                %h2.mt-1.break-words.text-lg.font-bold.sm:text-xl{"data-reservation-event": ""}
+                %a.btn.btn-link.btn-sm.hidden.mt-1.h-auto.min-h-0.gap-1.p-0.text-primary{
+                  href: "#",
+                  data: { reservation_resume: true }
+                }
+                  = lucide "arrow-up-right", class: "size-4"
+                  Return to event and held seats
+                .mt-2.flex.flex-wrap.items-center.gap-x-2.gap-y-1.text-sm{
+                  class: "text-base-content/65"
+                }
+                  = lucide "calendar-days", class: "size-4 text-primary"
+                  %time{"data-reservation-time": ""}
+                  %span{aria: { hidden: "true" }} ·
+                  = lucide "map-pin", class: "size-4 text-secondary"
+                  %span{"data-reservation-venue": ""}
+              %span.badge.badge-soft.shrink-0{"data-reservation-status": ""}
+            .mt-4.flex.flex-wrap.items-center.gap-x-5.gap-y-2.border-t.border-base-200.pt-3.text-sm
+              .flex.items-center.gap-2.font-medium
+                = lucide "armchair", class: "size-4 text-primary"
+                %span{"data-reservation-seats": ""}
+              .flex.items-center.gap-2.font-medium.text-warning{
+                hidden: "",
+                role: "timer",
+                "aria-live": "off",
+                data: { reservation_countdown: "" }
+              }
+                = lucide "clock-3", class: "size-4"
+                %span{data: { reservation_countdown_text: "" }}
+
+    %template#reservation-loading-template
+      %span.sr-only{role: "status"} Loading reservations
+      - 3.times do
+        %article.card.card-border.overflow-hidden.border.border-base-300.bg-base-100{
+          aria: { hidden: "true" }
+        }
+          %div{class: "grid grid-cols-[auto_minmax(0,1fr)]"}
+            .grid.w-16.place-items-center.bg-base-200{class: "sm:w-20"}
+              .skeleton.size-11.rounded-full
+            .min-w-0.space-y-3.p-4.sm:p-5
+              .flex.items-start.justify-between.gap-3
+                .skeleton.h-3.w-36.rounded-full
+                .skeleton.h-6.w-20.rounded-full
+              .skeleton{class: "h-5 w-2/3 rounded-full"}
+              .skeleton{class: "h-4 w-3/4 rounded-full"}
+              .border-t.border-base-200.pt-3
+                .skeleton{class: "h-4 w-1/3 rounded-full"}
+
+    %template#reservation-empty-template
+      = card card_class: "border border-base-300 bg-base-100", body_class: "items-center py-12 text-center" do
+        = lucide "ticket-x", class: "size-9 text-base-content/35"
+        = card_title "No reservations found"
+        %p.text-sm{class: "text-base-content/60", "data-reservation-empty-message": ""}
+          Try another search or choose a different status filter.
+        = link_to "Browse events", root_path, class: "btn btn-primary btn-sm mt-2"
+
+    %template#reservation-error-template
+      = status_alert title: "Reservations could not load", description: "Check your connection and try again.", variant: :error, icon: "triangle-alert", action: button("Retry", variant: :error, size: :sm, data: { action: "click->portal--oauth#retryReservations" })
+
+    %template#reservation-page-number-template
+      %button.btn.btn-sm.join-item{
+        type: "button",
+        data: { action: "click->portal--oauth#goToReservationPage", page_number: true },
+        aria: { label: "Page" }
+      }

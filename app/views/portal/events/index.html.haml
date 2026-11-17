@@ -155,10 +155,12 @@
             class: "bg-base-100/75"
           }
             = lucide "music-2", class: "size-6"
-          %span.badge.absolute.left-4.top-4{
+          %span.badge.absolute.left-4.top-4.flex.items-center.gap-1.5{
             class: "border-base-100/70 bg-base-100/90",
             "data-event-date": ""
           }
+            = lucide "calendar-days", class: "size-3.5 text-primary"
+            %span{data: { event_date_label: true }}
 
           %span.badge.badge-outline.absolute.right-4.top-4{
             class: "border-base-100/70 bg-base-100/90",
@@ -178,16 +180,23 @@
           }
 
         = card_body body_class: "gap-3" do
-          .flex.items-center.gap-2.text-sm.font-medium{class: "text-base-content/55"}
+          .flex.flex-wrap.items-center.gap-x-2.gap-y-1.text-sm.font-medium{
+            class: "text-base-content/55"
+          }
+            = lucide "clock-3", class: "size-4 text-primary"
             %span{"data-event-time": ""}
             %span{"aria-hidden": "true"} ·
+            = lucide "map-pin", class: "size-4 text-secondary"
             %span{"data-event-venue": ""}
           %h3.card-title.text-xl{"data-event-name": ""}
           .flex.items-center.justify-between.border-t.border-base-200.pt-3
-            %span.text-sm{class: "text-base-content/60", "data-event-capacity": ""}
+            %span.flex.items-center.gap-1.5.text-sm{class: "text-base-content/60"}
+              = lucide "armchair", class: "size-4"
+              %span{"data-event-capacity": ""}
 
-            %span.btn.btn-sm.btn-primary
-              = "Explore #{lucide "arrow-up-right", class: "size-4"}"
+            %span.btn.btn-sm.btn-primary{data: { event_action_label: true }}
+              %span{data: { event_action_text: true }} Explore
+              = lucide "arrow-up-right", class: "size-4"
   %template#event-empty-template
     = card card_class: "border border-base-300 bg-base-100", body_class: "items-center py-14 text-center" do
       = lucide "calendar-search", class: "size-9 text-base-content/35"

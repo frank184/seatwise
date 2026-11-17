@@ -91,8 +91,8 @@ export default class extends Controller {
     card.dataset.eventId = event.id;
     card.dataset.controller = "portal--availability";
     if (event.past) card.classList.add("opacity-75", "grayscale");
-    card.querySelector("[data-event-link]").href = `/events/${encodeURIComponent(event.id)}`;
-    card.querySelector("[data-event-date]").textContent = formatDate(event.starts_at, {
+    const eventLink = card.querySelector("[data-event-link]");
+    card.querySelector("[data-event-date-label]").textContent = formatDate(event.starts_at, {
       weekday: "short",
       month: "short",
       day: "numeric",
@@ -112,9 +112,26 @@ export default class extends Controller {
     card.querySelector("[data-event-name]").textContent = event.name;
     card.querySelector("[data-event-capacity]").textContent =
       `${event.seat_count} seats in this room`;
+    const activeHold = this.activeHoldForEvent(event.id);
+    eventLink.href = `/events/${encodeURIComponent(event.id)}${activeHold ? "#checkout-panel" : ""}`;
+    if (activeHold) {
+      card.querySelector("[data-event-action-text]").textContent = "Resume hold";
+    }
     this.updateAvailabilityPresentation(card, event);
     card.querySelector("[data-event-past]").hidden = !event.past;
     return card;
+  }
+
+  activeHoldForEvent(eventId) {
+    try {
+      const flow = JSON.parse(sessionStorage.getItem(`seatwise:reservation:${eventId}`) || "null");
+      return (
+        flow?.reservation?.status === "held" &&
+        new Date(flow.reservation.expiresAt).getTime() > Date.now()
+      );
+    } catch (_error) {
+      return false;
+    }
   }
 
   updateAvailabilityPresentation(card, event) {
