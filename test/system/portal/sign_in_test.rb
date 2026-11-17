@@ -17,7 +17,6 @@ module Portal
       assert code.present?
 
       find("input[aria-label='Six-digit verification code']").set(code)
-      click_button "Verify and continue"
 
       assert_current_path root_path
       assert_equal "system-buyer@example.test",

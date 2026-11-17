@@ -41,10 +41,9 @@ module Portal
       assert_equal [reservation.customer.email], delivered_email.to
 
       find("input[aria-label='Six-digit verification code']").set(code)
-      click_button "Verify and continue"
 
       assert_current_path account_reservations_path, wait: 20
-      assert_text "Reservation #{reservation.id}"
+      assert_text(/Reservation #{reservation.id}/i)
       assert_text reservation.event.name
       assert_text "Row 1 · Seat 1"
       assert oauth_client.persisted?

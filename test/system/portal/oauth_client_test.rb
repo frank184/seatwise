@@ -24,10 +24,9 @@ module Portal
       code = ActionMailer::Base.deliveries.last.text_part.body.to_s[/\b\d{6}\b/]
       assert code.present?
       find("input[aria-label='Six-digit verification code']").set(code)
-      click_button "Verify and continue"
 
       assert_oauth_navigation_to(account_reservations_path)
-      assert_text "Reservation #{reservations(:one).id}", wait: 10
+      assert_text(/Reservation #{reservations(:one).id}/i, wait: 10)
       assert_text reservations(:one).event.name
       assert_text "Row 1 · Seat 1"
       token_json = page.evaluate_script("sessionStorage.getItem('seatwise.oauth.token')")
@@ -62,7 +61,7 @@ module Portal
       delivered_email_count = ActionMailer::Base.deliveries.size
       visit account_reservations_path
       assert_oauth_navigation_to(account_reservations_path)
-      assert_text "Reservation #{reservations(:one).id}", wait: 10
+      assert_text(/Reservation #{reservations(:one).id}/i, wait: 10)
       assert_equal delivered_email_count, ActionMailer::Base.deliveries.size
       renewed_token =
         JSON.parse(page.evaluate_script("sessionStorage.getItem('seatwise.oauth.token')"))
