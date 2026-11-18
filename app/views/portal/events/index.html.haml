@@ -155,29 +155,16 @@
             class: "bg-base-100/75"
           }
             = lucide "music-2", class: "size-6"
-          %span.badge.absolute.left-4.top-4.flex.items-center.gap-1.5{
-            class: "border-base-100/70 bg-base-100/90",
+          %span.absolute.left-4.top-4.flex.items-center.gap-2.rounded-field.border.text-xs.font-semibold{
+            class: "max-w-[85%] border-base-100/70 bg-base-100/90 px-2.5 py-1.5 text-base-content",
             "data-event-date": ""
           }
-            = lucide "calendar-days", class: "size-3.5 text-primary"
-            %span{data: { event_date_label: true }}
+            = lucide "calendar-days", class: "size-3.5 shrink-0 text-primary"
+            %span.whitespace-nowrap{data: { event_date_label: true }}
+            %span.h-3.border-l{class: "border-base-content/25", "aria-hidden": "true"}
+            %time.min-w-0.text-primary{"data-event-relative-time": ""}
 
-          %span.badge.badge-outline.absolute.right-4.top-4{
-            class: "border-base-100/70 bg-base-100/90",
-            "data-event-past": "",
-            hidden: ""
-          }
-            Past event
-          %span.badge.absolute.bottom-4.left-4{
-            class: "border border-base-content/25 bg-base-100 text-base-content",
-            data: { event_availability_badge: "" }
-          }
-            = lucide "armchair", class: "size-3.5"
-            %span{"data-event-availability": ""}
-          %time.badge.absolute.right-4.top-4{
-            class: "border border-base-100/70 bg-base-100/90 text-primary",
-            "data-event-relative-time": ""
-          }
+            %span.sr-only{data: { event_past_label: true }, hidden: true} Past event
 
         = card_body body_class: "gap-3" do
           .flex.flex-wrap.items-center.gap-x-2.gap-y-1.text-sm.font-medium{
@@ -190,9 +177,18 @@
             %span{"data-event-venue": ""}
           %h3.card-title.text-xl{"data-event-name": ""}
           .flex.items-center.justify-between.border-t.border-base-200.pt-3
-            %span.flex.items-center.gap-1.5.text-sm{class: "text-base-content/60"}
-              = lucide "armchair", class: "size-4"
-              %span{"data-event-capacity": ""}
+            .flex.min-w-0.items-center.gap-1.text-xs.font-medium{class: "sm:gap-2 sm:text-sm"}
+              %span.flex.shrink-0.items-center{class: "gap-1.5 text-base-content/55"}
+                = lucide "armchair", class: "size-4"
+                %span{data: { event_capacity: true }}
+              %span.h-4.border-l{class: "border-base-content/20", "aria-hidden": "true"}
+              %span.flex.min-w-0.items-center{
+                class: "gap-1.5 text-success",
+                data: { event_availability_summary: true }
+              }
+                = lucide "circle-check", class: "size-4 shrink-0", data: { availability_open_icon: true }
+                = lucide "circle-x", class: "size-4 shrink-0", data: { availability_sold_out_icon: true }, hidden: true
+                %span.whitespace-nowrap{"data-event-availability": ""}
 
             %span.btn.btn-sm.btn-primary{data: { event_action_label: true }}
               %span{data: { event_action_text: true }} Explore
