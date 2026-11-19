@@ -10,7 +10,7 @@ module Portal
     test "event cards show relative start time alongside date and clock time" do
       visit root_path
 
-      assert_selector "#events-list [data-event-relative-time]", text: /\AStarts in /
+      assert_selector "#events-list [data-event-relative-time]", text: /\AIn /
       assert_selector "#events-list [data-event-date]", text: /.+/
       assert_selector "#events-list [data-event-time]", text: /.+/
     end
@@ -19,7 +19,7 @@ module Portal
       @event.update!(start_time: 2.hours.ago, end_time: 1.hour.ago)
 
       visit root_path(when: "past")
-      assert_selector "#events-list [data-event-relative-time]", text: /\AStarted .+ ago/
+      assert_selector "#events-list [data-event-relative-time]", text: /\A.+ ago\z/
 
       visit event_path(@event)
       assert_selector "[data-detail-relative-time]", text: /\AStarted .+ ago/

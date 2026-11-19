@@ -105,20 +105,22 @@ export default class extends Controller {
     relativeTime.dateTime = event.starts_at;
     const relativeLabel = formatRelativeTime(event.starts_at);
     relativeTime.textContent = relativeLabel
-      ? `${event.past ? "Started" : "Starts"} ${relativeLabel}`
+      ? event.past
+        ? relativeLabel
+        : relativeLabel.replace(/^in\s+/i, "In ")
       : "";
     relativeTime.hidden = !relativeLabel;
+    card.querySelector("[data-event-past-label]").hidden = !event.past;
     card.querySelector("[data-event-venue]").textContent = event.venue.name;
     card.querySelector("[data-event-name]").textContent = event.name;
     card.querySelector("[data-event-capacity]").textContent =
-      `${event.seat_count} seats in this room`;
+      `${event.seat_count} ${event.seat_count === 1 ? "seat" : "seats"}`;
     const activeHold = this.activeHoldForEvent(event.id);
     eventLink.href = `/events/${encodeURIComponent(event.id)}${activeHold ? "#checkout-panel" : ""}`;
     if (activeHold) {
       card.querySelector("[data-event-action-text]").textContent = "Resume hold";
     }
     this.updateAvailabilityPresentation(card, event);
-    card.querySelector("[data-event-past]").hidden = !event.past;
     return card;
   }
 
@@ -136,18 +138,16 @@ export default class extends Controller {
 
   updateAvailabilityPresentation(card, event) {
     const available = Math.max(0, Number(event.available_count) || 0);
-    const badge = card.querySelector("[data-event-availability-badge]");
+    const summary = card.querySelector("[data-event-availability-summary]");
     const label = card.querySelector("[data-event-availability]");
-    const neutralClasses = ["border", "border-base-content/25", "bg-base-100", "text-base-content"];
+    const openIcon = summary.querySelector("[data-availability-open-icon]");
+    const soldOutIcon = summary.querySelector("[data-availability-sold-out-icon]");
 
-    label.textContent =
-      available === 0 ? "Sold out" : `${available} ${available === 1 ? "seat" : "seats"} open`;
-    badge.classList.remove(...neutralClasses, "badge-soft", "badge-success");
-    if (available === 0) {
-      badge.classList.add(...neutralClasses);
-    } else {
-      badge.classList.add("badge-soft", "badge-success");
-    }
+    label.textContent = available === 0 ? "Sold out" : `${available} open`;
+    summary.classList.toggle("text-success", available > 0);
+    summary.classList.toggle("text-base-content/55", available === 0);
+    openIcon.hidden = available === 0;
+    soldOutIcon.hidden = available !== 0;
   }
 
   availabilityUpdated({ detail: { event } }) {
