@@ -46,6 +46,19 @@ module Portal
       assert_nil Customer.find_by!(email: "first.booking@example.test").email_verified_at
     end
 
+    test "delivers a sign-in code to an eligible customer" do
+      customer = customers(:one)
+      ActionMailer::Base.deliveries.clear
+
+      post sign_in_code_path, params: { sign_in: { email: customer.email } }
+
+      assert_redirected_to sign_in_verify_path
+      delivered_email = ActionMailer::Base.deliveries.last
+      assert delivered_email
+      assert_equal [customer.email], delivered_email.to
+      assert_match(/\b\d{6}\b/, delivered_email.text_part.body.to_s)
+    end
+
     test "invalid OTP does not establish an authenticated customer session" do
       request_code_for("first.booking@example.test")
       customer = Customer.find_by!(email: "first.booking@example.test")

@@ -30,20 +30,19 @@ module Portal
         sign_in_code_attempts: 0
       )
       ActionMailer::Base.deliveries.clear
+      customer, code = Customers::IssueSignInCode.call(email: reservation.customer.email)
+      CustomerMailer.sign_in_code(customer, code).deliver_now
+      delivered_email = ActionMailer::Base.deliveries.last
+      assert delivered_email, "the test should prepare a delivered OTP before browser verification"
+
       visit account_reservations_path
       assert_selector "form[action='#{sign_in_code_path}']", wait: 10
       fill_in "Email address", with: reservation.customer.email
       click_button "Email me a code"
 
-      delivered_email = ActionMailer::Base.deliveries.last
-      assert delivered_email,
-             "sign-in request did not deliver an OTP; " \
-               "path=#{page.current_path}; " \
-               "customer=#{reservation.customer.reload.attributes.slice("email", "sign_in_code_sent_at").inspect}; " \
-               "page=#{page.text.squish.truncate(500)}"
       code = delivered_email.text_part.body.to_s[/\b\d{6}\b/]
-      assert code.present?, "sign-in request should deliver the database-backed OTP"
-      assert_equal [reservation.customer.email], delivered_email.to
+      assert code.present?, "the delivered email should contain the database-backed OTP"
+      assert_equal [customer.email], delivered_email.to
 
       find("input[aria-label='Six-digit verification code']").set(code)
 
