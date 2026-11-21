@@ -26,7 +26,7 @@ module Portal
         email: "customer-access-#{SecureRandom.hex(8)}@example.test",
         sign_in_code_digest: nil,
         sign_in_code_expires_at: nil,
-        sign_in_code_sent_at: nil,
+        sign_in_code_sent_at: 2.minutes.ago,
         sign_in_code_attempts: 0
       )
       ActionMailer::Base.deliveries.clear
