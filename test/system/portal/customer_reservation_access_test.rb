@@ -36,7 +36,11 @@ module Portal
       click_button "Email me a code"
 
       delivered_email = ActionMailer::Base.deliveries.last
-      assert delivered_email, "sign-in request should deliver the OTP instead of being throttled"
+      assert delivered_email,
+             "sign-in request did not deliver an OTP; " \
+               "path=#{page.current_path}; " \
+               "customer=#{reservation.customer.reload.attributes.slice('email', 'sign_in_code_sent_at').inspect}; " \
+               "page=#{page.text.squish.truncate(500)}"
       code = delivered_email.text_part.body.to_s[/\b\d{6}\b/]
       assert code.present?, "sign-in request should deliver the database-backed OTP"
       assert_equal [reservation.customer.email], delivered_email.to
