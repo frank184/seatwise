@@ -2,7 +2,7 @@
 
 | Layer | Choice |
 | --- | --- |
-| Application | Ruby 4.0.9 and Rails 8.1.4.1, as pinned in the project |
+| Application | Ruby 4.0.10 and Rails 8.1.4.1, as pinned in the project |
 | Web server | Puma |
 | Data | PostgreSQL 18 in local Compose, accessed through Active Record and the `pg` adapter |
 | Booking rules | Shared Ruby services for availability, allocation, holds and reservation transitions |

@@ -2,7 +2,7 @@
 
 **Event booking and seat reservations for venues with assigned seating.**
 
-![Ruby 4.0.9](https://img.shields.io/badge/Ruby-4.0.9-CC342D?logo=ruby&logoColor=white)
+![Ruby 4.0.10](https://img.shields.io/badge/Ruby-4.0.10-CC342D?logo=ruby&logoColor=white)
 ![Rails 8.1.4.1](https://img.shields.io/badge/Rails-8.1.4.1-D30001?logo=rubyonrails&logoColor=white)
 ![PostgreSQL 18](https://img.shields.io/badge/PostgreSQL-18-4169E1?logo=postgresql&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white)
