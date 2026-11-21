@@ -2,7 +2,9 @@
 # update the sample schedule without removing records created by a developer.
 return unless Rails.env.development?
 
-seed_reference_time = Time.zone.parse("2026-11-07 12:00")
+seed_reference_date = Time.zone.today
+seed_reference_time =
+  Time.zone.local(seed_reference_date.year, seed_reference_date.month, seed_reference_date.day, 12)
 persist_seed_record =
   lambda do |record, attributes|
     record.assign_attributes(attributes)
@@ -62,7 +64,7 @@ customers =
     customer = Customer.find_or_initialize_by(email: email)
     persist_seed_record.call(
       customer,
-      email_verified_at: Time.zone.parse("2026-11-01 12:00:00"),
+      email_verified_at: seed_reference_time - 1.day,
       sign_in_code_attempts: 0
     )
     [email, customer]
@@ -72,104 +74,124 @@ event_specs = [
   {
     name: "Friday Evening Show",
     venue: "Grand Hall",
-    starts_at: "2026-11-13 20:00",
-    ends_at: "2026-11-13 22:00"
+    days_from_reference: 6,
+    start_hour: 20,
+    duration_minutes: 120
   },
   {
     name: "Saturday Matinee",
     venue: "Studio Theatre",
-    starts_at: "2026-11-14 14:00",
-    ends_at: "2026-11-14 16:00"
+    days_from_reference: 7,
+    start_hour: 14,
+    duration_minutes: 120
   },
   {
     name: "Indie Folk Night",
     venue: "Riverside Stage",
-    starts_at: "2026-11-20 19:30",
-    ends_at: "2026-11-20 21:30"
+    days_from_reference: 13,
+    start_hour: 19,
+    start_minute: 30,
+    duration_minutes: 120
   },
   {
     name: "Sunday Jazz Brunch",
     venue: "Grand Hall",
-    starts_at: "2026-11-22 11:00",
-    ends_at: "2026-11-22 13:00"
+    days_from_reference: 15,
+    start_hour: 11,
+    duration_minutes: 120
   },
   {
     name: "Autumn Strings: Encore",
     venue: "Studio Theatre",
-    starts_at: "2026-11-01 18:00",
-    ends_at: "2026-11-01 20:00"
+    days_from_reference: -6,
+    start_hour: 18,
+    duration_minutes: 120
   },
   {
     name: "Late Summer Piano Recital",
     venue: "Grand Hall",
-    starts_at: "2026-09-12 19:00",
-    ends_at: "2026-09-12 21:00"
+    days_from_reference: -56,
+    start_hour: 19,
+    duration_minutes: 120
   },
   {
     name: "Riverside Comedy Hour",
     venue: "Riverside Stage",
-    starts_at: "2026-10-24 20:00",
-    ends_at: "2026-10-24 22:00"
+    days_from_reference: -14,
+    start_hour: 20,
+    duration_minutes: 120
   },
   {
     name: "Sunday Chamber Ensemble",
     venue: "Studio Theatre",
-    starts_at: "2026-11-08 15:00",
-    ends_at: "2026-11-08 17:00"
+    days_from_reference: 1,
+    start_hour: 15,
+    duration_minutes: 120
   },
   {
     name: "The Paper Moons",
     venue: "Riverside Stage",
-    starts_at: "2026-11-27 20:00",
-    ends_at: "2026-11-27 22:00"
+    days_from_reference: 20,
+    start_hour: 20,
+    duration_minutes: 120
   },
   {
     name: "Winter Lights Orchestra",
     venue: "Grand Hall",
-    starts_at: "2026-12-04 19:30",
-    ends_at: "2026-12-04 21:30"
+    days_from_reference: 27,
+    start_hour: 19,
+    start_minute: 30,
+    duration_minutes: 120
   },
   {
     name: "Studio Stories: Improv",
     venue: "Studio Theatre",
-    starts_at: "2026-12-06 19:00",
-    ends_at: "2026-12-06 21:00"
+    days_from_reference: 29,
+    start_hour: 19,
+    duration_minutes: 120
   },
   {
     name: "New Year Folk Session",
     venue: "Riverside Stage",
-    starts_at: "2027-01-09 19:00",
-    ends_at: "2027-01-09 21:00"
+    days_from_reference: 63,
+    start_hour: 19,
+    duration_minutes: 120
   },
   {
     name: "Grand Hall Film Scores",
     venue: "Grand Hall",
-    starts_at: "2027-01-16 20:00",
-    ends_at: "2027-01-16 22:00"
+    days_from_reference: 70,
+    start_hour: 20,
+    duration_minutes: 120
   },
   {
     name: "Studio Matinee: The Seagull",
     venue: "Studio Theatre",
-    starts_at: "2027-01-23 14:00",
-    ends_at: "2027-01-23 16:30"
+    days_from_reference: 77,
+    start_hour: 14,
+    duration_minutes: 150
   },
   {
     name: "Riverside Winter Jazz",
     venue: "Riverside Stage",
-    starts_at: "2027-02-05 20:00",
-    ends_at: "2027-02-05 22:00"
+    days_from_reference: 90,
+    start_hour: 20,
+    duration_minutes: 120
   },
   {
     name: "Valentine Strings",
     venue: "Grand Hall",
-    starts_at: "2027-02-14 19:00",
-    ends_at: "2027-02-14 21:00"
+    days_from_reference: 99,
+    start_hour: 19,
+    duration_minutes: 120
   },
   {
     name: "Spring Preview: New Voices",
     venue: "Studio Theatre",
-    starts_at: "2027-03-06 19:30",
-    ends_at: "2027-03-06 21:30"
+    days_from_reference: 119,
+    start_hour: 19,
+    start_minute: 30,
+    duration_minutes: 120
   }
 ]
 
@@ -177,10 +199,16 @@ events =
   event_specs.to_h do |spec|
     venue = venues.fetch(spec[:venue])
     event = Event.find_or_initialize_by(name: spec[:name], venue: venue)
+    start_time =
+      (seed_reference_time + spec.fetch(:days_from_reference).days).change(
+        hour: spec.fetch(:start_hour),
+        min: spec.fetch(:start_minute, 0),
+        sec: 0
+      )
     persist_seed_record.call(
       event,
-      start_time: Time.zone.parse(spec[:starts_at]),
-      end_time: Time.zone.parse(spec[:ends_at]),
+      start_time: start_time,
+      end_time: start_time + spec.fetch(:duration_minutes).minutes,
       ticket_price_cents: spec.fetch(:ticket_price_cents, 1_000),
       layout_snapshot: venue.layout
     )
@@ -193,8 +221,7 @@ reservation_specs = [
     customer: "one@example.test",
     row_id: 1,
     seats: 1...2,
-    status: :held,
-    expires_at: "2026-11-13 19:45"
+    status: :held
   },
   {
     event: "Saturday Matinee",
@@ -224,7 +251,7 @@ reservation_specs.each do |spec|
   persist_seed_record.call(
     reservation,
     status: spec[:status],
-    hold_expires_at: spec[:expires_at] && Time.zone.parse(spec[:expires_at])
+    hold_expires_at: spec[:status] == :held ? event.start_time - 15.minutes : nil
   )
 end
 
@@ -234,10 +261,12 @@ end
 simulation_customers =
   customer_specs.grep(/@seatwise\.test\z/).map { |email| customers.fetch(email) }
 simulation_customer_ids = simulation_customers.map(&:id)
-rng = Random.new(20_261_107)
+payment_rng = Random.new(20_261_107)
+reservation_rng = Random.new(20_261_107)
 simulated_reservations = []
 
-events.each_value do |event|
+events.each_value.with_index do |event, event_index|
+  event_rng = Random.new(20_261_107 + event_index)
   rows = event.layout_snapshot.fetch("rows")
   occupied = rows.to_h { |row| [row.fetch("row_id"), []] }
 
@@ -245,13 +274,14 @@ events.each_value do |event|
     .reservations
     .includes(:customer)
     .each do |reservation|
-      next unless reservation.held? || reservation.confirmed?
+      simulated_reservation = simulation_customer_ids.include?(reservation.customer_id)
+      next unless simulated_reservation || reservation.held? || reservation.confirmed?
 
       occupied.fetch(reservation.row_id) << reservation.seat_range
     end
 
   capacity = rows.sum { |row| row.fetch("seat_count") }
-  target_count = rng.rand(9..[capacity / 5, 18].min)
+  target_count = event_rng.rand(9..[capacity / 5, 18].min)
   existing_simulated_count = event.reservations.where(customer_id: simulation_customer_ids).count
   missing_count = [target_count - existing_simulated_count, 0].max
   generated = []
@@ -259,9 +289,9 @@ events.each_value do |event|
 
   while generated.size < missing_count && attempts < missing_count * 80
     attempts += 1
-    row = rows.sample(random: rng)
-    first_seat = rng.rand(1..row.fetch("seat_count"))
-    group_size = rng.rand(1..[4, row.fetch("seat_count") - first_seat + 1].min)
+    row = rows.sample(random: event_rng)
+    first_seat = event_rng.rand(1..row.fetch("seat_count"))
+    group_size = event_rng.rand(1..[4, row.fetch("seat_count") - first_seat + 1].min)
     seats = first_seat...(first_seat + group_size)
     next if occupied.fetch(row.fetch("row_id")).any? { |range| range.overlaps?(seats) }
 
@@ -269,19 +299,9 @@ events.each_value do |event|
     generated << { row_id: row.fetch("row_id"), seats: seats, group_size: group_size }
   end
 
-  customers_for_event = simulation_customers.shuffle(random: rng)
+  customers_for_event = simulation_customers.shuffle(random: event_rng)
   generated.each_with_index do |booking, index|
     customer = customers_for_event[index % customers_for_event.size]
-    past_event = event.start_time < seed_reference_time
-    status =
-      if past_event
-        %i[confirmed confirmed confirmed confirmed cancelled expired].sample(random: rng)
-      else
-        %i[confirmed confirmed confirmed held held cancelled expired].sample(random: rng)
-      end
-    hold_expires_at = status == :held ? event.start_time - 15.minutes : nil
-    booked_at = event.start_time - rng.rand(1..28).days - rng.rand(1..18).hours
-
     reservation =
       Reservation.find_or_initialize_by(
         event: event,
@@ -291,12 +311,47 @@ events.each_value do |event|
       )
     persist_seed_record.call(
       reservation,
-      status: status,
-      hold_expires_at: hold_expires_at,
-      created_at: booked_at
+      status: :confirmed,
+      hold_expires_at: nil,
+      created_at: seed_reference_time
     )
     simulated_reservations << reservation
   end
+
+  past_event = event.start_time < seed_reference_time
+  statuses =
+    if past_event
+      %i[confirmed confirmed confirmed confirmed cancelled expired]
+    else
+      %i[confirmed confirmed confirmed held held cancelled expired]
+    end
+  event
+    .reservations
+    .where(customer_id: simulation_customer_ids)
+    .to_a
+    .sort_by do |reservation|
+      [
+        reservation.customer_id,
+        reservation.row_id,
+        reservation.seat_range.begin,
+        reservation.seat_range.end
+      ]
+    end
+    .each do |reservation|
+      status = statuses.sample(random: reservation_rng)
+      booked_at =
+        if past_event
+          event.start_time - reservation_rng.rand(1..28).days - reservation_rng.rand(1..18).hours
+        else
+          seed_reference_time - reservation_rng.rand(0..28).days - reservation_rng.rand(0..18).hours
+        end
+      persist_seed_record.call(
+        reservation,
+        status: status,
+        hold_expires_at: status == :held ? event.start_time - 15.minutes : nil,
+        created_at: booked_at
+      )
+    end
 end
 
 sample_customer_ids = customers.values.map(&:id)
@@ -305,7 +360,7 @@ Reservation
   .where(customer_id: sample_customer_ids)
   .find_each do |reservation|
     group_size = reservation.seat_range.size
-    amount = group_size * rng.rand(3_500..9_500)
+    amount = group_size * payment_rng.rand(3_500..9_500)
     payment_statuses =
       if reservation.confirmed?
         %w[succeeded succeeded succeeded refunded]
@@ -316,7 +371,7 @@ Reservation
       else
         ["failed", "failed", nil]
       end
-    status = payment_statuses.sample(random: rng)
+    status = payment_statuses.sample(random: payment_rng)
     next unless status
 
     persist_seed_record.call(
@@ -328,7 +383,7 @@ Reservation
       currency: "cad"
     )
 
-    if reservation.confirmed? && rng.rand < 0.12
+    if reservation.confirmed? && payment_rng.rand < 0.12
       persist_seed_record.call(
         Payment.find_or_initialize_by(external_id: "seed-retry-#{reservation.id}"),
         reservation: reservation,
