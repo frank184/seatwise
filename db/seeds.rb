@@ -3,7 +3,8 @@
 return unless Rails.env.development?
 
 seed_reference_date = Time.zone.today
-seed_reference_time = Time.zone.local(seed_reference_date.year, seed_reference_date.month, seed_reference_date.day, 12)
+seed_reference_time =
+  Time.zone.local(seed_reference_date.year, seed_reference_date.month, seed_reference_date.day, 12)
 persist_seed_record =
   lambda do |record, attributes|
     record.assign_attributes(attributes)
@@ -198,15 +199,16 @@ events =
   event_specs.to_h do |spec|
     venue = venues.fetch(spec[:venue])
     event = Event.find_or_initialize_by(name: spec[:name], venue: venue)
-  start_time = (seed_reference_time + spec.fetch(:days_from_reference).days).change(
-      hour: spec.fetch(:start_hour),
-      min: spec.fetch(:start_minute, 0),
-      sec: 0
-  )
+    start_time =
+      (seed_reference_time + spec.fetch(:days_from_reference).days).change(
+        hour: spec.fetch(:start_hour),
+        min: spec.fetch(:start_minute, 0),
+        sec: 0
+      )
     persist_seed_record.call(
       event,
-    start_time: start_time,
-    end_time: start_time + spec.fetch(:duration_minutes).minutes,
+      start_time: start_time,
+      end_time: start_time + spec.fetch(:duration_minutes).minutes,
       ticket_price_cents: spec.fetch(:ticket_price_cents, 1_000),
       layout_snapshot: venue.layout
     )
@@ -327,7 +329,14 @@ events.each_value.with_index do |event, event_index|
     .reservations
     .where(customer_id: simulation_customer_ids)
     .to_a
-    .sort_by { |reservation| [reservation.customer_id, reservation.row_id, reservation.seat_range.begin, reservation.seat_range.end] }
+    .sort_by do |reservation|
+      [
+        reservation.customer_id,
+        reservation.row_id,
+        reservation.seat_range.begin,
+        reservation.seat_range.end
+      ]
+    end
     .each do |reservation|
       status = statuses.sample(random: reservation_rng)
       booked_at =
