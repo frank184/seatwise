@@ -17,7 +17,7 @@ Rails.application.config.middleware.insert_before 0, Rack::Cors do
              credentials: false,
              max_age: 600
     resource "/api/v1/*",
-             headers: %w[Accept Authorization Content-Type Idempotency-Key],
+             headers: %w[Accept Authorization Content-Type Idempotency-Key X-Seatwise-Guest-Token],
              methods: %i[get post delete options],
              credentials: false,
              max_age: 600

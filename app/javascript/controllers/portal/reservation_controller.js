@@ -1,10 +1,14 @@
 import { Controller } from "@hotwired/stimulus";
 import {
   cloneTemplate,
+  fetchReservationJson,
   fetchJson,
   formatDate,
   formatRelativeTime,
-  guestAuthorizationHeader,
+  guestCapabilityToken,
+  clearPortalAccessToken,
+  readPortalAccessToken,
+  reservationAuthorizationHeader,
 } from "controllers/portal/view_helpers";
 
 const STEP_NUMBERS = { seats: 1, payment: 2, redirecting: 2, confirmed: 3, expired: 1 };
@@ -28,6 +32,7 @@ export default class extends Controller {
     this.reconciliationRequired = false;
     this.selectionReady = false;
     this.beginEventLoad();
+    this.prefillCustomerEmail();
   }
 
   disconnect() {
@@ -422,6 +427,9 @@ export default class extends Controller {
         : "";
     const summarySeats = reservationComplete ? reservation.seats : this.selectedSeatDetails();
     countText.textContent = countDescription;
+    const selectionDetails = this.element.querySelector("[data-selection-details]");
+    selectionDetails.hidden = summarySeats.length === 0;
+    selectionDetails.classList.toggle("hidden", summarySeats.length === 0);
     this.element.querySelector("[data-selection-accessible-summary]").textContent =
       summarySeats.length ? this.formatSeatSummary(summarySeats) : "";
     this.renderSelectionVisual(summarySeats);
@@ -466,6 +474,39 @@ export default class extends Controller {
       this.flow.request.idempotencyKey = null;
     }
     this.flow.email = email;
+    this.saveFlow();
+    this.updateHoldSubmitState();
+  }
+
+  async prefillCustomerEmail() {
+    if (this.flow.reservation || this.flow.email) return;
+
+    const portalEmail = this.element.dataset.customerEmail?.trim();
+    if (portalEmail) {
+      this.applyCustomerEmail(portalEmail);
+      return;
+    }
+
+    const accessToken = readPortalAccessToken();
+    if (!accessToken) return;
+
+    try {
+      const { data: customer } = await fetchJson("/api/v1/me", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!customer?.email || this.flow.reservation || this.flow.email) return;
+      this.applyCustomerEmail(customer.email);
+    } catch (failure) {
+      if ([401, 403].includes(failure.status)) clearPortalAccessToken();
+    }
+  }
+
+  applyCustomerEmail(email) {
+    const emailInput = this.element.querySelector("[name=email]");
+    if (!emailInput || emailInput.value.trim()) return;
+
+    this.flow.email = email;
+    emailInput.value = email;
     this.saveFlow();
     this.updateHoldSubmitState();
   }
@@ -594,13 +635,17 @@ export default class extends Controller {
     this.clearHoldError();
 
     try {
-      const authorization = await guestAuthorizationHeader();
+      const guestToken = await guestCapabilityToken();
+      const authorization = await reservationAuthorizationHeader();
       const headers = {
         "Content-Type": "application/json",
         "Idempotency-Key": this.flow.request.idempotencyKey,
+        Authorization: authorization,
       };
-      if (authorization) headers.Authorization = authorization;
-      const reservation = await fetchJson("/api/v1/reservations", {
+      if (authorization.startsWith("Bearer ")) {
+        headers["X-Seatwise-Guest-Token"] = guestToken;
+      }
+      const reservation = await fetchReservationJson("/api/v1/reservations", {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -726,6 +771,10 @@ export default class extends Controller {
     }
     if (detail.interrupted) {
       this.paymentConfiguration = null;
+      return;
+    }
+    if (detail.reservationAccessLost && this.flow.reservation?.status === "held") {
+      this.restartAsGuest();
       return;
     }
     if (detail.kind === "element_load_error") {
@@ -1078,13 +1127,18 @@ export default class extends Controller {
     if (button) button.disabled = true;
     if (error) error.hidden = true;
     try {
-      const authorization = await guestAuthorizationHeader();
-      await fetchJson(`/api/v1/reservations/${encodeURIComponent(this.flow.reservation.id)}`, {
-        method: "DELETE",
-        headers: authorization ? { Authorization: authorization } : {},
-      });
+      await fetchReservationJson(
+        `/api/v1/reservations/${encodeURIComponent(this.flow.reservation.id)}`,
+        {
+          method: "DELETE",
+        },
+      );
     } catch (failure) {
       this.releasingHold = false;
+      if (failure.reservationAccessLost) {
+        this.restartAsGuest();
+        return;
+      }
       if (this.flow.step !== "payment") {
         this.flow.step = "payment";
         this.saveFlow();
@@ -1143,5 +1197,15 @@ export default class extends Controller {
     this.setAvailabilityPending(true);
     this.renderFlow();
     await this.requestAvailabilityRefresh();
+  }
+
+  async restartAsGuest() {
+    const email = this.flow.email;
+    await this.startAgain();
+    this.flow.email = email;
+    this.saveFlow();
+    this.announce(
+      "We couldn’t restore access to your previous hold. It remains held until it expires; choose available seats to start a new guest reservation.",
+    );
   }
 }
