@@ -427,6 +427,9 @@ export default class extends Controller {
         : "";
     const summarySeats = reservationComplete ? reservation.seats : this.selectedSeatDetails();
     countText.textContent = countDescription;
+    const selectionDetails = this.element.querySelector("[data-selection-details]");
+    selectionDetails.hidden = summarySeats.length === 0;
+    selectionDetails.classList.toggle("hidden", summarySeats.length === 0);
     this.element.querySelector("[data-selection-accessible-summary]").textContent =
       summarySeats.length ? this.formatSeatSummary(summarySeats) : "";
     this.renderSelectionVisual(summarySeats);
