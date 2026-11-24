@@ -5,6 +5,8 @@ dayjs.extend(relativeTime);
 
 let inMemoryGuestToken = null;
 let guestTokenPromise = null;
+const PORTAL_ACCESS_TOKEN_KEY = "seatwise.oauth.token";
+const GUEST_TOKEN_KEY = "seatwise.guest.token";
 
 export async function fetchJson(url, options = {}) {
   const headers = new Headers(options.headers);
@@ -29,9 +31,35 @@ export async function fetchJson(url, options = {}) {
   return body;
 }
 
-export async function guestAuthorizationHeader() {
-  if (readPortalAccessToken()) return null;
+export async function guestCapabilityToken() {
+  return ensureGuestToken();
+}
 
+export async function reservationAuthorizationHeader() {
+  const customerToken = readPortalAccessToken();
+  return customerToken ? `Bearer ${customerToken}` : `Guest ${await ensureGuestToken()}`;
+}
+
+export async function fetchReservationJson(url, options = {}) {
+  const headers = new Headers(options.headers);
+  let authorization = headers.get("Authorization");
+  if (!authorization) {
+    authorization = await reservationAuthorizationHeader();
+    headers.set("Authorization", authorization);
+  }
+
+  try {
+    return await fetchJson(url, { ...options, headers });
+  } catch (failure) {
+    if (![401, 403].includes(failure.status) || !/^Bearer\s/i.test(authorization)) throw failure;
+
+    clearPortalAccessToken();
+    headers.set("Authorization", `Guest ${await ensureGuestToken()}`);
+    return fetchJson(url, { ...options, headers });
+  }
+}
+
+async function ensureGuestToken() {
   let guestToken = readGuestToken();
   if (!guestToken) {
     guestTokenPromise ||= fetchJson("/api/v1/guest_sessions", {
@@ -43,7 +71,7 @@ export async function guestAuthorizationHeader() {
         guestToken = response.guest_token;
         inMemoryGuestToken = guestToken;
         try {
-          sessionStorage.setItem("seatwise.guest.token", guestToken);
+          sessionStorage.setItem(GUEST_TOKEN_KEY, guestToken);
         } catch (_error) {}
         return guestToken;
       })
@@ -52,22 +80,28 @@ export async function guestAuthorizationHeader() {
       });
     guestToken = await guestTokenPromise;
   }
-
-  return `Guest ${guestToken}`;
+  return guestToken;
 }
 
 export function readPortalAccessToken() {
+  let token;
   try {
-    const token = JSON.parse(sessionStorage.getItem("seatwise.oauth.token"));
-    if (token?.access_token && token.expires_at > Date.now()) return token.access_token;
+    token = JSON.parse(sessionStorage.getItem(PORTAL_ACCESS_TOKEN_KEY));
   } catch (_) {}
-  sessionStorage.removeItem("seatwise.oauth.token");
+  if (token?.access_token && token.expires_at > Date.now()) return token.access_token;
+  clearPortalAccessToken();
   return null;
+}
+
+function clearPortalAccessToken() {
+  try {
+    sessionStorage.removeItem(PORTAL_ACCESS_TOKEN_KEY);
+  } catch (_) {}
 }
 
 function readGuestToken() {
   try {
-    inMemoryGuestToken = sessionStorage.getItem("seatwise.guest.token") || inMemoryGuestToken;
+    inMemoryGuestToken = sessionStorage.getItem(GUEST_TOKEN_KEY) || inMemoryGuestToken;
   } catch (_error) {}
   return inMemoryGuestToken;
 }

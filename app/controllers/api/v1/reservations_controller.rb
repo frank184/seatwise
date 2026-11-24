@@ -99,7 +99,7 @@ module Api
           return render_error("Idempotency-Key is too long", :bad_request)
         end
 
-        guest = current_customer ? nil : current_guest
+        guest = current_customer ? portal_guest_capability : current_guest
         return unless require_guest_or_customer!
 
         event = Event.find(event_id)
@@ -113,7 +113,11 @@ module Api
         end
 
         actor_fingerprint =
-          current_customer ? "customer:#{current_customer.id}" : "guest:#{guest.id}"
+          if guest.present?
+            "guest:#{guest.id}"
+          else
+            "customer:#{current_customer.id}"
+          end
         request_details = [event.id, quantity, email, actor_fingerprint]
         if coordinates_provided
           request_details.concat([params[:row_id], params[:seat_start], params[:seat_end]])
@@ -217,6 +221,10 @@ module Api
       end
 
       private
+
+      def portal_guest_capability
+        Guest.resolve(request.headers["X-Seatwise-Guest-Token"])
+      end
 
       def filter_reservations(reservations)
         case params[:status]

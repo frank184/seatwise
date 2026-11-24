@@ -1,10 +1,12 @@
 import { Controller } from "@hotwired/stimulus";
 import {
   cloneTemplate,
+  fetchReservationJson,
   fetchJson,
   formatDate,
   formatRelativeTime,
-  guestAuthorizationHeader,
+  guestCapabilityToken,
+  reservationAuthorizationHeader,
 } from "controllers/portal/view_helpers";
 
 const STEP_NUMBERS = { seats: 1, payment: 2, redirecting: 2, confirmed: 3, expired: 1 };
@@ -594,13 +596,17 @@ export default class extends Controller {
     this.clearHoldError();
 
     try {
-      const authorization = await guestAuthorizationHeader();
+      const guestToken = await guestCapabilityToken();
+      const authorization = await reservationAuthorizationHeader();
       const headers = {
         "Content-Type": "application/json",
         "Idempotency-Key": this.flow.request.idempotencyKey,
+        Authorization: authorization,
       };
-      if (authorization) headers.Authorization = authorization;
-      const reservation = await fetchJson("/api/v1/reservations", {
+      if (authorization.startsWith("Bearer ")) {
+        headers["X-Seatwise-Guest-Token"] = guestToken;
+      }
+      const reservation = await fetchReservationJson("/api/v1/reservations", {
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -1078,11 +1084,12 @@ export default class extends Controller {
     if (button) button.disabled = true;
     if (error) error.hidden = true;
     try {
-      const authorization = await guestAuthorizationHeader();
-      await fetchJson(`/api/v1/reservations/${encodeURIComponent(this.flow.reservation.id)}`, {
-        method: "DELETE",
-        headers: authorization ? { Authorization: authorization } : {},
-      });
+      await fetchReservationJson(
+        `/api/v1/reservations/${encodeURIComponent(this.flow.reservation.id)}`,
+        {
+          method: "DELETE",
+        },
+      );
     } catch (failure) {
       this.releasingHold = false;
       if (this.flow.step !== "payment") {

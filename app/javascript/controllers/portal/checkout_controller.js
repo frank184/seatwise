@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus";
-import { fetchJson, guestAuthorizationHeader } from "controllers/portal/view_helpers";
+import { fetchJson, fetchReservationJson } from "controllers/portal/view_helpers";
 
 export default class extends Controller {
   connect() {
@@ -72,12 +72,9 @@ export default class extends Controller {
       if (!stripe)
         throw new Error("Online payment is temporarily unavailable. Please try again shortly.");
 
-      const authorization = await guestAuthorizationHeader();
-      const headers = { "Content-Type": "application/json" };
-      if (authorization) headers.Authorization = authorization;
-      const sessionResponse = await fetchJson(
+      const sessionResponse = await fetchReservationJson(
         `/api/v1/reservations/${encodeURIComponent(reservation.id)}/checkout/session`,
-        { method: "POST", headers, body: "{}" },
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" },
       );
       const session = sessionResponse.data || sessionResponse;
       if (!session.client_secret)
@@ -309,14 +306,11 @@ export default class extends Controller {
     retryButton.hidden = true;
     while (this.pollingId === pollingId && Date.now() < deadline) {
       try {
-        const authorization = await guestAuthorizationHeader();
-        const headers = { "Content-Type": "application/json" };
-        if (authorization) headers.Authorization = authorization;
-        const response = await fetchJson(
+        const response = await fetchReservationJson(
           `/api/v1/reservations/${encodeURIComponent(reservation.id)}/checkout/reconcile`,
           {
             method: "POST",
-            headers,
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ session_id: sessionId }),
           },
         );
