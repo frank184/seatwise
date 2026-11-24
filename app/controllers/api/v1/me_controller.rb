@@ -6,12 +6,14 @@ module Api
 
         response.headers["Cache-Control"] = "no-store"
         render json: {
-          data: {
-            id: current_customer.id,
-            email: current_customer.email
-          },
-          meta: { api_version: "v1" }
-        }
+                 data: {
+                   id: current_customer.id,
+                   email: current_customer.email
+                 },
+                 meta: {
+                   api_version: "v1"
+                 }
+               }
       end
     end
   end

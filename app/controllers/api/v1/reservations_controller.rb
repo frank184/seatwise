@@ -113,11 +113,7 @@ module Api
         end
 
         actor_fingerprint =
-          if guest.present?
-            "guest:#{guest.id}"
-          else
-            "customer:#{current_customer.id}"
-          end
+          (guest.present? ? "guest:#{guest.id}" : "customer:#{current_customer.id}")
         request_details = [event.id, quantity, email, actor_fingerprint]
         if coordinates_provided
           request_details.concat([params[:row_id], params[:seat_start], params[:seat_end]])
