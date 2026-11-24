@@ -51,6 +51,10 @@ export async function fetchReservationJson(url, options = {}) {
   try {
     return await fetchJson(url, { ...options, headers });
   } catch (failure) {
+    if (isReservationResourceUrl(url) && failure.status === 404) {
+      failure.reservationAccessLost = true;
+      throw failure;
+    }
     if (![401, 403].includes(failure.status)) throw failure;
 
     if (/^Bearer\s/i.test(authorization)) clearPortalAccessToken();
@@ -63,7 +67,7 @@ export async function fetchReservationJson(url, options = {}) {
       return await fetchJson(url, { ...options, headers });
     } catch (guestFailure) {
       if (![401, 403].includes(guestFailure.status)) {
-        if (isReservationResourceUrl(url) && guestFailure.status === 404) {
+        if (isReservationResourceUrl(url) && [401, 403, 404].includes(guestFailure.status)) {
           guestFailure.reservationAccessLost = true;
         }
         throw guestFailure;
@@ -74,7 +78,10 @@ export async function fetchReservationJson(url, options = {}) {
       try {
         return await fetchJson(url, { ...options, headers });
       } catch (refreshedGuestFailure) {
-        if (isReservationResourceUrl(url) && refreshedGuestFailure.status === 404) {
+        if (
+          isReservationResourceUrl(url) &&
+          [401, 403, 404].includes(refreshedGuestFailure.status)
+        ) {
           refreshedGuestFailure.reservationAccessLost = true;
         }
         throw refreshedGuestFailure;
