@@ -50,6 +50,8 @@ Doorkeeper is Seatwise's OAuth authorization server. Only the Authorization Code
 
 The default scope is `reservations:read`; `reservations:manage` is optional. Doorkeeper limits requested scopes to those registered on the client. The Portal client skips the separate consent screen; other clients use the normal Doorkeeper authorization flow. Token revocation is available at `POST /oauth/revoke`. Doorkeeper's application-management and token-inspection controllers are not mounted.
 
+The opaque access token is not a profile token and does not expose customer details to the browser. An authenticated client can call `GET /api/v1/me` with `reservations:read` to retrieve the token owner's ID and verified email. The Portal uses this endpoint to prefill an empty reservation email field; it does not overwrite an address already entered in the current reservation flow.
+
 The development OAuth clients are seeded only in development and idempotently by name. On a fresh development database, migrations and seeds are explicit operations; booting Rails does not migrate or seed automatically:
 
 ```sh

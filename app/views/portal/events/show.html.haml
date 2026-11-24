@@ -4,6 +4,7 @@
   "data-action": "portal--seat-map:selection-changed->portal--reservation#handleSeatMapSelectionChanged portal--seat-map:snapshot-reconciled->portal--reservation#handleSeatMapSnapshotReconciled portal--reservation:confirmation->portal--alert#open portal--alert:confirmed->portal--reservation#handleAlertConfirmed portal--reservation:refresh-availability->portal--availability#refresh portal--availability:refreshing->portal--reservation#availabilityRefreshStarted portal--availability:updated->portal--reservation#applyAvailabilitySnapshot portal--availability:failed->portal--reservation#availabilityRefreshFailed portal--checkout:ready->portal--reservation#checkoutReady portal--checkout:failed->portal--reservation#checkoutFailed portal--checkout:redirecting->portal--reservation#checkoutRedirecting portal--checkout:confirmed->portal--reservation#checkoutConfirmed portal--checkout:expired->portal--reservation#checkoutExpired",
   "data-controller": "portal--reservation portal--alert portal--availability",
   "data-event-id": "#{@event_id}",
+  "data-customer-email": @customer_email,
   "data-event-show": ""
 }
   %main.mx-auto.max-w-7xl.space-y-5.px-3.py-4.sm:px-7.sm:py-7

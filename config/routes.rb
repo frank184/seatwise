@@ -7,6 +7,7 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       get "up", to: "health#show", as: :health
+      get "me", to: "me#show", as: :me
       resources :events, only: %i[index show]
       post "guest_sessions", to: "guest_sessions#create", as: :guest_sessions
       resources :reservations, only: %i[index show create destroy]

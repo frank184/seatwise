@@ -21,6 +21,7 @@ The Seatwise JSON API exposes event availability, reservation holds, checkout, c
 | `GET /api/v1/up` | — | `200` with `{"status":"ok","api_version":"v1"}`. |
 | `GET /api/v1/events` | — | `200` with a paginated `data` array of matching event summaries and a `meta` object. There is currently no draft/published visibility filter. |
 | `GET /api/v1/events/:event_id` | — | `200` with an event summary including `id`, `name`, `ticket_price_cents`, and `starts_at`. |
+| `GET /api/v1/me` | Requires a customer bearer token with `reservations:read`. | `200` with the authenticated customer's ID and verified email; response is not cached. |
 | `GET /api/v1/organizations/development` | — | `200` with public, in-memory Stripe provider configuration. |
 | `POST /api/v1/guest_sessions` | Empty JSON object. Limited to 20 requests per remote IP per minute. | `201` creates a `Guest` and returns its one-time `guest_token` plus `expires_at`. It never sets a cookie. |
 | `GET /api/v1/reservations` | Requires a customer bearer token with `reservations:read`. Accepts `page`, `status=active|history|held|confirmed|cancelled|expired`, `venue_id`, and `q` (reservation number, event name, or venue name). | `200` with the customer's matching reservations in `data` and pagination plus customer-scoped venue options in `meta`; each reservation includes event name, date/time, and venue details. Pages contain up to 10 reservations. Due holds are marked expired before the list is returned. |

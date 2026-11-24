@@ -51,11 +51,35 @@ export async function fetchReservationJson(url, options = {}) {
   try {
     return await fetchJson(url, { ...options, headers });
   } catch (failure) {
-    if (![401, 403].includes(failure.status) || !/^Bearer\s/i.test(authorization)) throw failure;
+    if (![401, 403].includes(failure.status)) throw failure;
 
-    clearPortalAccessToken();
-    headers.set("Authorization", `Guest ${await ensureGuestToken()}`);
-    return fetchJson(url, { ...options, headers });
+    if (/^Bearer\s/i.test(authorization)) clearPortalAccessToken();
+    else if (/^Guest\s/i.test(authorization)) clearGuestToken();
+    else throw failure;
+
+    authorization = `Guest ${await ensureGuestToken()}`;
+    headers.set("Authorization", authorization);
+    try {
+      return await fetchJson(url, { ...options, headers });
+    } catch (guestFailure) {
+      if (![401, 403].includes(guestFailure.status)) {
+        if (isReservationResourceUrl(url) && guestFailure.status === 404) {
+          guestFailure.reservationAccessLost = true;
+        }
+        throw guestFailure;
+      }
+
+      clearGuestToken();
+      headers.set("Authorization", `Guest ${await ensureGuestToken()}`);
+      try {
+        return await fetchJson(url, { ...options, headers });
+      } catch (refreshedGuestFailure) {
+        if (isReservationResourceUrl(url) && refreshedGuestFailure.status === 404) {
+          refreshedGuestFailure.reservationAccessLost = true;
+        }
+        throw refreshedGuestFailure;
+      }
+    }
   }
 }
 
@@ -93,7 +117,7 @@ export function readPortalAccessToken() {
   return null;
 }
 
-function clearPortalAccessToken() {
+export function clearPortalAccessToken() {
   try {
     sessionStorage.removeItem(PORTAL_ACCESS_TOKEN_KEY);
   } catch (_) {}
@@ -104,6 +128,21 @@ function readGuestToken() {
     inMemoryGuestToken = sessionStorage.getItem(GUEST_TOKEN_KEY) || inMemoryGuestToken;
   } catch (_error) {}
   return inMemoryGuestToken;
+}
+
+function clearGuestToken() {
+  inMemoryGuestToken = null;
+  try {
+    sessionStorage.removeItem(GUEST_TOKEN_KEY);
+  } catch (_error) {}
+}
+
+function isReservationResourceUrl(url) {
+  try {
+    return /^\/api\/v1\/reservations\/[^/]+/.test(new URL(url, window.location.origin).pathname);
+  } catch (_error) {
+    return false;
+  }
 }
 
 function isApiV1Url(url) {

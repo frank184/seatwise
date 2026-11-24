@@ -135,6 +135,7 @@ export default class extends Controller {
         provider,
         paymentSession: this.paymentSession,
         error: failure.message,
+        reservationAccessLost: failure.reservationAccessLost === true,
       });
     } finally {
       if (generation === this.generation) this.setLoading(false);

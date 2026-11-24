@@ -6,6 +6,8 @@ import {
   formatDate,
   formatRelativeTime,
   guestCapabilityToken,
+  clearPortalAccessToken,
+  readPortalAccessToken,
   reservationAuthorizationHeader,
 } from "controllers/portal/view_helpers";
 
@@ -30,6 +32,7 @@ export default class extends Controller {
     this.reconciliationRequired = false;
     this.selectionReady = false;
     this.beginEventLoad();
+    this.prefillCustomerEmail();
   }
 
   disconnect() {
@@ -472,6 +475,39 @@ export default class extends Controller {
     this.updateHoldSubmitState();
   }
 
+  async prefillCustomerEmail() {
+    if (this.flow.reservation || this.flow.email) return;
+
+    const portalEmail = this.element.dataset.customerEmail?.trim();
+    if (portalEmail) {
+      this.applyCustomerEmail(portalEmail);
+      return;
+    }
+
+    const accessToken = readPortalAccessToken();
+    if (!accessToken) return;
+
+    try {
+      const { data: customer } = await fetchJson("/api/v1/me", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!customer?.email || this.flow.reservation || this.flow.email) return;
+      this.applyCustomerEmail(customer.email);
+    } catch (failure) {
+      if ([401, 403].includes(failure.status)) clearPortalAccessToken();
+    }
+  }
+
+  applyCustomerEmail(email) {
+    const emailInput = this.element.querySelector("[name=email]");
+    if (!emailInput || emailInput.value.trim()) return;
+
+    this.flow.email = email;
+    emailInput.value = email;
+    this.saveFlow();
+    this.updateHoldSubmitState();
+  }
+
   selectedSeatDetails() {
     return [...this.selectedSeats].map((key) => {
       const [rowId, seatNumber] = key.split(":");
@@ -732,6 +768,10 @@ export default class extends Controller {
     }
     if (detail.interrupted) {
       this.paymentConfiguration = null;
+      return;
+    }
+    if (detail.reservationAccessLost && this.flow.reservation?.status === "held") {
+      this.restartAsGuest();
       return;
     }
     if (detail.kind === "element_load_error") {
@@ -1092,6 +1132,10 @@ export default class extends Controller {
       );
     } catch (failure) {
       this.releasingHold = false;
+      if (failure.reservationAccessLost) {
+        this.restartAsGuest();
+        return;
+      }
       if (this.flow.step !== "payment") {
         this.flow.step = "payment";
         this.saveFlow();
@@ -1150,5 +1194,15 @@ export default class extends Controller {
     this.setAvailabilityPending(true);
     this.renderFlow();
     await this.requestAvailabilityRefresh();
+  }
+
+  async restartAsGuest() {
+    const email = this.flow.email;
+    await this.startAgain();
+    this.flow.email = email;
+    this.saveFlow();
+    this.announce(
+      "We couldn’t restore access to your previous hold. It remains held until it expires; choose available seats to start a new guest reservation.",
+    );
   }
 }
