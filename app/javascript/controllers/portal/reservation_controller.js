@@ -951,6 +951,8 @@ export default class extends Controller {
     }
     const holdSubmit = panel.querySelector("[data-hold-submit]");
     if (holdSubmit) holdSubmit.hidden = heldReservation;
+    const cancelHoldButton = panel.querySelector('[data-action*="cancelHold"]');
+    if (cancelHoldButton) cancelHoldButton.disabled = !heldReservation || this.releasingHold;
     this.updateHoldSubmitState();
     const paymentButton = panel.querySelector("[data-payment-submit]");
     if (paymentButton) {
