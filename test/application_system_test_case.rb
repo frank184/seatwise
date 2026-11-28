@@ -6,9 +6,7 @@ module ClearChromeStorageWithoutWildcardOrigin
   private
 
   def execute_cdp(command, params = {})
-    unless command == "Storage.clearDataForOrigin" && params[:origin] == "*"
-      return super
-    end
+    return super unless command == "Storage.clearDataForOrigin" && params[:origin] == "*"
 
     storage_types = params[:storageTypes].to_s.split(",")
     super("Network.clearBrowserCookies") if storage_types.delete("cookies")
