@@ -4,6 +4,7 @@ module Portal
   class ReservationCheckoutTest < ApplicationSystemTestCase
     setup do
       @event = events(:one)
+      @event.update!(start_time: 2.hours.from_now, end_time: 4.hours.from_now)
       normalized_test_name = name.downcase.tr(" -", "_")
       @defer_availability_fallback = normalized_test_name.include?("initial_snapshot_fallback")
       if normalized_test_name.include?("subscription_confirmation") ||
